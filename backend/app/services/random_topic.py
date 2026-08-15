@@ -1,15 +1,24 @@
 """Curiosity-ranked random topic picker.
 
-When a user clicks a hardcoded category root (History, Science, ...), this service
-returns a specific, curiosity-worthy topic from that category — like "AI-powered
-random Wikipedia". Candidates come live from Wikipedia's category members (sampled
-randomly and filtered for quality) plus today's per-domain signal hooks, then the
-LLM reranks a small sample and picks the most fascinating one with a one-line reason.
+When a user clicks a category root (History, Science, Culture, ...), this service
+returns a specific, curiosity-worthy topic from that category — "AI-powered random
+Wikipedia". Candidate topics come from three live tiers:
 
-Everything is best-effort: if Wikipedia or the LLM fails, the pick degrades to a
-plain random sample from whatever candidates are available.
+  1. Deep Wikipedia crawl — walks 3 levels of subcategories to collect real
+     articles (not umbrella/meta pages), filtered and ranked by recent pageviews.
+  2. LLM seed-query resolution — an LLM proposes curiosity directions for the
+     category; each is resolved through Wikipedia search to a REAL article.
+  3. Live signals — today's trending / news / on-this-day / reddit / HN hooks.
+
+The merged pool is cached per category, sampled, and finally reranked by the LLM,
+which picks the single most mind-blowing topic with a one-line reason.
+
+Every candidate must resolve to a real, researchable article — the LLM directs
+*where to look*, reality decides *the topic*. Everything is best-effort: on any
+failure it degrades to a plain random pick from whatever is available.
 """
 
+import asyncio
 import logging
 import random
 import time
@@ -29,26 +38,70 @@ WIKIPEDIA_UA = "TIL-CuriosityEngine/2.0 (educational project; contact@curiosity.
 MEDIAWIKI_API = "https://en.wikipedia.org/w/api.php"
 RANDOM_SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/random/summary"
 
-# Map our landing categories to their Wikipedia category namespace.
+# Map our landing categories to Wikipedia's Main topic classifications.
 CATEGORY_WIKI_MAP = {
     "Science": "Science",
     "History": "History",
     "Mathematics": "Mathematics",
     "Technology": "Technology",
     "Philosophy": "Philosophy",
+    "Culture": "Culture",
+    "Geography": "Geography",
+    "Health": "Health",
+    "Nature": "Nature",
+    "People": "People",
+    "Religion": "Religion",
+    "Society": "Society",
+    "Language": "Language",
+    "Law": "Law",
+    "Politics": "Politics",
+    "Education": "Education",
+    "Engineering": "Engineering",
+    "Energy": "Energy",
+    "Food and drink": "Food and drink",
+    "Economy": "Economy",
+    "Time": "Time",
 }
 
-# How many category members to pull, sample, and hand to the LLM.
-CATEGORY_MEMBER_LIMIT = 500
+# Deep-crawl tuning: how many subcategory levels to walk, page cap, and how many
+# pageview-top candidates to keep in each category's cached pool.
+CRAWL_MAX_DEPTH = 3
+CRAWL_MAX_PAGES = 800
+CRAWL_MAX_SUBCATS_PER_LEVEL = 24
+CRAWL_CONCURRENCY = 3  # parallel category fetches (keep under Wikimedia's rate limit)
+POOL_PAGEVIEWS_KEEP = 60
+POOL_TTL = 6 * 3600  # refetch the category pool at most every 6h
+
 CANDIDATE_SAMPLE = 6
-LLM_SAMPLE_SIZE = 3
+LLM_SAMPLE_SIZE = 8
 
 # Signal pool refresh TTL — refetch today's trending/on-this-day hooks at most every 6h.
 SIGNAL_POOL_TTL = 6 * 3600
+# Cap how long we wait for live signals on each pick; the crawl + seed pools are
+# the primary quality drivers, so fresh hooks are merged only if they arrive fast.
+SIGNAL_FETCH_TIMEOUT = 4.0
 
 # Skip titles/extracts that are listicles or too short to be interesting.
 _MIN_EXTRACT_LEN = 100
-_JUNK_MARKERS = ("disambiguation", "index of", "outline of", "timeline of")
+_META_PREFIXES = (
+    "list of",
+    "index of",
+    "outline of",
+    "glossary of",
+    "timeline of",
+    "bibliography of",
+    "chronology of",
+    "overview of",
+)
+_META_SUFFIXES = (
+    "disambiguation",
+    "in popular culture",
+    "in fiction",
+    "statistics",
+    "studies",
+    "category",
+)
+_NAMESPACE_PREFIXES = ("Wikipedia:", "Portal:", "Category:", "Template:", "Help:", "Talk:", "File:")
 
 
 class _TopicPick(BaseModel):
@@ -56,6 +109,10 @@ class _TopicPick(BaseModel):
     summary: str = Field(description="One punchy sentence: why this is fascinating, with historical/scientific context")
     reason: str = Field(description="One sentence: why the user should dive into this right now")
     image_search_query: str = Field(description="Wikimedia Commons search key")
+
+
+class _SeedQueries(BaseModel):
+    queries: list[str] = Field(description="Exactly 6 curiosity-directed search queries")
 
 
 def _clean_category(category: str) -> str:
@@ -70,100 +127,298 @@ def _clean_category(category: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Candidate sources (live only — no hard-coded topic lists)
+# Deep Wikipedia category crawl (tier 1)
 # --------------------------------------------------------------------------- #
 
 
-async def _category_member_titles(category: str) -> list[str]:
-    """Random-ish sample of article titles that are direct members of the category."""
+def _is_interesting_title(title: str, category: str) -> bool:
+    """Reject umbrella/meta/list pages; keep concrete story-worthy articles."""
+    low = title.strip().lower()
+    if len(title) < 3:
+        return False
+    if any(low.startswith(p.lower()) for p in _NAMESPACE_PREFIXES):
+        return False
+    if low.startswith(_META_PREFIXES) or low.endswith(_META_SUFFIXES):
+        return False
+    # Single-word titles are usually the category umbrella itself ("History",
+    # "Biography", "Physics") — not curiosity picks.
+    if len(title.split()) < 2:
+        return False
+    if low == category.lower():
+        return False
+    return "disambiguation" not in low
+
+
+async def _rate_limited_get(
+    client: httpx.AsyncClient,
+    url: str,
+    params: dict[str, str | int],
+    retries: int = 4,
+) -> httpx.Response:
+    """GET with a global concurrency cap and 429/5xx retry-with-backoff.
+
+    Wikipedia's MediaWiki API throttles bursty bots (429); this paces parallel
+    category traversal below the limit and retries politely on rate limits.
+    """
+    for attempt in range(retries):
+        try:
+            resp = await client.get(url, params=params)
+            if resp.status_code == 429 or resp.status_code >= 500:
+                backoff = 0.5 * (2**attempt)
+                logger.warning(f"[random-topic] HTTP {resp.status_code}, retrying in {backoff:.1f}s")
+                await asyncio.sleep(backoff)
+                continue
+            resp.raise_for_status()
+            return resp
+        except httpx.HTTPStatusError:
+            raise
+        except httpx.TransportError as e:
+            logger.warning(f"[random-topic] transport error ({e}), retrying in 0.5s")
+            await asyncio.sleep(0.5)
+    raise httpx.HTTPStatusError(
+        "Exhausted retries", request=client.build_request("GET", url, params=params), response=httpx.Response(429)
+    )
+
+
+async def _fetch_category_members(client: httpx.AsyncClient, cat_title: str) -> tuple[list[str], list[str]]:
+    """Return (subcategory titles, article titles) directly in a category, paginated."""
+    subcats: list[str] = []
+    pages: list[str] = []
     params: dict[str, str | int] = {
         "action": "query",
         "list": "categorymembers",
-        "cmtitle": f"Category:{CATEGORY_WIKI_MAP[category]}",
-        "cmnamespace": 0,
-        "cmtype": "page",
-        "cmlimit": CATEGORY_MEMBER_LIMIT,
+        "cmtitle": cat_title,
+        "cmtype": "page|subcat",
+        "cmlimit": "max",
         "format": "json",
     }
-    async with httpx.AsyncClient(timeout=10.0, headers={"User-Agent": WIKIPEDIA_UA}) as client:
-        resp = await client.get(MEDIAWIKI_API, params=params)
-        resp.raise_for_status()
+    while True:
+        resp = await _rate_limited_get(client, MEDIAWIKI_API, params)
         data = resp.json()
-        members = data.get("query", {}).get("categorymembers", [])
-
-    filtered = []
-    for m in members:
-        title = m.get("title", "")
-        low = title.lower()
-        if ":" in title or low.startswith("list of"):
-            continue
-        if any(marker in low for marker in _JUNK_MARKERS):
-            continue
-        if len(title) < 3:
-            continue
-        filtered.append(title)
-
-    if len(filtered) > 40:
-        filtered = random.sample(filtered, 40)
-    return filtered
+        for m in data.get("query", {}).get("categorymembers", []):
+            if m.get("ns") == 14:  # Category namespace
+                subcats.append(m["title"])
+            elif m.get("ns") == 0:  # Article namespace
+                pages.append(m["title"])
+        cont = data.get("continue")
+        if not cont:
+            break
+        params["cmcontinue"] = cont["cmcontinue"]
+    return subcats, pages
 
 
-async def _batch_extracts(titles: list[str]) -> list[dict[str, str]]:
-    """Fetch short plain-text intros for a batch of titles (one query per 20)."""
-    out: list[dict[str, str]] = []
-    async with httpx.AsyncClient(timeout=10.0, headers={"User-Agent": WIKIPEDIA_UA}) as client:
+async def _collect_category_tree(category: str) -> list[str]:
+    """BFS over the category subtree up to CRAWL_MAX_DEPTH, returning real article titles."""
+    async with httpx.AsyncClient(timeout=20.0, headers={"User-Agent": WIKIPEDIA_UA}) as client:
+        root = f"Category:{category}"
+        visited_cats: set[str] = {root}
+        titles: set[str] = set()
+        frontier: list[tuple[str, int]] = [(root, 0)]
+        semaphore = asyncio.Semaphore(CRAWL_CONCURRENCY)
+
+        async def _bounded_fetch(cat: str) -> tuple[list[str], list[str]]:
+            async with semaphore:
+                return await _fetch_category_members(client, cat)
+
+        while frontier and len(titles) < CRAWL_MAX_PAGES:
+            results = await asyncio.gather(
+                *(_bounded_fetch(cat) for cat, _ in frontier),
+                return_exceptions=True,
+            )
+            next_frontier: list[tuple[str, int]] = []
+            for (cat, depth), result in zip(frontier, results):
+                if isinstance(result, BaseException):
+                    logger.warning(f"[random-topic] category fetch failed for {cat}: {result}")
+                    continue
+                subcats, pages = result
+                for page in pages:
+                    if len(titles) >= CRAWL_MAX_PAGES:
+                        break
+                    if _is_interesting_title(page, category):
+                        titles.add(page)
+                if depth + 1 <= CRAWL_MAX_DEPTH:
+                    for subcat in subcats:
+                        if subcat not in visited_cats and len(next_frontier) < CRAWL_MAX_SUBCATS_PER_LEVEL:
+                            visited_cats.add(subcat)
+                            next_frontier.append((subcat, depth + 1))
+            frontier = next_frontier
+
+        return list(titles)
+
+
+async def _batch_extracts(titles: list[str], category: str) -> list[dict[str, str | int]]:
+    """Fetch plain-text intros + recent pageviews for a batch of titles (20 per query)."""
+    out: list[dict[str, str | int]] = []
+    async with httpx.AsyncClient(timeout=15.0, headers={"User-Agent": WIKIPEDIA_UA}) as client:
         for i in range(0, len(titles), 20):
             batch = titles[i : i + 20]
             params: dict[str, str | int] = {
                 "action": "query",
                 "titles": "|".join(batch),
-                "prop": "extracts",
+                "prop": "extracts|pageviews",
                 "exintro": 1,
                 "explaintext": 1,
                 "exlimit": "max",
                 "format": "json",
             }
-            resp = await client.get(MEDIAWIKI_API, params=params)
-            resp.raise_for_status()
-            pages = resp.json().get("query", {}).get("pages", {})
+            try:
+                resp = await _rate_limited_get(client, MEDIAWIKI_API, params)
+                pages = resp.json().get("query", {}).get("pages", {})
+            except Exception as e:
+                logger.warning(f"[random-topic] extract batch failed: {e}")
+                continue
             for pg in pages.values():
                 title = pg.get("title", "")
                 extract = (pg.get("extract") or "").strip()
-                if title and len(extract) >= _MIN_EXTRACT_LEN:
-                    out.append({"title": title, "summary": extract[:280], "image_search_query": title})
+                pv = pg.get("pageviews") or {}
+                views = sum(v for v in pv.values() if isinstance(v, int))
+                if title and len(extract) >= _MIN_EXTRACT_LEN and _is_interesting_title(title, category):
+                    out.append(
+                        {"title": title, "summary": extract[:280], "image_search_query": title, "pageviews": views}
+                    )
     return out
 
 
-async def _live_wiki_candidates(category: str) -> list[dict[str, str]]:
-    """Category-scoped random Wikipedia candidates (best-effort)."""
+async def _deep_crawl_pool(category: str) -> list[dict[str, str | int]]:
+    """Deep-crawled candidates for a category, ranked by recent pageviews, cached."""
+    key = f"topics:crawl:{category.lower()}"
+    cached = cache_service.get(key)
+    if cached and isinstance(cached, list) and cached:
+        return cached  # type: ignore[return-value]
+
     try:
-        titles = await _category_member_titles(category)
+        titles = await _collect_category_tree(category)
         if not titles:
             return []
-        sampled = random.sample(titles, min(CANDIDATE_SAMPLE, len(titles)))
-        return await _batch_extracts(sampled)
+        # Rank by pageviews, keep the notable top slice as the pool.
+        enriched = await _batch_extracts(titles, category)
+        enriched.sort(key=lambda c: int(c["pageviews"]), reverse=True)
+        pool = enriched[:POOL_PAGEVIEWS_KEEP]
+        if pool:
+            cache_service.set(key, pool, ttl_seconds=POOL_TTL)
+            logger.info(f"[random-topic] crawl pool for {category}: {len(pool)} candidates (from {len(titles)} titles)")
+        return pool
     except Exception as e:
-        logger.warning(f"[random-topic] Wikipedia sampling failed: {e}")
+        logger.warning(f"[random-topic] deep crawl failed for {category}: {e}")
         return []
 
 
+# --------------------------------------------------------------------------- #
+# LLM seed-query resolution (tier 2)
+# --------------------------------------------------------------------------- #
+
+
+async def _llm_seed_queries(category: str) -> list[str]:
+    """LLM proposes curiosity-directed search queries for a category."""
+    llm = get_llm("cerebras", temperature=0.9, max_tokens=300)
+    if not llm:
+        return []
+    try:
+        structured = llm.with_structured_output(_SeedQueries)
+        result = await structured.ainvoke(
+            [
+                SystemMessage(
+                    content=(
+                        "You are a curiosity editor. Given a knowledge domain, write exactly 6 "
+                        "search queries that would surface the most fascinating, surprising, "
+                        "story-worthy topics in that domain. Prefer specific events, people, "
+                        "phenomena, and counterintuitive twists over broad subjects."
+                    )
+                ),
+                HumanMessage(content=f"Domain: {category}. Return exactly 6 queries."),
+            ]
+        )  # type: ignore[assignment]
+        queries = result.queries if isinstance(result, _SeedQueries) else _SeedQueries(**result).queries  # type: ignore[arg-type]
+        return queries[:6]
+    except Exception as e:
+        logger.warning(f"[random-topic] seed-query generation failed: {e}")
+        return []
+
+
+async def _resolve_seed_query(client: httpx.AsyncClient, query: str) -> list[str]:
+    """Resolve a seed query to real Wikipedia article titles via search."""
+    try:
+        params: dict[str, str | int] = {
+            "action": "query",
+            "list": "search",
+            "srsearch": query,
+            "srlimit": 3,
+            "srnamespace": 0,
+            "format": "json",
+        }
+        resp = await client.get(MEDIAWIKI_API, params=params)
+        resp.raise_for_status()
+        hits = resp.json().get("query", {}).get("search", [])
+        return [h.get("title", "") for h in hits if h.get("title")]
+    except Exception as e:
+        logger.warning(f"[random-topic] seed query resolve failed ({query[:40]}): {e}")
+        return []
+
+
+async def _seed_query_pool(category: str) -> list[dict[str, str | int]]:
+    """LLM-directed candidates resolved to REAL articles, cached."""
+    key = f"topics:seed:{category.lower()}"
+    cached = cache_service.get(key)
+    if cached and isinstance(cached, list) and cached:
+        return cached  # type: ignore[return-value]
+
+    queries = await _llm_seed_queries(category)
+    if not queries:
+        return []
+
+    async with httpx.AsyncClient(timeout=15.0, headers={"User-Agent": WIKIPEDIA_UA}) as client:
+        resolved_sets = await asyncio.gather(*(_resolve_seed_query(client, q) for q in queries))
+    titles: list[str] = []
+    seen: set[str] = set()
+    for resolved in resolved_sets:
+        for t in resolved:
+            if t not in seen and _is_interesting_title(t, category):
+                seen.add(t)
+                titles.append(t)
+
+    pool = await _batch_extracts(titles, category)
+    if pool:
+        cache_service.set(key, pool, ttl_seconds=POOL_TTL)
+        logger.info(f"[random-topic] seed pool for {category}: {len(pool)} candidates")
+    return pool
+
+
+# --------------------------------------------------------------------------- #
+# Live signal hooks (tier 3)
+# --------------------------------------------------------------------------- #
+
+
 async def _signal_titles(category: str) -> list[str]:
-    """Today's per-domain signal hooks (trending / on-this-day / news), TTL-cached."""
+    """Today's per-domain signal hooks (trending / on-this-day / news), TTL-cached.
+
+    Refreshes are expensive (~15-25s of paced upstream fetches), so they run in
+    the background and are only waited on for a short budget. If the refresh is
+    still in flight, we return whatever was cached before — the crawl + seed
+    candidate pools carry the quality while signals stay a best-effort spice.
+    """
     key = f"signals:pool:{category.lower()}"
     cached = cache_service.get(key)
     if cached and isinstance(cached, dict) and time.time() - cached.get("fetched_at", 0) < SIGNAL_POOL_TTL:
         return cached.get("titles", [])
 
-    try:
-        from app.scripts.signal_collector import collect_all_signals
+    async def _refresh() -> list[str]:
+        try:
+            from app.scripts.signal_collector import collect_all_signals
 
-        ctx = await collect_all_signals()
-        titles = list(getattr(ctx.per_domain, category, []) or [])
-        cache_service.set(key, {"fetched_at": time.time(), "titles": titles}, ttl_seconds=SIGNAL_POOL_TTL)
-        return titles
-    except Exception as e:
-        logger.warning(f"[random-topic] signal refresh failed: {e}")
-        return []
+            ctx = await collect_all_signals()
+            titles = list(getattr(ctx.per_domain, category, []) or [])
+            cache_service.set(key, {"fetched_at": time.time(), "titles": titles}, ttl_seconds=SIGNAL_POOL_TTL)
+            return titles
+        except Exception as e:
+            logger.warning(f"[random-topic] signal refresh failed: {e}")
+            return []
+
+    task = asyncio.create_task(_refresh())
+    try:
+        return await asyncio.wait_for(asyncio.shield(task), timeout=SIGNAL_FETCH_TIMEOUT)
+    except TimeoutError:
+        logger.info("[random-topic] signal refresh exceeded budget; continuing without fresh hooks")
+        return (cached or {}).get("titles", []) if isinstance(cached, dict) else []
 
 
 async def _fallback_any_page() -> list[dict[str, str]]:
@@ -183,17 +438,19 @@ async def _fallback_any_page() -> list[dict[str, str]]:
 
 
 # --------------------------------------------------------------------------- #
-# LLM rerank
+# LLM rerank + final pick
 # --------------------------------------------------------------------------- #
 
 
-async def _llm_pick(category: str, candidates: list[dict[str, str]]) -> _TopicPick | None:
+async def _llm_pick(category: str, candidates: list[dict[str, str | int]]) -> _TopicPick | None:
     llm = get_llm("cerebras", temperature=0.4, max_tokens=500)
     if not llm:
         return None
     try:
         structured = llm.with_structured_output(_TopicPick)
-        candidate_text = "\n".join(f"{i + 1}. {c['title']} — {c['summary'][:200]}" for i, c in enumerate(candidates))
+        candidate_text = "\n".join(
+            f"{i + 1}. {c['title']} — {str(c['summary'])[:200]}" for i, c in enumerate(candidates)
+        )
         user_msg = (
             f"You are an expert at spotting genuinely fascinating, curiosity-worthy topics within '{category}'.\n"
             f"Pick the SINGLE most mind-blowing topic from these candidates:\n{candidate_text}\n"
@@ -231,20 +488,31 @@ def _to_node(topic: dict[str, str], category: str) -> NodeSchema:
 
 
 async def pick_random_topic(category: str) -> RandomTopicResponse:
-    """Sample candidates, LLM-rerank, and return the most curiosity-worthy topic."""
+    """Merge all candidate tiers, LLM-rerank, and return the most curiosity-worthy topic."""
     category = _clean_category(category)
 
-    candidates = await _live_wiki_candidates(category)
+    # Tier 1 + 2 (both cached per category)
+    crawl_pool = await _deep_crawl_pool(category)
+    seed_pool = await _seed_query_pool(category)
+
+    candidates: list[dict[str, str | int]] = list(crawl_pool) + list(seed_pool)
     known_titles = {c["title"] for c in candidates}
+
+    # Tier 3: today's live signals
     for signal in await _signal_titles(category):
         if signal and signal not in known_titles:
             candidates.append(
-                {"title": signal, "summary": f"A fresh, trending topic: {signal}.", "image_search_query": signal}
+                {
+                    "title": signal,
+                    "summary": f"A fresh, trending topic: {signal}.",
+                    "image_search_query": signal,
+                    "pageviews": 0,
+                }
             )
             known_titles.add(signal)
 
     if not candidates:
-        candidates = await _fallback_any_page()
+        candidates = [dict(c) for c in await _fallback_any_page()]  # type: ignore[misc]
 
     if not candidates:
         return RandomTopicResponse(
@@ -269,7 +537,7 @@ async def pick_random_topic(category: str) -> RandomTopicResponse:
                 title=pick.title,
                 summary=pick.summary,
                 category=category,
-                image_search_query=pick.image_search_query or sample[0]["image_search_query"],
+                image_search_query=pick.image_search_query or str(sample[0]["image_search_query"]),
                 rabbit_holes=[],
                 timestamp="Curiosity Pick",
                 confidence=0.99,
@@ -280,7 +548,7 @@ async def pick_random_topic(category: str) -> RandomTopicResponse:
 
     chosen = random.choice(sample)
     return RandomTopicResponse(
-        node=_to_node(chosen, category),
+        node=_to_node({k: str(v) for k, v in chosen.items()}, category),
         reason=f"Random pick from {category} — guaranteed to lead somewhere surprising.",
         category=category,
     )
