@@ -1,45 +1,103 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+
 
 class Coordinates(BaseModel):
-    lat: float = Field(..., description="Latitude coordinate")
-    lng: float = Field(..., description="Longitude coordinate")
-    tileX: Optional[int] = None
-    tileY: Optional[int] = None
-    location_name: Optional[str] = None
+    lat: float
+    lng: float
+    tileX: int | None = None
+    tileY: int | None = None
+    location_name: str | None = None
+
 
 class NodeSchema(BaseModel):
-    id: str = Field(..., description="Unique UUID identifier for node")
-    title: str = Field(..., description="Short concept title")
-    summary: str = Field(..., max_length=300, description="Concise 2-sentence context summary")
-    category: Optional[str] = "General Discovery"
-    coordinates: Optional[Coordinates] = None
-    image_search_query: str = Field(..., description="Search query for Wikimedia Commons")
-    imageUrl: Optional[str] = None
-    rabbit_holes: List[str] = Field(..., min_length=3, max_length=3, description="3 curated downstream sub-topics")
-    timestamp: Optional[str] = Field(None, description="Historical era or chronological timestamp")
-    confidence: Optional[float] = 0.96
-    audio_summary: Optional[str] = None
+    id: str
+    title: str
+    summary: str
+    category: str | None = "General"
+    coordinates: Coordinates | None = None
+    image_search_query: str
+    imageUrl: str | None = None
+    rabbit_holes: list[str] = Field(description="3 downstream exploration vectors")
+    timestamp: str | None = "Historical Era"
+    confidence: float | None = 0.95
+    audio_summary: str | None = None
+    sources_count: int | None = 0
+    curiosity_score: int | None = Field(default=None, ge=1, le=10, description="How mind-blowing is this topic?")
+    wow_fact: str | None = Field(default=None, description="The single most surprising sentence about this topic")
+    related_to_today: str | None = Field(default=None, description="Current-events connection, or None")
 
-class SeedRequest(BaseModel):
-    topic: str = Field(..., description="Category driver or natural language prompt")
-    category: Optional[str] = None
 
-class NodeExpansionRequest(BaseModel):
-    parent_id: str = Field(..., description="Parent node ID")
-    topic: str = Field(..., description="Chosen rabbit hole sub-topic")
-    context_chain: List[str] = Field(default_factory=list, description="Ancestor concept titles for context")
-    category: Optional[str] = None
+class RandomTopicResponse(BaseModel):
+    """A curiosity-worthy random topic drawn from a category's pool + live signals."""
 
-class GraphTreeResponse(BaseModel):
-    parent_id: str
-    nodes: List[NodeSchema]
-    execution_time_ms: float
-    engine_used: str
-    is_cached: bool = False
+    node: NodeSchema
+    reason: str = Field(description="Why this topic is worth diving into, in one punchy sentence")
+    category: str
 
-class ChatStreamRequest(BaseModel):
-    node_id: str
-    node_title: str
-    user_question: str
-    ancestor_context: List[str] = Field(default_factory=list)
+
+class SourceCitationSchema(BaseModel):
+    id: str
+    title: str
+    url: str
+    snippet: str
+    publisher: str | None = "Academic / Archival Record"
+    publishedDate: str | None = None
+    reliabilityScore: float | None = 0.92
+
+
+class GalleryItemSchema(BaseModel):
+    imageUrl: str
+    caption: str
+    license: str | None = "Creative Commons"
+    originUrl: str | None = None
+
+
+class TimelineEventSchema(BaseModel):
+    date: str
+    headline: str
+    description: str
+
+
+class MechanismCardSchema(BaseModel):
+    title: str
+    explanation: str
+    bulletPoints: list[str] = []
+
+
+class GeographySchema(BaseModel):
+    locationName: str
+    latitude: float
+    longitude: float
+    historicalSignificance: str
+
+
+class RabbitHoleTeaserSchema(BaseModel):
+    title: str
+    teaser: str
+    affinityCategory: str
+
+
+class ResearchDossierSchema(BaseModel):
+    nodeId: str
+    title: str
+    tagline: str
+    category: str
+    era: str
+    abstract: str
+    coreThesis: str
+    sources: list[SourceCitationSchema] = []
+    gallery: list[GalleryItemSchema] = []
+    timeline: list[TimelineEventSchema] = []
+    mechanisms: list[MechanismCardSchema] = []
+    geography: GeographySchema | None = None
+    rabbitHoles: list[RabbitHoleTeaserSchema] = []
+    audioTourScript: str
+    wowFact: str | None = None
+    curiosityScore: int | None = Field(default=None, ge=1, le=10)
+
+
+class PlanStepSchema(BaseModel):
+    id: str
+    title: str
+    agent: str
+    status: str = "pending"  # pending | running | done

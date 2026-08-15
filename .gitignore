@@ -8,6 +8,7 @@ backend/.venv/
 out/
 build/
 dist/
+*.tsbuildinfo
 
 # Environment Variables (Protect private keys)
 .env
@@ -25,6 +26,9 @@ __pycache__/
 
 # Cloudflare Wrangler
 .wrangler/
+
+# Generated demo trace outputs
+backend/data/
 
 # Operating System
 .DS_Store

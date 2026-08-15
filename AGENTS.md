@@ -1,6 +1,6 @@
 1. Executive System Summary
 This project is an agentic, infinite-canvas discovery engine that dynamically translates curiosity into spatial mindmaps.
-The system operates on a hybrid cloud architecture combining Next.js 15 (Vercel), FastAPI (Azure Container Apps), Cloudflare Workers (Zero-Cost CDN Proxy), and custom hardware accelerators (Cerebras CS-3 for high-throughput node expansion and Groq LPU for low-latency streaming chat).
+The system operates on a hybrid cloud architecture combining Next.js 15 (Vercel), FastAPI (Azure Container Apps), Cloudflare Workers (Zero-Cost CDN Proxy), and custom hardware accelerators (Cerebras CS-3 for high-throughput live research and streaming chat).
 
 2. Agent Roster & Sub-System Specializations
 When operating as or delegating to sub-agents, strictly adhere to the domain boundaries defined below.
@@ -23,7 +23,7 @@ Domain: /backend (FastAPI Python 3.11+, Pydantic v2 schemas, Azure Redis, async 
 
 Core Responsibilities:
 
-Expose async REST and SSE endpoints (/api/v1/graph/seed, /api/v1/graph/expand, /api/v1/chat/stream).
+Expose async REST and SSE endpoints (/api/v1/research/stream, /api/v1/chat/stream, /api/v1/graph/random-topic).
 
 Enforce schema validation on all inputs and outputs using Pydantic v2 models.
 
@@ -32,15 +32,15 @@ Manage multi-tier caching (Azure Redis) to serve pre-computed node sub-trees ins
 Query Wikimedia Commons and OpenStreetMap tile APIs using compliant HTTP headers.
 
 2.3. Inference Routing Agent (@agent-inference)
-Domain: /backend/app/services/inference.py & hardware model gateways.
+Domain: /backend/app/services/llm.py & research_graph.py (model-agnostic provider factory).
 
 Core Responsibilities:
 
 Dual Hardware Selection:
 
-Route node tree expansions to Cerebras CS-3 (c-llama-3.3-70b) to leverage ~3,000 tok/s structured generation throughput.
+Route node tree expansions to Cerebras CS-3 (gemma-4-31b) to leverage ~3,000 tok/s structured generation throughput.
 
-Route conversational Q&A to Groq LPU (llama-3.3-70b-versatile) for sub-120ms Time to First Token (TTFT).
+Route conversational Q&A to the same Cerebras engine (llama-3.3-70b-class) via a lightweight ReAct tool loop with sub-120ms Time to First Token (TTFT).
 
 Enforce structured JSON schemas on model outputs with automatic Pydantic model validation and retry fallbacks.
 
@@ -126,6 +126,11 @@ Before declaring any feature complete, agents must verify compliance against the
 - Python Static Typing: `mypy app/` passes with 0 type errors.
 - Python Code Formatting: `ruff check .` completes cleanly.
 - Node Expansion Speed: Cerebras CS-3 structured JSON response validates against `NodeSchema` within 300ms total execution time.
-- Chat Response Latency: Groq SSE stream delivers first token in < 120ms TTFT.
+- Chat Response Latency: Cerebras SSE stream delivers first token in < 120ms TTFT.
 - Zero Broken Assets: Cloudflare edge proxy returns valid image streams with `Cache-Control`
 use this website for ui comngponents styling https://www.beautifului.dev/ (get the contents of this page to copy the code being used or use something similar)
+- Do not preserve backward compatibility.
+- Choose the simplest implementation that fully meets the current requirements.
+- Prefer established, well-maintained libraries over custom implementations.
+Use UV for python packages
+BRANDING: TDILEARNED
