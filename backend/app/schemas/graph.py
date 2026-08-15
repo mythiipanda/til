@@ -101,3 +101,23 @@ class PlanStepSchema(BaseModel):
     title: str
     agent: str
     status: str = "pending"  # pending | running | done
+
+
+class PrecomputedHubSchema(BaseModel):
+    """A fully-researched topic: root node + its child branches, ready to render instantly."""
+
+    id: str
+    topic: str
+    category: str
+    root: NodeSchema
+    children: list[NodeSchema] = []
+
+
+class PrecomputedHubSummarySchema(BaseModel):
+    """Lightweight index entry for a precomputed hub (for listing endpoints)."""
+
+    id: str
+    topic: str
+    category: str
+    imageUrl: str | None = None
+    summary: str = ""

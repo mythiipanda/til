@@ -2,13 +2,14 @@
 
 Commands:
   pick [category]     Pick a curiosity-ranked random topic (default: History)
-  research [topic]    Run the full map-reduce research graph, streamed live
-  ask <question>      ReAct follow-up chat about the last researched topic
-  sources             Show sources discovered by the last research run
-  dossier [node_id]   Show the dossier of a node (default: last root)
-  nodes               Show all nodes emitted by the last research run
-  cats                List the 5 pillar categories
-  help                Show this help
+   research [topic]    Run the full map-reduce research graph, streamed live
+   ask <question>      ReAct follow-up chat about the last researched topic
+   sources             Show sources discovered by the last research run
+   dossier [node_id]   Show the dossier of a node (default: last root)
+   nodes               Show all nodes emitted by the last research run
+   cats                List the 5 pillar categories
+   precompute [cats]   Batch-run research hubs headlessly (e.g. precompute History, Science)
+   help                Show this help
   quit / exit         Leave the CLI
 
 Usage:  .venv/Scripts/python.exe app/scripts/agent_cli.py
@@ -130,6 +131,23 @@ async def _run(cmd: str, args: list[str], state: CliState) -> None:
         print(f"{BOLD}5 Pillar Categories:{RESET}")
         for i, c in enumerate(CATEGORIES, 1):
             print(f"  {i}. {c}")
+        return
+
+    if cmd == "precompute":
+        cats = [c.strip().title() for c in " ".join(args).split(",") if c.strip()]
+        from app.services.precompute import precompute_batch
+
+        target = cats or CATEGORIES
+        print(f"{BOLD}Precomputing research hubs for: {', '.join(target)}{RESET}")
+        print(f"{DIM}This runs the full map-reduce graph headlessly for each topic...{RESET}\n")
+        hubs = await precompute_batch(target)
+        if not hubs:
+            print(f"{RED}No hubs produced (check logs).{RESET}")
+            return
+        print(f"\n{GREEN}✔ Precomputed {len(hubs)} hubs:{RESET}")
+        for h in hubs:
+            print(f"  {BLUE}• [{h.category}] {BOLD}{h.topic}{RESET} {DIM}({h.id}){RESET}")
+        print(f"{DIM}\nInstantly renderable via GET /api/v1/graph/precomputed{RESET}")
         return
 
     if cmd in ("quit", "exit"):
@@ -254,6 +272,7 @@ def _help() -> None:
   {CYAN}dossier [node_id]{RESET}  dossier for a node (default: last)
   {CYAN}nodes{RESET}              nodes emitted by the last research run
   {CYAN}cats{RESET}               list the 5 pillar categories
+  {CYAN}precompute [cats]{RESET}  batch-run research hubs headlessly (comma-separated)
   {CYAN}help{RESET}               this help
   {CYAN}quit{RESET}               leave""")
 

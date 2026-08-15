@@ -4,8 +4,14 @@ import time
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from app.schemas.graph import RandomTopicResponse, ResearchDossierSchema
+from app.schemas.graph import (
+    PrecomputedHubSchema,
+    PrecomputedHubSummarySchema,
+    RandomTopicResponse,
+    ResearchDossierSchema,
+)
 from app.services.chat_agent import stream_chat
+from app.services.precompute import get_precomputed_hub, list_precomputed_hubs
 from app.services.random_topic import pick_random_topic
 from app.services.research_agent import get_dossier, stream_deep_research
 
@@ -38,6 +44,21 @@ async def random_topic(
     result.node.rabbit_holes = []
     logger.info(f"[random-topic] {category} -> '{result.node.title}' in {(time.time() - start_time) * 1000:.0f}ms")
     return result
+
+
+@router.get("/graph/precomputed", response_model=list[PrecomputedHubSummarySchema])
+async def list_precomputed():
+    """List fully-researched hubs that render instantly (precomputed offline)."""
+    return list_precomputed_hubs()
+
+
+@router.get("/graph/precomputed/{hub_id}", response_model=PrecomputedHubSchema)
+async def get_precomputed(hub_id: str):
+    """Fetch a fully-researched hub (root node + child branches) by id."""
+    hub = get_precomputed_hub(hub_id)
+    if hub is None:
+        raise HTTPException(status_code=404, detail="Precomputed hub not found")
+    return hub
 
 
 @router.get("/research/stream")

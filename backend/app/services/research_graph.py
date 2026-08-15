@@ -133,6 +133,12 @@ def _sink(config: RunnableConfig) -> EventSink:
     return config["configurable"]["event_sink"]
 
 
+def _llm(config: RunnableConfig, temperature: float, max_tokens: int) -> Any:
+    """Resolve the per-run LLM engine (cerebras for live, mistral for batch)."""
+    engine = config["configurable"].get("llm_engine", "cerebras")
+    return get_llm(engine, temperature=temperature, max_tokens=max_tokens)
+
+
 # ---------------------------------------------------------------------------
 # Node implementations
 # ---------------------------------------------------------------------------
@@ -143,7 +149,7 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
     category = state.get("category")
     sink = _sink(config)
 
-    llm = get_llm("cerebras", temperature=0.4, max_tokens=1000)
+    llm = _llm(config, temperature=0.4, max_tokens=1000)
     angles: list[ResearchAngle] = []
     if llm:
         try:
@@ -290,7 +296,7 @@ async def researcher_node(state: ResearcherWorkerState, config: RunnableConfig) 
             evidence_blocks.append(f"SOURCE: {src.title}\nURL: {src.url}\nCONTENT: {content}")
 
     findings: list[ResearchFinding] = []
-    llm = get_llm("cerebras", temperature=0.2, max_tokens=1500)
+    llm = _llm(config, temperature=0.2, max_tokens=1500)
     if llm and evidence_blocks:
         try:
             structured = llm.with_structured_output(LLMResearcherExtraction)
@@ -407,7 +413,7 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
         or "(no findings)"
     )
 
-    llm = get_llm("cerebras", temperature=0.7, max_tokens=2500)
+    llm = _llm(config, temperature=0.7, max_tokens=2500)
     dossier_data: LLMDeepDossierOutput | None = None
     children_data: list[LLMChildBranchDefinition] = []
 
@@ -717,8 +723,13 @@ async def run_research_graph(
     context_chain: list[str] | None = None,
     image_query: str | None = None,
     sink: EventSink | None = None,
+    engine: str = "cerebras",
 ) -> dict:
-    """Run the map-reduce research graph, emitting SSE events into the sink."""
+    """Run the map-reduce research graph, emitting SSE events into the sink.
+
+    `engine` selects the LLM provider: 'cerebras' for live interactive research,
+    'mistral' for offline batch precompute (cheaper, no TTFT requirement).
+    """
     queue: asyncio.Queue = asyncio.Queue()
     sink = sink or EventSink(queue)
 
@@ -738,13 +749,13 @@ async def run_research_graph(
         "root_node": None,
         "child_nodes": [],
         "execution_time_ms": 0.0,
-        "engine_used": "cerebras-map-reduce",
+        "engine_used": f"{engine}-map-reduce",
         "errors": [],
     }
 
     result = await research_graph_app.ainvoke(
         initial_state,
-        config={"configurable": {"event_sink": sink}},
+        config={"configurable": {"event_sink": sink, "llm_engine": engine}},
     )
     elapsed_ms = (time.time() - start) * 1000
     await sink.emit(
