@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from app.schemas.graph import RandomTopicResponse, ResearchDossierSchema
 from app.services.chat_agent import stream_chat
 from app.services.random_topic import pick_random_topic
-from app.services.research_agent import DOSSIER_STORE, stream_deep_research
+from app.services.research_agent import get_dossier, stream_deep_research
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +61,10 @@ async def research_stream_endpoint(
 @router.get("/research/dossier/{node_id}", response_model=ResearchDossierSchema)
 async def get_research_dossier(node_id: str):
     """Retrieve full website-style research dossier for a node."""
-    if node_id in DOSSIER_STORE:
-        return DOSSIER_STORE[node_id]
-    raise HTTPException(status_code=404, detail="Research dossier not found for this node ID")
+    dossier = get_dossier(node_id)
+    if dossier is None:
+        raise HTTPException(status_code=404, detail="Research dossier not found for this node ID")
+    return dossier
 
 
 @router.get("/chat/stream")

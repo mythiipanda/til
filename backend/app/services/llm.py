@@ -3,12 +3,22 @@ Model-agnostic LLM provider factory.
 Every agent node obtains its LLM through get_llm(), so swapping hardware
 providers (Cerebras for live inference, Mistral for batch precompute) is a
 configuration change, not a code change. Both expose OpenAI-compatible APIs.
+
+All returned clients are wrapped in a concurrency guard: a global semaphore
+caps simultaneous in-flight LLM calls (Cerebras queues concurrent requests
+and returns 429 queue_exceeded under load), and OpenAI's built-in retry logic
+handles 429/5xx with exponential backoff.
 """
 
+import asyncio
 import logging
 import os
 from dataclasses import dataclass
+from typing import Any
 
+from langchain_core.callbacks import AsyncCallbackManagerForLLMRun
+from langchain_core.messages import BaseMessage
+from langchain_core.outputs import ChatResult
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
@@ -19,6 +29,36 @@ _MISTRAL_BASE_URL = "https://api.mistral.ai/v1"
 
 _THIRD_PARTY_HEADER = "X-Cerebras-3rd-Party-Integration"
 _THIRD_PARTY_VALUE = "infinite-curiosity-engine"
+
+# Max concurrent in-flight LLM requests across the whole backend. Cerebras
+# throttles above this (429 queue_exceeded), and parallel researchers in the
+# map-reduce graph would otherwise trip it.
+MAX_CONCURRENT_LLM_CALLS = int(os.getenv("MAX_CONCURRENT_LLM_CALLS", "2"))
+
+# OpenAI SDK retry policy: retry up to N times with exponential backoff on
+# rate limits (429) and transient 5xx errors.
+OPENAI_MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "3"))
+
+_global_llm_semaphore = asyncio.Semaphore(MAX_CONCURRENT_LLM_CALLS)
+
+
+class GuardedChatOpenAI(ChatOpenAI):
+    """ChatOpenAI wrapped with a global concurrency semaphore.
+
+    Every generation path (ainvoke, with_structured_output, streaming) funnels
+    through _agenerate/_generate, so guarding those two methods serializes the
+    actual HTTP calls without touching any call site.
+    """
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        async with _global_llm_semaphore:
+            return await super()._agenerate(messages, stop=stop, run_manager=run_manager, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -63,11 +103,12 @@ def get_llm(
     if not config.api_key or not config.model:
         logger.warning(f"No API key configured for engine '{engine}'; returning None")
         return None
-    return ChatOpenAI(
+    return GuardedChatOpenAI(
         model=config.model,
         api_key=SecretStr(config.api_key),
         base_url=config.base_url,
         temperature=temperature,
         max_completion_tokens=max_tokens,
+        max_retries=OPENAI_MAX_RETRIES,
         default_headers={_THIRD_PARTY_HEADER: _THIRD_PARTY_VALUE},
     )

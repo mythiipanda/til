@@ -12,11 +12,22 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 
+from app.services.cache import cache_service
 from app.services.research_graph import EventSink, run_research_graph
 
 logger = logging.getLogger(__name__)
 
-DOSSIER_STORE: dict[str, dict] = {}
+DOSSIER_TTL_SECONDS = 7 * 86400  # keep dossiers for a week
+
+
+def _dossier_key(node_id: str) -> str:
+    return f"dossier:{node_id}"
+
+
+def get_dossier(node_id: str) -> dict | None:
+    """Retrieve a dossier by node id from the persistent cache."""
+    val = cache_service.get(_dossier_key(node_id))
+    return val if isinstance(val, dict) else None
 
 
 def emit_sse(event_type: str, data: Any) -> str:
@@ -52,6 +63,11 @@ async def stream_deep_research(
                 event = await asyncio.wait_for(queue.get(), timeout=0.25)
             except TimeoutError:
                 if task.done():
+                    # Surface a graph exception if the run died mid-stream.
+                    exc = task.exception() if not task.cancelled() else None
+                    if exc is not None:
+                        logger.error(f"Research graph failed: {exc}")
+                        yield emit_sse("error", {"message": f"Research run failed: {exc}"})
                     break
                 continue
 
@@ -69,14 +85,22 @@ async def stream_deep_research(
             # Persist dossiers emitted by the graph so they can be retrieved later.
             if event.get("event") == "dossier":
                 node_id = event["data"].get("node_id")
+                dossier = event["data"].get("dossier", {})
                 if node_id:
-                    DOSSIER_STORE[node_id] = event["data"].get("dossier", {})
+                    cache_service.set(_dossier_key(node_id), dossier, ttl_seconds=DOSSIER_TTL_SECONDS)
 
             yield emit_sse(event["event"], event["data"])
     finally:
+        # Client disconnected (generator cancelled) or the run ended: always
+        # make sure the background graph task is not left running.
         if not task.done():
             task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
                 pass
+        else:
+            # Re-raise graph failures so they are logged, not silently swallowed.
+            exc = task.exception() if not task.cancelled() else None
+            if exc is not None:
+                logger.error(f"Research graph task raised: {exc}")

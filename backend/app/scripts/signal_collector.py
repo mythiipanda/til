@@ -130,24 +130,35 @@ async def _fetch_google_news(client: httpx.AsyncClient) -> list[str]:
 
 
 async def _fetch_wikipedia_trending(client: httpx.AsyncClient) -> list[str]:
-    """Top ~15 most-viewed Wikipedia articles from yesterday."""
+    """Top ~15 most-viewed Wikipedia articles, walking back days until data exists."""
     try:
-        yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y/%m/%d")
-        resp = await client.get(
-            f"https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/{yesterday}",
-            headers={"User-Agent": "TIL-CuriosityEngine/2.0 (educational project; contact@curiosity.engine)"},
-            timeout=8.0,
-        )
-        articles = resp.json()["items"][0]["articles"][:20]
-        # Filter meta/utility pages
-        skip = {"Main_Page", "Special:Search", "Wikipedia:Featured_articles"}
-        titles = [
-            a["article"].replace("_", " ")
-            for a in articles
-            if a["article"] not in skip and not a["article"].startswith(("Special:", "Wikipedia:", "Portal:"))
-        ][:15]
-        logger.info(f"[signal] Wikipedia trending: {len(titles)} articles")
-        return titles
+        for days_back in range(1, 8):
+            day = datetime.now(UTC) - timedelta(days=days_back)
+            day_str = day.strftime("%Y/%m/%d")
+            resp = await client.get(
+                f"https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/{day_str}",
+                headers={"User-Agent": "TIL-CuriosityEngine/2.0 (educational project; contact@curiosity.engine)"},
+                timeout=8.0,
+            )
+            if resp.status_code != 200:
+                continue
+            data = resp.json()
+            items = (data or {}).get("items") or []
+            if not items:
+                continue
+            articles = items[0].get("articles", [])[:20]
+            # Filter meta/utility pages
+            skip = {"Main_Page", "Special:Search", "Wikipedia:Featured_articles"}
+            titles = [
+                a.get("article", "").replace("_", " ")
+                for a in articles
+                if a.get("article") not in skip
+                and not a.get("article", "").startswith(("Special:", "Wikipedia:", "Portal:"))
+            ][:15]
+            logger.info(f"[signal] Wikipedia trending ({day_str}): {len(titles)} articles")
+            return titles
+        logger.warning("[signal] Wikipedia trending: no pageview data in the last 7 days")
+        return []
     except Exception as e:
         logger.warning(f"[signal] Wikipedia trending failed: {e}")
         return []

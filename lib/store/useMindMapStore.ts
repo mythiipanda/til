@@ -123,7 +123,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     const rootNodeId = 'universe-root';
     const rootNode: Node<NodeData> = {
       id: rootNodeId,
-      type: 'mindmap',
+      type: 'mindMapNode',
       position: { x: 0, y: 0 },
       data: {
         id: rootNodeId,
@@ -202,7 +202,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
     const pillarNodes: Node<NodeData>[] = pillarConfigs.map((p) => ({
       id: p.id,
-      type: 'mindmap',
+      type: 'mindMapNode',
       position: p.pos,
       data: {
         id: p.id,
@@ -368,7 +368,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
               const newNode: Node<NodeData> = {
                 id: nodeData.id,
-                type: 'mindmap',
+                type: 'mindMapNode',
                 position: { x: posX, y: posY },
                 data: {
                   ...nodeData,
@@ -442,7 +442,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
     const rootNode: Node<NodeData> = {
       id: hub.root.id,
-      type: 'mindmap',
+      type: 'mindMapNode',
       position: { x: 0, y: 0 },
       data: {
         ...hub.root,
@@ -456,7 +456,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
     const childNodes: Node<NodeData>[] = hub.children.map((child, index) => ({
       id: child.id,
-      type: 'mindmap',
+      type: 'mindMapNode',
       position: { x: (index - 1) * 380, y: 400 },
       data: {
         ...child,

@@ -20,8 +20,8 @@ import os
 import sys
 
 if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
 from dotenv import load_dotenv
 
@@ -86,10 +86,7 @@ def _print_event(ev: dict) -> None:
     elif event == "tool_result":
         print(f"  {GREEN}{d.get('preview', '')}{RESET}")
     elif event == "source":
-        print(
-            f"{BLUE}{icon} {d.get('title', '')[:70]}{RESET}\n"
-            f"  {DIM}{d.get('url', '')}{RESET}"
-        )
+        print(f"{BLUE}{icon} {d.get('title', '')[:70]}{RESET}\n  {DIM}{d.get('url', '')}{RESET}")
     elif event == "node_stream":
         n = d.get("node", {}) or {}
         role = "ROOT" if d.get("is_root") else "child"
@@ -123,7 +120,7 @@ def _print_event(ev: dict) -> None:
 async def _run(cmd: str, args: list[str], state: CliState) -> None:
     from app.services.chat_agent import stream_chat
     from app.services.random_topic import pick_random_topic
-    from app.services.research_agent import DOSSIER_STORE, stream_deep_research
+    from app.services.research_agent import get_dossier, stream_deep_research
 
     if cmd in ("help", "?"):
         _help()
@@ -224,7 +221,7 @@ async def _run(cmd: str, args: list[str], state: CliState) -> None:
         if not node_id:
             print(f"{YELLOW}No dossier available yet. Run: research <topic>{RESET}")
             return
-        dd = state.dossiers.get(node_id) or DOSSIER_STORE.get(node_id)
+        dd = state.dossiers.get(node_id) or get_dossier(node_id)
         if not dd:
             print(f"{RED}No dossier for {node_id}{RESET}")
             return
