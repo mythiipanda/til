@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { ArrowUp } from 'lucide-react';
+import { CornerDownLeft } from 'lucide-react';
 
 export function ChatComposer() {
   const [input, setInput] = useState('');
@@ -10,9 +10,7 @@ export function ChatComposer() {
   const chatMessages = useMindMapStore(s => s.chatMessages);
   const isChatStreaming = useMindMapStore(s => s.isChatStreaming);
   const sendChat = useMindMapStore(s => s.sendChat);
-  const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Don't show if there's no topic context
   if (!currentTopic) return null;
 
   const lastAssistant = [...chatMessages].reverse().find(m => m.role === 'assistant');
@@ -26,44 +24,48 @@ export function ChatComposer() {
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[520px] max-w-[90vw] z-20 flex flex-col gap-2">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[640px] max-w-[92vw] z-20 flex flex-col gap-2 select-none animate-drop">
 
-      {/* Streaming response */}
+      {/* Streaming Assistant Response Preview */}
       {lastAssistant && lastAssistant.content && (
-        <div className="bg-[#111827]/95 backdrop-blur-xl border border-[#1e293b] rounded-2xl p-4 shadow-xl slide-up max-h-[200px] overflow-y-auto">
-          <div className="text-[10px] uppercase tracking-[0.15em] text-[#06b6d4] font-medium mb-2">
-            TDILEARNED
+        <div className="bg-black text-white border-2 border-black p-4 shadow-none max-h-[220px] overflow-y-auto">
+          <div className="flex items-center justify-between border-b border-neutral-800 pb-1 mb-2 font-mono text-[9px] uppercase tracking-widest text-neutral-400">
+            <span>SYNTHESIZED INQUIRY RESPONSE</span>
+            <span>{isChatStreaming ? 'STREAMING...' : 'CITATIONS GROUNDED'}</span>
           </div>
-          <p className="text-[13px] text-[#e2e8f0] leading-relaxed">
+          <p className="font-body text-sm text-neutral-100 leading-relaxed">
             {lastAssistant.content}
             {isChatStreaming && (
-              <span
-                className="inline-block w-[2px] h-[14px] bg-[#06b6d4] ml-0.5 align-middle"
-                style={{ animation: 'cursor-blink 1s step-end infinite' }}
-              />
+              <span className="inline-block w-1.5 h-3.5 bg-white ml-1 align-middle animate-pulse-block" />
             )}
           </p>
         </div>
       )}
 
-      {/* Input */}
+      {/* Question Form Bar */}
       <form
         onSubmit={handleSubmit}
-        className="bg-[#111827] border border-[#1e293b] rounded-2xl shadow-2xl flex items-center p-1 hover:border-[#334155] transition-colors focus-within:border-[#334155]"
+        className="bg-white border-2 border-black flex items-center shadow-none focus-within:border-4"
       >
+        <div className="px-3 font-mono text-[10px] uppercase tracking-wider text-neutral-500 border-r border-black hidden sm:block shrink-0">
+          Q&A CONTEXT
+        </div>
+
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={`Ask about ${currentTopic}...`}
-          className="flex-1 bg-transparent outline-none text-[13px] text-[#e2e8f0] placeholder-[#475569] px-4 py-3"
+          placeholder={`Inquire further regarding "${currentTopic}"...`}
+          className="flex-1 bg-transparent outline-none font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic px-4 py-3"
         />
+
         <button
           type="submit"
           disabled={!input.trim() || isChatStreaming}
-          className="mr-1 p-2 bg-[#0a0e17] hover:bg-[#1e293b] text-[#e2e8f0] disabled:text-[#334155] rounded-xl transition-colors disabled:hover:bg-[#0a0e17]"
+          className="px-4 py-3 bg-black text-white font-mono text-xs uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-30 transition-colors flex items-center gap-1 shrink-0"
         >
-          <ArrowUp className="w-4 h-4" />
+          <span>Ask</span>
+          <CornerDownLeft className="w-3 h-3" />
         </button>
       </form>
     </div>

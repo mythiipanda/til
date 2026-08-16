@@ -1,142 +1,157 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700;1,900&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400;1,600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design Tokens ────────────────────────────────────── */
+/* ── Minimalist Monochrome Design Tokens ─────────────────────── */
 :root {
-  --bg-base:     #0a0e17;
-  --bg-surface:  #111827;
-  --bg-elevated: #1a2332;
-  --bg-hover:    #1e293b;
-  --border:      #1e293b;
-  --border-dim:  #151d2e;
-  --text-1:      #e2e8f0;
-  --text-2:      #94a3b8;
-  --text-3:      #475569;
-  --accent:      #06b6d4;
-  --accent-dim:  #0e7490;
-  --success:     #10b981;
-  --warm:        #f59e0b;
-  --danger:      #ef4444;
+  --background:        #FFFFFF;
+  --foreground:        #000000;
+  --muted:             #F8F8F8;
+  --muted-foreground:  #525252;
+  --border:            #000000;
+  --border-light:      #E5E5E5;
+  --card:              #FFFFFF;
+  --card-foreground:   #000000;
+
+  --font-playfair:     'Playfair Display', Georgia, serif;
+  --font-source-serif: 'Source Serif 4', Georgia, serif;
+  --font-mono:         'JetBrains Mono', monospace;
 }
 
-/* ── Base ─────────────────────────────────────────────── */
-* { box-sizing: border-box; }
+/* ── Global Base ─────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  border-radius: 0px !important;
+}
 
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg-base);
-  color: var(--text-1);
-  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-source-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
-  background: rgba(6, 182, 212, 0.2);
-  color: #e0f2fe;
+  background: #000000;
+  color: #FFFFFF;
 }
 
-/* ── Scrollbar ────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
-
-/* ── Animations (BeautifulUI-inspired) ────────────────── */
-@keyframes shimmer-text {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+/* ── Editorial Textures ───────────────────────────────────────── */
+/* Global subtle horizontal rule paper texture */
+.texture-paper {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    #000000 1px,
+    #000000 2px
+  );
+  background-size: 100% 4px;
 }
 
-@keyframes pixel-on {
-  0%, 100% { opacity: 0.12; }
-  50% { opacity: 0.9; }
+/* Subtle grid texture */
+.texture-grid {
+  background-image:
+    linear-gradient(#0000000A 1px, transparent 1px),
+    linear-gradient(90deg, #0000000A 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Inverted vertical lines */
+.texture-inverted-lines {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 1px,
+    #FFFFFF 1px,
+    #FFFFFF 2px
+  );
+  background-size: 4px 100%;
 }
 
-@keyframes fade-in {
+/* ── Scrollbars ──────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #FFFFFF;
+  border-left: 1px solid var(--border-light);
+}
+::-webkit-scrollbar-thumb {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
+
+/* ── Instant Transitions & Animations ────────────────────────── */
+@keyframes fadeIn {
   from { opacity: 0; }
-  to   { opacity: 1; }
+  to { opacity: 1; }
 }
 
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes pulse-dot {
+@keyframes pulseBlock {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.2; }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.animate-fade {
+  animation: fadeIn 100ms ease-out forwards;
 }
 
-@keyframes cursor-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+.animate-drop {
+  animation: dropIn 100ms ease-out forwards;
 }
 
-@keyframes breathe {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
-  50% { box-shadow: 0 0 20px 4px rgba(6, 182, 212, 0.08); }
+.animate-pulse-block {
+  animation: pulseBlock 1.2s infinite;
 }
 
-/* ── Utility Classes ──────────────────────────────────── */
-.shimmer-text {
-  background-image: linear-gradient(90deg, var(--text-3) 35%, var(--text-1) 50%, var(--text-3) 65%);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: shimmer-text 1.6s linear infinite;
-}
-
-.fade-up { animation: fade-up 500ms cubic-bezier(0.23, 1, 0.32, 1) both; }
-.fade-in { animation: fade-in 300ms ease-out both; }
-.slide-up { animation: slide-up 400ms cubic-bezier(0.23, 1, 0.32, 1) both; }
-.slide-in-right { animation: slide-in-right 350ms cubic-bezier(0.23, 1, 0.32, 1) both; }
-
-/* ── React Flow Overrides ─────────────────────────────── */
+/* ── React Flow Monochrome Overrides ─────────────────────────── */
 .react-flow__background {
-  background: var(--bg-base) !important;
+  background-color: var(--background) !important;
 }
-.react-flow__minimap {
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-}
-.react-flow__controls {
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-  overflow: hidden;
-}
-.react-flow__controls-button {
-  background: var(--bg-surface) !important;
-  border-bottom-color: var(--border) !important;
-  fill: var(--text-2) !important;
-}
-.react-flow__controls-button:hover {
-  background: var(--bg-elevated) !important;
-  fill: var(--text-1) !important;
-}
+
 .react-flow__edge-path {
-  stroke: var(--border) !important;
-  stroke-width: 1.5 !important;
+  stroke: #000000 !important;
+  stroke-width: 1.5px !important;
 }
-.react-flow__attribution { display: none !important; }
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3px !important;
+}
+
+.react-flow__controls {
+  box-shadow: none !important;
+  border: 1px solid #000000 !important;
+  background: #FFFFFF !important;
+}
+
+.react-flow__controls-button {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid #000000 !important;
+  border-radius: 0 !important;
+  fill: #000000 !important;
+  color: #000000 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #000000 !important;
+  fill: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}

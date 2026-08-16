@@ -53,7 +53,8 @@ interface MindMapState {
   precomputedHubs: PrecomputedHubSummary[];
   
   // Actions
-  fetchPrecomputedHubs: () => Promise<void>;
+  fetchPrecomputedHubs: () => Promise<PrecomputedHubSummary[]>;
+  loadRandomHubByCategory: (category: string) => Promise<void>;
   pickRandomTopic: (category: string) => Promise<void>;
   startResearch: (topic: string, category?: string, parentId?: string) => void;
   loadPrecomputedHub: (hubId: string) => Promise<void>;
@@ -98,10 +99,36 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   fetchPrecomputedHubs: async () => {
     try {
       const res = await api.precomputedList();
-      const data = await res.json();
+      const data = (await res.json()) as PrecomputedHubSummary[];
       set({ precomputedHubs: data });
+      return data;
     } catch (e) {
       console.error('Failed to fetch precomputed hubs:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Instantly load a precomputed hub matching the category with zero latency.
+   */
+  loadRandomHubByCategory: async (category: string) => {
+    let hubs = get().precomputedHubs;
+    if (!hubs || hubs.length === 0) {
+      hubs = await get().fetchPrecomputedHubs();
+    }
+
+    const targetCategory = category.toLowerCase().trim();
+    const matching = hubs.filter(
+      h => h.category && h.category.toLowerCase().trim() === targetCategory
+    );
+
+    const pool = matching.length > 0 ? matching : hubs;
+    if (pool.length > 0) {
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      await get().loadPrecomputedHub(chosen.id);
+    } else {
+      // Fallback to live research if completely empty
+      get().startResearch(category, category);
     }
   },
   
@@ -112,12 +139,14 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       get().startResearch(data.node.title, category);
     } catch (e) {
       console.error('Failed to pick random topic:', e);
+      get().loadRandomHubByCategory(category);
     }
   },
   
   startResearch: (topic: string, category?: string, parentId?: string) => {
     if (researchES) {
       researchES.close();
+      researchES = null;
     }
     
     set({
@@ -131,7 +160,6 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
     if (!parentId) {
       get().resetCanvas();
-      // Ensure we immediately start fresh for new research
       set({ isResearching: true, currentTopic: topic });
     }
 
@@ -161,7 +189,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             toolCalls: [
               ...state.toolCalls,
               {
-                id: data.id || `tc-${Date.now()}`,
+                id: data.id || `tc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
                 name: data.tool,
                 args: data.args,
                 status: 'running',
@@ -179,14 +207,22 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           set((state) => ({ sources: [...state.sources, data as SourceCitation] }));
         } else if (event === 'node_stream') {
           const nodeData = data as NodeSchema;
+          const nodeId = String(nodeData.id || `node-${Date.now()}-${childIndex}`);
+          
           set((state) => {
-            const existingNode = state.nodes.find(n => n.id === nodeData.id);
-            if (existingNode) {
-              return {
-                nodes: state.nodes.map(n =>
-                  n.id === nodeData.id ? { ...n, data: { ...n.data, ...nodeData } } : n
-                )
+            const existingIndex = state.nodes.findIndex(n => n.id === nodeId);
+            if (existingIndex >= 0) {
+              const updatedNodes = [...state.nodes];
+              updatedNodes[existingIndex] = {
+                ...updatedNodes[existingIndex],
+                data: {
+                  ...updatedNodes[existingIndex].data,
+                  ...nodeData,
+                  id: nodeId,
+                  nodeId: nodeId,
+                }
               };
+              return { nodes: updatedNodes };
             }
 
             let x = 0;
@@ -195,36 +231,43 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             if (parentId) {
               const parentNode = state.nodes.find(n => n.id === parentId);
               if (parentNode) {
-                // Radial placement using golden angle approximation
                 const angle = childIndex * 2.39996;
-                x = parentNode.position.x + 350 * Math.cos(angle);
-                y = parentNode.position.y + 350 * Math.sin(angle);
+                x = parentNode.position.x + 380 * Math.cos(angle);
+                y = parentNode.position.y + 380 * Math.sin(angle);
                 childIndex++;
               }
             } else if (state.nodes.length > 0) {
               const rootNode = state.nodes[0];
               const angle = childIndex * 2.39996;
-              x = rootNode.position.x + 350 * Math.cos(angle);
-              y = rootNode.position.y + 350 * Math.sin(angle);
+              x = rootNode.position.x + 380 * Math.cos(angle);
+              y = rootNode.position.y + 380 * Math.sin(angle);
               childIndex++;
             }
 
             const newNode: Node = {
-              id: nodeData.id,
+              id: nodeId,
               type: 'research',
               position: { x, y },
-              data: nodeData
+              data: {
+                ...nodeData,
+                id: nodeId,
+                nodeId: nodeId,
+                isRoot: !parentId && state.nodes.length === 0,
+              }
             };
 
             const newEdges = [...state.edges];
             if (parentId) {
-              newEdges.push({
-                id: `e-${parentId}-${nodeData.id}`,
-                source: parentId,
-                target: nodeData.id,
-                type: 'smoothstep',
-                animated: false
-              });
+              const edgeId = `e-${parentId}-${nodeId}`;
+              if (!newEdges.some(e => e.id === edgeId)) {
+                newEdges.push({
+                  id: edgeId,
+                  source: parentId,
+                  target: nodeId,
+                  type: 'smoothstep',
+                  animated: false
+                });
+              }
             }
 
             return {
@@ -256,40 +299,52 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       const data = (await res.json()) as PrecomputedHub;
       
       const rootNodeSchema = data.root;
-      const childrenSchema = data.children;
+      const childrenSchema = data.children || [];
+      const rootId = String(rootNodeSchema.id || `hub-root-${data.id}`);
       
       const rootNode: Node = {
-        id: rootNodeSchema.id,
+        id: rootId,
         type: 'research',
         position: { x: 0, y: 0 },
-        data: rootNodeSchema
+        data: {
+          ...rootNodeSchema,
+          id: rootId,
+          nodeId: rootId,
+          isRoot: true,
+        }
       };
       
       const nodes: Node[] = [rootNode];
       const edges: Edge[] = [];
       
       childrenSchema.forEach((child, index) => {
-        const angle = index * ((Math.PI * 2) / childrenSchema.length);
-        const x = 350 * Math.cos(angle);
-        const y = 350 * Math.sin(angle);
+        const childId = String(child.id || `hub-child-${data.id}-${index}`);
+        const angle = index * ((Math.PI * 2) / Math.max(1, childrenSchema.length));
+        const x = 380 * Math.cos(angle);
+        const y = 380 * Math.sin(angle);
         
         nodes.push({
-          id: child.id,
+          id: childId,
           type: 'research',
           position: { x, y },
-          data: child
+          data: {
+            ...child,
+            id: childId,
+            nodeId: childId,
+            isRoot: false,
+          }
         });
         
         edges.push({
-          id: `e-${rootNode.id}-${child.id}`,
-          source: rootNode.id,
-          target: child.id,
+          id: `e-${rootId}-${childId}`,
+          source: rootId,
+          target: childId,
           type: 'smoothstep',
           animated: false
         });
       });
       
-      set({ nodes, edges, currentTopic: rootNodeSchema.title });
+      set({ nodes, edges, currentTopic: rootNodeSchema.title, isResearching: false });
     } catch (e) {
       console.error('Failed to load precomputed hub:', e);
     }
@@ -300,11 +355,13 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       set({ isDossierOpen: true });
       const currentActive = get().activeDossier;
       if (currentActive && currentActive.nodeId === nodeId) {
-        return; // Already have this dossier active
+        return;
       }
       const res = await api.dossier(nodeId);
-      const data = await res.json();
-      set({ activeDossier: data as ResearchDossier });
+      if (res.ok) {
+        const data = await res.json();
+        set({ activeDossier: data as ResearchDossier });
+      }
     } catch (e) {
       console.error('Failed to fetch dossier:', e);
     }
@@ -344,7 +401,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           set((state) => {
             const msgs = [...state.chatMessages];
             const last = msgs[msgs.length - 1];
-            if (last.role === 'assistant') {
+            if (last && last.role === 'assistant') {
               last.content = '';
             }
             return { chatMessages: msgs };
@@ -353,7 +410,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           set((state) => {
             const msgs = [...state.chatMessages];
             const last = msgs[msgs.length - 1];
-            if (last.role === 'assistant') {
+            if (last && last.role === 'assistant') {
               last.content += data.token;
             }
             return { chatMessages: msgs };

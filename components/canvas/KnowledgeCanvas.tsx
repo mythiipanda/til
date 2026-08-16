@@ -21,7 +21,7 @@ export function KnowledgeCanvas() {
   const showLanding = nodes.length === 0 && !isResearching;
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 bg-white select-none texture-grid">
       {showLanding && <LandingState />}
 
       <ReactFlow
@@ -31,16 +31,20 @@ export function KnowledgeCanvas() {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.3 }}
+        fitViewOptions={{ padding: 0.25 }}
         proOptions={{ hideAttribution: true }}
         minZoom={0.2}
-        maxZoom={2}
+        maxZoom={2.5}
+        defaultEdgeOptions={{
+          type: 'smoothstep',
+          style: { stroke: '#000000', strokeWidth: 1.5 },
+        }}
       >
         <Background
           variant={BackgroundVariant.Dots}
-          size={1}
-          gap={28}
-          color="#1a2332"
+          size={1.5}
+          gap={32}
+          color="#00000020"
         />
         <Controls position="bottom-left" showInteractive={false} />
       </ReactFlow>

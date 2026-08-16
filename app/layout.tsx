@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'TDILEARNED — What did you learn today?',
-  description: 'An AI-powered discovery engine that researches any topic live with a swarm of agents. Watch them think, search, and build knowledge in real time.',
-  keywords: ['AI research', 'knowledge discovery', 'live research', 'TDILEARNED'],
+  title: 'TDILEARNED — Discovery Through Essence',
+  description: 'An architectural, infinite-canvas discovery engine researching knowledge live with a swarm of intelligence.',
+  keywords: ['AI Research', 'Knowledge Graph', 'Editorial', 'Monochrome', 'TDILEARNED'],
 };
 
 export const viewport: Viewport = {
@@ -19,8 +19,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body>{children}</body>
+    <html lang="en">
+      <body className="bg-background text-foreground antialiased selection:bg-foreground selection:text-background">
+        {children}
+      </body>
     </html>
   );
 }
