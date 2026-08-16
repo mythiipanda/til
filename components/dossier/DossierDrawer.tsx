@@ -76,7 +76,13 @@ export function DossierDrawer() {
           <button
             onClick={() => {
               closeDossier();
-              startResearch(activeDossier.title, activeDossier.category, activeDossier.nodeId);
+              startResearch(
+                activeDossier.title,
+                activeDossier.category,
+                activeDossier.nodeId,
+                activeDossier.abstract || activeDossier.coreThesis,
+                activeDossier.tagline || activeDossier.wowFact || `Deep dive into ${activeDossier.title}`
+              );
             }}
             className="px-4 py-2 bg-black text-white font-mono text-xs uppercase tracking-wider font-bold hover:bg-neutral-800 transition-colors shrink-0 flex items-center gap-1"
           >
@@ -188,7 +194,13 @@ export function DossierDrawer() {
                   key={idx}
                   onClick={() => {
                     closeDossier();
-                    startResearch(rh.title, rh.affinityCategory || activeDossier.category, activeDossier.nodeId);
+                    startResearch(
+                      rh.title,
+                      rh.affinityCategory || activeDossier.category,
+                      activeDossier.nodeId,
+                      activeDossier.abstract || activeDossier.coreThesis,
+                      rh.teaser || `Exploring rabbit hole: ${rh.title}`
+                    );
                   }}
                   className="p-3 border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors duration-100 text-left group flex flex-col justify-between"
                 >

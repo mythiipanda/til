@@ -21,13 +21,16 @@ export function ActivityPanel() {
   const sources = useMindMapStore(s => s.sources);
   const openDossier = useMindMapStore(s => s.openDossier);
   const nodes = useMindMapStore(s => s.nodes);
+  const lastResearchedNodeId = useMindMapStore(s => s.lastResearchedNodeId);
+  const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
+  const activeDossier = useMindMapStore(s => s.activeDossier);
 
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
 
   const isVisible = isResearching || thoughts.length > 0 || sources.length > 0;
   if (!isVisible) return null;
 
-  const rootNode = nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) || nodes[0];
+  const targetNodeId = lastResearchedNodeId || activeDossier?.nodeId || selectedNodeId || nodes[0]?.id;
 
   return (
     <div className="fixed right-6 top-20 bottom-6 w-[360px] max-w-[90vw] bg-black text-white border-2 border-black z-20 flex flex-col shadow-none select-none animate-fade">
@@ -54,7 +57,7 @@ export function ActivityPanel() {
           </div>
           <button
             onClick={() => {
-              if (rootNode) openDossier(rootNode.id);
+              if (targetNodeId) openDossier(targetNodeId);
             }}
             className="w-full py-2 bg-white text-black hover:bg-neutral-200 font-mono text-xs uppercase font-bold tracking-wider transition-colors flex items-center justify-center gap-1.5"
           >

@@ -70,16 +70,16 @@ class MechanismItem(BaseModel):
 
 
 class RabbitHoleItem(BaseModel):
-    title: str = Field(description="Exciting next topic title")
-    teaser: str = Field(description="Fun 1-sentence hook question or teaser")
+    title: str = Field(description="Clear, specific topic or concept title (e.g. 'Delta Hedging', 'The 1987 Market Crash'). No clickbait or metaphorical slang.")
+    teaser: str = Field(description="Engaging 1-sentence hook explaining why this connected topic is fascinating")
     affinityCategory: str = Field(description="Category")
 
 
 class LLMDeepDossierOutput(BaseModel):
-    title: str = Field(description="Curiosity-hook title under 7 words")
+    title: str = Field(description="Clear, accurate real title naming the specific concept, person, or historical event. Never use metaphorical slang.")
     tagline: str = Field(description="Engaging 1-sentence hook that sparks instant curiosity")
     category: str = Field(description="Category")
-    era: str = Field(description="Time period (e.g. 'c. 200 BCE', '1932')")
+    era: str = Field(description="Time period (e.g. 'c. 200 BCE', '1973')")
     abstract: str = Field(description="Exciting, easy-to-read story summary (2 short paragraphs)")
     coreThesis: str = Field(description="The most fascinating main takeaway in simple words")
     location_name: str | None = Field(None, description="City or country where this happened")
@@ -87,27 +87,27 @@ class LLMDeepDossierOutput(BaseModel):
     longitude: float | None = Field(None, description="Estimated longitude")
     timeline: list[TimelineItem] = Field(description="3 easy-to-follow story milestones")
     mechanisms: list[MechanismItem] = Field(description="2 simple breakdowns of how it worked or why it happened")
-    rabbitHoles: list[RabbitHoleItem] = Field(description="Exactly 3 fun rabbit holes to explore next")
+    rabbitHoles: list[RabbitHoleItem] = Field(description="Exactly 3 specific, real rabbit holes to explore next")
     audioTourScript: str = Field(description="Captivating podcast-style voiceover script in everyday language")
     wowFact: str = Field(description="The single most surprising, mind-blowing sentence about this topic")
     curiosityScore: int = Field(description="Honest 1-10 rating: how mind-blowing is this?")
 
 
 class LLMChildBranchDefinition(BaseModel):
-    title: str = Field(description="Curiosity-hook title under 7 words")
-    summary: str = Field(description="Simple 2-sentence explanation")
+    title: str = Field(description="Clear, specific subtopic title naming the actual entity, mechanism, or event. Never use metaphorical slang.")
+    summary: str = Field(description="Simple 2-sentence explanation of the core concept and its connection")
     category: str = Field(description="Category")
     era: str = Field(description="Era")
     location_name: str | None = Field(None, description="Location name")
-    image_search_query: str = Field(description="Search keyword for images")
-    rabbit_holes: list[str] = Field(description="3 fun sub-topics")
+    image_search_query: str = Field(description="Specific Wikimedia Commons image search keyword")
+    rabbit_holes: list[str] = Field(description="3 specific, real sub-topic names")
     curiosityScore: int = Field(description="Honest 1-10 curiosity rating")
     curiosityReason: str = Field(description="One phrase explaining why it is fascinating")
 
 
 class LLMSeedTreeWithBranches(BaseModel):
     root_dossier: LLMDeepDossierOutput
-    children: list[LLMChildBranchDefinition] = Field(description="3 exciting child exploration branches")
+    children: list[LLMChildBranchDefinition] = Field(description="3 exciting child exploration branches naming specific real concepts")
 
 
 class LLMResearcherExtraction(BaseModel):
@@ -149,6 +149,18 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
     category = state.get("category")
     sink = _sink(config)
 
+    context_details = []
+    if state.get("context_chain"):
+        context_details.append(f"Origin Context Trail: {' -> '.join(state['context_chain'])}")
+    if state.get("parent_summary"):
+        context_details.append(f"Parent Concept Summary: {state['parent_summary']}")
+    if state.get("teaser_context"):
+        context_details.append(f"Inquiry Focus / Hook: {state['teaser_context']}")
+
+    context_str = "\n".join(context_details)
+    if context_str:
+        context_str = f"\n\nCONTEXT FROM USER DISCOVERY TRAIL:\n{context_str}\n"
+
     llm = _llm(config, temperature=0.4, max_tokens=1000)
     angles: list[ResearchAngle] = []
     if llm:
@@ -158,12 +170,14 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
                 [  # type: ignore[assignment]
                     SystemMessage(
                         content=(
-                            "You are the research planner. Break the topic into 3-5 targeted, "
-                            "non-overlapping research angles/questions. Each angle must focus on "
-                            "facts discoverable from reliable web sources. Avoid vague or opinion-only angles."
+                            "You are the master research planner for TDILEARNED (Today I Learned). "
+                            "Break the inquiry into 3 targeted, specific research angles/questions. "
+                            "CRITICAL: When parent discovery context or teaser context is provided, your angles MUST "
+                            "target the specific historical event, scientific breakthrough, or phenomenon in question—not generic "
+                            "dictionary definitions or unrelated modern topics. Each angle must target verifiable facts from reliable web sources."
                         )
                     ),
-                    HumanMessage(content=f"Topic: '{topic}'\nCategory: '{category or 'Unknown'}'"),
+                    HumanMessage(content=f"Target Inquiry: '{topic}'\nCategory: '{category or 'Unknown'}'{context_str}"),
                 ]
             )
             angles = res.angles[:5]  # type: ignore[union-attr]
@@ -715,12 +729,13 @@ research_graph_app = build_research_graph()
 # Public async entrypoint
 # ---------------------------------------------------------------------------
 
-
 async def run_research_graph(
     topic: str,
     category: str | None = None,
     parent_id: str | None = None,
     context_chain: list[str] | None = None,
+    parent_summary: str | None = None,
+    teaser_context: str | None = None,
     image_query: str | None = None,
     sink: EventSink | None = None,
     engine: str = "cerebras",
@@ -739,6 +754,8 @@ async def run_research_graph(
         "category": category,
         "context_chain": context_chain or [],
         "parent_id": parent_id,
+        "parent_summary": parent_summary,
+        "teaser_context": teaser_context,
         "image_query": image_query,
         "angles": [],
         "findings": [],
@@ -749,8 +766,6 @@ async def run_research_graph(
         "root_node": None,
         "child_nodes": [],
         "execution_time_ms": 0.0,
-        "engine_used": f"{engine}-map-reduce",
-        "errors": [],
     }
 
     result = await research_graph_app.ainvoke(

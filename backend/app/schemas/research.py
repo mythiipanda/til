@@ -48,6 +48,8 @@ class ResearchGraphState(TypedDict):
     category: str | None
     context_chain: list[str]
     parent_id: str | None
+    parent_summary: str | None
+    teaser_context: str | None
     image_query: str | None
     angles: list[dict]
     findings: Annotated[list[ResearchFinding], operator.add]

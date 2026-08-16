@@ -9,7 +9,7 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
 } from '@xyflow/react';
-import { api } from '@/lib/api';
+import { api, ChatHistoryMessage } from '@/lib/api';
 import type {
   ThoughtStep,
   ToolCallEvent,
@@ -27,6 +27,8 @@ interface MindMapState {
   nodes: Node[];
   edges: Edge[];
   selectedNodeId: string | null;
+  lastResearchedNodeId: string | null;
+  contextChain: string[];
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   
@@ -59,14 +61,20 @@ interface MindMapState {
   fetchPrecomputedHubs: () => Promise<PrecomputedHubSummary[]>;
   loadRandomHubByCategory: (category: string) => Promise<void>;
   pickRandomTopic: (category: string) => Promise<void>;
-  startResearch: (topic: string, category?: string, parentId?: string) => void;
+  startResearch: (
+    topic: string,
+    category?: string,
+    parentId?: string,
+    parentSummary?: string,
+    teaserContext?: string
+  ) => void;
   loadPrecomputedHub: (hubId: string) => Promise<void>;
+  selectNode: (nodeId: string) => void;
   openDossier: (nodeId: string) => Promise<void>;
   closeDossier: () => void;
   dismissNewDossierAlert: () => void;
   sendChat: (question: string) => void;
   setCategory: (cat: string) => void;
-  setSelectedNode: (nodeId: string | null) => void;
   resetCanvas: () => void;
 }
 
@@ -77,6 +85,8 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   nodes: [],
   edges: [],
   selectedNodeId: null,
+  lastResearchedNodeId: null,
+  contextChain: [],
   onNodesChange: (changes) => {
     set({ nodes: applyNodeChanges(changes, get().nodes) });
   },
@@ -138,40 +148,66 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       get().startResearch(category, category);
     }
   },
-  
+
   pickRandomTopic: async (category: string) => {
     try {
       const res = await api.randomTopic(category);
+      if (!res.ok) throw new Error('Failed to pick random topic');
       const data = await res.json();
-      get().startResearch(data.node.title, category);
+      get().startResearch(data.topic, category);
     } catch (e) {
-      console.error('Failed to pick random topic:', e);
-      get().loadRandomHubByCategory(category);
+      console.error('Failed random topic picker, falling back:', e);
+      get().startResearch(category, category);
     }
   },
   
-  startResearch: (topic: string, category?: string, parentId?: string) => {
+  startResearch: (
+    topic: string,
+    category?: string,
+    parentId?: string,
+    parentSummary?: string,
+    teaserContext?: string
+  ) => {
     if (researchES) {
       researchES.close();
-      researchES = null;
+    }
+
+    // Build unbroken context trail
+    let currentChain = get().contextChain;
+    if (parentId) {
+      const parentNode = get().nodes.find(n => n.id === parentId);
+      const parentTitle = (parentNode?.data?.title as string) || '';
+      if (parentTitle && !currentChain.includes(parentTitle)) {
+        currentChain = [...currentChain, parentTitle];
+      }
+      if (!parentSummary && parentNode?.data?.summary) {
+        parentSummary = parentNode.data.summary as string;
+      }
+    } else {
+      currentChain = category ? [category, topic] : [topic];
     }
     
+    // Clear ephemeral state while preserving existing canvas if expanding a branch
     set({
       isResearching: true,
       currentTopic: topic,
+      chatNodeTitle: topic,
       hasNewDossier: false,
-      planSteps: [],
+      contextChain: currentChain,
       thoughts: [],
       toolCalls: [],
-      sources: []
+      sources: [],
+      planSteps: [],
     });
 
-    if (!parentId) {
-      get().resetCanvas();
-      set({ isResearching: true, currentTopic: topic, hasNewDossier: false });
-    }
-
-    const url = api.researchStreamUrl(topic, category, parentId);
+    const url = api.researchStreamUrl(
+      topic,
+      category,
+      parentId,
+      currentChain,
+      parentSummary,
+      teaserContext
+    );
     const es = new EventSource(url);
     researchES = es;
 
@@ -184,55 +220,56 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         const data = parsed.data;
 
         if (event === 'plan') {
-          set((state) => ({ planSteps: [...state.planSteps, data as PlanStep] }));
+          if (data && data.steps) {
+            set({ planSteps: data.steps });
+          }
         } else if (event === 'thought') {
           set((state) => ({
-            thoughts: [
-              ...state.thoughts,
-              { type: 'thought', text: data.text, timestamp: Date.now() }
-            ]
+            thoughts: [...state.thoughts, data]
           }));
         } else if (event === 'tool_call') {
           set((state) => ({
             toolCalls: [
               ...state.toolCalls,
               {
-                id: data.id || `tc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                id: data.call_id || Math.random().toString(),
                 name: data.tool,
-                args: data.args,
                 status: 'running',
-                timestamp: Date.now()
+                timestamp: Date.now(),
               }
             ]
           }));
         } else if (event === 'tool_result') {
           set((state) => ({
-            toolCalls: state.toolCalls.map(tc => 
-              tc.id === data.id ? { ...tc, status: 'done', result: data.result } : tc
+            toolCalls: state.toolCalls.map((tc) =>
+              tc.name === data.tool || tc.id === data.call_id
+                ? { ...tc, status: 'done' }
+                : tc
             )
           }));
         } else if (event === 'source') {
-          set((state) => ({ sources: [...state.sources, data as SourceCitation] }));
-        } else if (event === 'node_stream') {
-          const nodeData = data as NodeSchema;
-          const nodeId = String(nodeData.id || `node-${Date.now()}-${childIndex}`);
-          
           set((state) => {
-            const existingIndex = state.nodes.findIndex(n => n.id === nodeId);
-            if (existingIndex >= 0) {
-              const updatedNodes = [...state.nodes];
-              updatedNodes[existingIndex] = {
-                ...updatedNodes[existingIndex],
-                data: {
-                  ...updatedNodes[existingIndex].data,
-                  ...nodeData,
-                  id: nodeId,
-                  nodeId: nodeId,
+            if (state.sources.some(s => s.url === data.url)) return state;
+            return {
+              sources: [
+                ...state.sources,
+                {
+                  id: data.id || Math.random().toString(),
+                  title: data.title,
+                  url: data.url,
+                  snippet: data.snippet,
                 }
-              };
-              return { nodes: updatedNodes };
-            }
-
+              ]
+            };
+          });
+        } else if (event === 'node_stream') {
+          set((state) => {
+            const nodeData = data as NodeSchema;
+            const rawId = nodeData.id ? String(nodeData.id) : null;
+            const nodeId = rawId && !state.nodes.some(n => n.id === rawId)
+              ? rawId
+              : `res-node-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+            
             let x = 0;
             let y = 0;
 
@@ -240,17 +277,19 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
               const parentNode = state.nodes.find(n => n.id === parentId);
               if (parentNode) {
                 const angle = childIndex * 2.39996;
-                x = parentNode.position.x + 380 * Math.cos(angle);
-                y = parentNode.position.y + 380 * Math.sin(angle);
+                x = parentNode.position.x + 560 * Math.cos(angle);
+                y = parentNode.position.y + 560 * Math.sin(angle);
                 childIndex++;
               }
             } else if (state.nodes.length > 0) {
               const rootNode = state.nodes[0];
               const angle = childIndex * 2.39996;
-              x = rootNode.position.x + 380 * Math.cos(angle);
-              y = rootNode.position.y + 380 * Math.sin(angle);
+              x = rootNode.position.x + 560 * Math.cos(angle);
+              y = rootNode.position.y + 560 * Math.sin(angle);
               childIndex++;
             }
+
+            const isThisRoot = !parentId && state.nodes.length === 0;
 
             const newNode: Node = {
               id: nodeId,
@@ -260,7 +299,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
                 ...nodeData,
                 id: nodeId,
                 nodeId: nodeId,
-                isRoot: !parentId && state.nodes.length === 0,
+                isRoot: isThisRoot,
               }
             };
 
@@ -281,13 +320,22 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             return {
               nodes: [...state.nodes, newNode],
               edges: newEdges,
-              selectedNodeId: !parentId ? nodeId : state.selectedNodeId,
+              selectedNodeId: nodeId,
+              lastResearchedNodeId: nodeId,
             };
           });
         } else if (event === 'dossier') {
-          set({ activeDossier: data as ResearchDossier, hasNewDossier: true });
+          const dossier = data as ResearchDossier;
+          set({
+            activeDossier: dossier,
+            hasNewDossier: true,
+            lastResearchedNodeId: dossier.nodeId || get().lastResearchedNodeId,
+          });
         } else if (event === 'done') {
-          set({ isResearching: false, hasNewDossier: true });
+          set({
+            isResearching: false,
+            hasNewDossier: true,
+          });
           es.close();
         } else if (event === 'error') {
           set({ isResearching: false });
@@ -332,8 +380,8 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       childrenSchema.forEach((child, index) => {
         const childId = String(child.id || `hub-child-${data.id}-${index}`);
         const angle = index * ((Math.PI * 2) / Math.max(1, childrenSchema.length));
-        const x = 380 * Math.cos(angle);
-        const y = 380 * Math.sin(angle);
+        const x = 560 * Math.cos(angle);
+        const y = 560 * Math.sin(angle);
         
         nodes.push({
           id: childId,
@@ -360,7 +408,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         nodes,
         edges,
         currentTopic: rootNodeSchema.title,
+        chatNodeTitle: rootNodeSchema.title,
         selectedNodeId: rootId,
+        lastResearchedNodeId: rootId,
+        contextChain: [rootNodeSchema.category || 'General', rootNodeSchema.title],
         isResearching: false,
         hasNewDossier: false,
       });
@@ -371,22 +422,49 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       console.error('Failed to load precomputed hub:', e);
     }
   },
+
+  selectNode: (nodeId: string) => {
+    const node = get().nodes.find(n => n.id === nodeId);
+    if (!node || !node.data) return;
+
+    const nodeTitle = (node.data.title as string) || '';
+    const category = (node.data.category as string) || 'General';
+
+    // Find ancestors to construct context trail
+    let trail = [category];
+    const rootNode = get().nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot);
+    if (rootNode && rootNode.data?.title && rootNode.id !== nodeId) {
+      trail.push(rootNode.data.title as string);
+    }
+    if (nodeTitle && !trail.includes(nodeTitle)) {
+      trail.push(nodeTitle);
+    }
+
+    set({
+      selectedNodeId: nodeId,
+      currentTopic: nodeTitle,
+      chatNodeTitle: nodeTitle,
+      contextChain: trail,
+    });
+  },
   
   openDossier: async (nodeId: string) => {
+    get().selectNode(nodeId);
+    set({ isDossierOpen: true, isDossierLoading: true });
+    
     try {
       const node = get().nodes.find(n => n.id === nodeId);
-      set({ isDossierOpen: true, selectedNodeId: nodeId, isDossierLoading: true });
-
+      
       // Immediate fallback dossier from node data so the drawer is never empty
       if (node && node.data) {
         const nData = node.data;
         const initialDossier: ResearchDossier = {
           nodeId: nodeId,
-          title: (nData.title as string) || 'Monograph Vector',
-          tagline: (nData.wow_fact as string) || (nData.category as string) || 'Knowledge Discovery Vector',
+          title: (nData.title as string) || 'Knowledge Vector',
+          tagline: (nData.wow_fact as string) || (nData.category as string) || 'Knowledge Exploration Vector',
           category: (nData.category as string) || 'General',
-          era: (nData.timestamp as string) || 'Historical Era',
-          abstract: (nData.summary as string) || 'Exploration vector synthesized by the knowledge engine.',
+          era: (nData.era as string) || (nData.timestamp as string) || 'Overview',
+          abstract: (nData.summary as string) || 'Exploration overview synthesized by the knowledge engine.',
           coreThesis: (nData.summary as string) || '',
           sources: [],
           gallery: nData.imageUrl ? [{ imageUrl: nData.imageUrl as string, caption: (nData.title as string) || '' }] : [],
@@ -394,7 +472,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           mechanisms: [],
           rabbitHoles: ((nData.rabbit_holes as string[]) || []).map(rh => ({
             title: rh,
-            teaser: `Inquire further into this connected knowledge vector under ${nData.category || 'General'}.`,
+            teaser: `Inquire further into this connected knowledge topic under ${nData.category || 'General'}.`,
             affinityCategory: (nData.category as string) || 'General',
           })),
           audioTourScript: '',
@@ -431,8 +509,19 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       chatES.close();
     }
     
-    const nodeTitle = get().chatNodeTitle || get().currentTopic || 'General';
+    const activeNode = get().nodes.find(n => n.id === get().selectedNodeId) ||
+                       get().nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) ||
+                       get().nodes[0];
+
+    const nodeTitle = (activeNode?.data?.title as string) || get().chatNodeTitle || get().currentTopic || 'General';
+    const ancestors = get().contextChain;
+    const activeSummary = (activeNode?.data?.summary as string) || '';
     
+    const history: ChatHistoryMessage[] = get().chatMessages.map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
     set((state) => ({
       isChatStreaming: true,
       chatMessages: [
@@ -442,7 +531,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       ]
     }));
     
-    const url = api.chatStreamUrl(nodeTitle, question, []);
+    const url = api.chatStreamUrl(nodeTitle, question, ancestors, history, activeSummary);
     const es = new EventSource(url);
     chatES = es;
     
@@ -470,12 +559,15 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             }
             return { chatMessages: msgs };
           });
-        } else if (event === 'done' || event === 'error') {
+        } else if (event === 'done') {
+          set({ isChatStreaming: false });
+          es.close();
+        } else if (event === 'error') {
           set({ isChatStreaming: false });
           es.close();
         }
       } catch (err) {
-        console.error('Error parsing chat SSE event', err);
+        console.error('Error parsing chat SSE:', err);
       }
     };
     
@@ -490,24 +582,26 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   },
 
   setSelectedNode: (nodeId: string | null) => {
-    set({ selectedNodeId: nodeId });
+    if (nodeId) {
+      get().selectNode(nodeId);
+    } else {
+      set({ selectedNodeId: null });
+    }
   },
   
   resetCanvas: () => {
-    if (researchES) {
-      researchES.close();
-      researchES = null;
-    }
-    if (chatES) {
-      chatES.close();
-      chatES = null;
-    }
+    if (researchES) researchES.close();
+    if (chatES) chatES.close();
+    
     set({
       nodes: [],
       edges: [],
       selectedNodeId: null,
+      lastResearchedNodeId: null,
+      contextChain: [],
       isResearching: false,
       currentTopic: null,
+      chatNodeTitle: null,
       hasNewDossier: false,
       thoughts: [],
       toolCalls: [],
@@ -515,10 +609,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       planSteps: [],
       activeDossier: null,
       isDossierOpen: false,
-      isDossierLoading: false,
       chatMessages: [],
-      isChatStreaming: false,
-      chatNodeTitle: null,
     });
   }
 }));

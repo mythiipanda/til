@@ -40,6 +40,8 @@ async def stream_deep_research(
     category: str | None = None,
     parent_id: str | None = None,
     context_chain: list[str] | None = None,
+    parent_summary: str | None = None,
+    teaser_context: str | None = None,
     image_query: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Run the research graph and stream its events as SSE."""
@@ -52,6 +54,8 @@ async def stream_deep_research(
             category=category,
             parent_id=parent_id,
             context_chain=context_chain,
+            parent_summary=parent_summary,
+            teaser_context=teaser_context,
             image_query=image_query,
             sink=sink,
         )

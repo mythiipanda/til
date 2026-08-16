@@ -31,13 +31,14 @@ export function KnowledgeCanvas() {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
+        fitViewOptions={{ padding: 0.12, maxZoom: 1.05, minZoom: 0.7 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.95 }}
         proOptions={{ hideAttribution: true }}
         minZoom={0.2}
         maxZoom={2.5}
         defaultEdgeOptions={{
           type: 'smoothstep',
-          style: { stroke: '#000000', strokeWidth: 1.5 },
+          style: { stroke: '#000000', strokeWidth: 2 },
         }}
       >
         <Background

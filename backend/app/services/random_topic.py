@@ -110,7 +110,7 @@ _NAMESPACE_PREFIXES = ("Wikipedia:", "Portal:", "Category:", "Template:", "Help:
 
 
 class _TopicPick(BaseModel):
-    title: str = Field(description="Cleaned, curiosity-hook title under 7 words")
+    title: str = Field(description="The real, accurate subject or article title (e.g. 'Fast Fourier Transform', 'Black-Scholes Model', 'The Library of Alexandria'). Do NOT invent metaphorical nicknames.")
     summary: str = Field(description="One punchy sentence: why this is fascinating, with historical/scientific context")
     reason: str = Field(description="One sentence: why the user should dive into this right now")
     image_search_query: str = Field(description="Wikimedia Commons search key")

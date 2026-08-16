@@ -85,14 +85,25 @@ async def research_stream_endpoint(
     topic: str = Query(..., description="Research inquiry topic"),
     category: str = Query(None, description="Optional category classification"),
     parent_id: str = Query(None, description="Optional parent node ID for expansion"),
+    context_chain: str = Query("", description="Comma-separated chain of parent topics"),
+    parent_summary: str = Query(None, description="Summary of parent node"),
+    teaser_context: str = Query(None, description="Teaser or hook of subtopic"),
 ):
     """
     Manus-grade Server-Sent Events (SSE) stream:
     Emits real-time Plan DAG steps, agent thoughts, active tool calls,
     discovered sources, incremental React Flow nodes, and full interactive dossiers.
     """
+    context_list = [c.strip() for c in context_chain.split(",") if c.strip()]
     return StreamingResponse(
-        stream_deep_research(topic, category, parent_id),
+        stream_deep_research(
+            topic=topic,
+            category=category,
+            parent_id=parent_id,
+            context_chain=context_list,
+            parent_summary=parent_summary,
+            teaser_context=teaser_context,
+        ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
@@ -112,11 +123,29 @@ async def chat_stream_endpoint(
     node_title: str = Query(..., description="Active node concept title"),
     question: str = Query(..., description="User question"),
     ancestors: str = Query("", description="Comma-separated ancestor node trail"),
+    history: str = Query("", description="JSON-encoded previous conversation turns"),
+    active_summary: str = Query(None, description="Summary of active node"),
 ):
     """Server-Sent Events (SSE) streaming endpoint for Cerebras conversational follow-ups."""
     context_list = [a.strip() for a in ancestors.split(",") if a.strip()]
+    history_list = []
+    if history:
+        try:
+            import json
+            parsed = json.loads(history)
+            if isinstance(parsed, list):
+                history_list = parsed
+        except Exception:
+            pass
+
     return StreamingResponse(
-        stream_chat(node_title, question, context_list),
+        stream_chat(
+            node_title=node_title,
+            user_question=question,
+            ancestor_context=context_list,
+            history=history_list,
+            active_summary=active_summary,
+        ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )

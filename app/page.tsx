@@ -22,6 +22,10 @@ export default function Home() {
   const openDossier = useMindMapStore(s => s.openDossier);
   const dismissNewDossierAlert = useMindMapStore(s => s.dismissNewDossierAlert);
 
+  const lastResearchedNodeId = useMindMapStore(s => s.lastResearchedNodeId);
+  const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
+  const activeDossier = useMindMapStore(s => s.activeDossier);
+
   const [isBrowseOpen, setIsBrowseOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
   const [customInput, setCustomInput] = useState('');
@@ -39,7 +43,7 @@ export default function Home() {
     setCustomInput('');
   };
 
-  const rootNode = nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) || nodes[0];
+  const targetNodeId = lastResearchedNodeId || activeDossier?.nodeId || selectedNodeId || nodes[0]?.id;
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-white text-black font-body select-none">
@@ -134,7 +138,7 @@ export default function Home() {
       )}
 
       {/* Research Output Ready Notification Toast */}
-      {hasNewDossier && !isDossierOpen && rootNode && (
+      {hasNewDossier && !isDossierOpen && targetNodeId && (
         <div className="fixed top-18 right-6 z-30 bg-black text-white border-2 border-black p-3.5 shadow-none flex items-center gap-3 animate-drop">
           <Sparkles className="w-4 h-4 shrink-0 text-white" />
           <div>
@@ -147,7 +151,7 @@ export default function Home() {
           </div>
           <button
             onClick={() => {
-              openDossier(rootNode.id);
+              openDossier(targetNodeId);
               dismissNewDossierAlert();
             }}
             className="px-3 py-1.5 bg-white text-black font-mono text-xs uppercase font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1 shrink-0"
