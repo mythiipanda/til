@@ -40,6 +40,7 @@ from app.schemas.research import (
     ResearchGraphState,
     ResearchPlan,
 )
+from app.services.cache import cache_service
 from app.services.llm import get_llm
 from app.services.media import calculate_osm_tiles
 from app.services.tools import (
@@ -51,6 +52,8 @@ from app.services.tools import (
 )
 
 logger = logging.getLogger(__name__)
+
+DOSSIER_TTL_SECONDS = 86400 * 7
 
 # ---------------------------------------------------------------------------
 # Structured output models
@@ -140,6 +143,55 @@ def _llm(config: RunnableConfig, temperature: float, max_tokens: int) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Sequential Plan Progression Helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_plan_steps(phase: int, topic: str, count_findings: int = 0, count_sources: int = 0) -> list[PlanStepSchema]:
+    """Construct standard 5-phase sequential deep research plan."""
+    step2_title = f"Deep web & encyclopedia retrieval ({count_findings} facts found)" if count_findings > 0 else f"Deep web & encyclopedia retrieval for '{topic}'"
+    step3_title = f"Cross-verifying claims & curating {count_sources} citations" if count_sources > 0 else "Cross-verifying claims & source citations"
+    
+    return [
+        PlanStepSchema(
+            id="step-1",
+            title=f"Formulating research angles for '{topic}'",
+            agent="Planner Agent",
+            status="done" if phase >= 1 else "running",
+        ),
+        PlanStepSchema(
+            id="step-2",
+            title=step2_title,
+            agent="Deep Retrieval Agent",
+            status="done" if phase >= 2 else ("running" if phase == 1 else "pending"),
+        ),
+        PlanStepSchema(
+            id="step-3",
+            title=step3_title,
+            agent="Reference Extractor",
+            status="done" if phase >= 3 else ("running" if phase == 2 else "pending"),
+        ),
+        PlanStepSchema(
+            id="step-4",
+            title="Synthesizing story monograph, mechanisms & timeline",
+            agent="Storyteller Agent",
+            status="done" if phase >= 4 else ("running" if phase == 3 else "pending"),
+        ),
+        PlanStepSchema(
+            id="step-5",
+            title="Curating archival media & geographic coordinates",
+            agent="Spatial Architect",
+            status="done" if phase >= 5 else ("running" if phase == 4 else "pending"),
+        ),
+    ]
+
+
+async def _emit_plan_phase(sink: Any, phase: int, topic: str, count_findings: int = 0, count_sources: int = 0) -> None:
+    steps = _build_plan_steps(phase, topic, count_findings, count_sources)
+    await sink.emit("plan", {"steps": [s.model_dump() for s in steps]})
+
+
+# ---------------------------------------------------------------------------
 # Node implementations
 # ---------------------------------------------------------------------------
 
@@ -207,42 +259,10 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
         "thought",
         {
             "agent": "Planner Agent",
-            "text": f"Breaking '{topic}' into {len(angles)} targeted research angles.",
+            "text": f"Formulated {len(angles)} research angles exploring '{topic}'.",
         },
     )
-    steps = [
-        PlanStepSchema(
-            id="step-1", title=f"Planning research angles for '{topic}'", agent="Planner Agent", status="done"
-        ),
-        *[
-            PlanStepSchema(
-                id=f"step-{i + 2}",
-                title=f"Researching: {a.question}",
-                agent="Deep Retrieval Agent",
-                status="running" if i == 0 else "pending",
-            )
-            for i, a in enumerate(angles)
-        ],
-        PlanStepSchema(
-            id=f"step-{len(angles) + 2}",
-            title="Extracting & verifying references",
-            agent="Reference Extractor",
-            status="pending",
-        ),
-        PlanStepSchema(
-            id=f"step-{len(angles) + 3}",
-            title="Writing the story & dossier",
-            agent="Storyteller Agent",
-            status="pending",
-        ),
-        PlanStepSchema(
-            id=f"step-{len(angles) + 4}",
-            title="Mapping location & enriching with media",
-            agent="Spatial Architect",
-            status="pending",
-        ),
-    ]
-    await sink.emit("plan", {"steps": [s.model_dump() for s in steps]})
+    await _emit_plan_phase(sink, 1, topic)
 
     return {"angles": [a.model_dump() for a in angles]}
 
@@ -379,9 +399,10 @@ async def aggregator_node(state: ResearchGraphState, config: RunnableConfig) -> 
         "thought",
         {
             "agent": "Aggregator Agent",
-            "text": f"Collected {len(findings)} grounded findings across {len(angles)} angles.",
+            "text": f"Collected {len(findings)} grounded facts across {len(angles)} research angles.",
         },
     )
+    await _emit_plan_phase(sink, 2, state["topic"], count_findings=len(findings))
     return {"errors": state.get("errors", [])}
 
 
@@ -408,9 +429,10 @@ async def reference_extractor_node(state: ResearchGraphState, config: RunnableCo
         "thought",
         {
             "agent": "Reference Extractor",
-            "text": f"Verified and curated {len(sources)} unique references (no fabricated URLs).",
+            "text": f"Verified and curated {len(sources)} unique references with verified URLs.",
         },
     )
+    await _emit_plan_phase(sink, 3, state["topic"], count_findings=len(findings), count_sources=len(sources))
     return {"sources": [s.model_dump() for s in sources]}
 
 
@@ -505,11 +527,13 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
             curiosityScore=7,
         )
 
+    await _emit_plan_phase(sink, 4, state["topic"], count_findings=len(findings), count_sources=len(state.get("sources", [])))
+
     await sink.emit(
         "thought",
         {
             "agent": "Storyteller Agent",
-            "text": "Writing the story from grounded evidence only.",
+            "text": "Synthesizing deep narrative story and explanatory mechanisms.",
         },
     )
 
@@ -577,7 +601,7 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
         {
             "call_id": call_id_img,
             "tool": "WikimediaArchive",
-            "preview": f"Retrieved {len(gallery)} historical images and illustrations",
+            "preview": f"Retrieved {len(gallery)} archival illustrations",
             "count": len(gallery),
             "status": "success",
         },
@@ -604,15 +628,6 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
         curiosity_score=min(max(int(dd.get("curiosityScore") or 7), 1), 10),
         wow_fact=dd.get("wowFact"),
         related_to_today=None,
-    )
-
-    await sink.emit(
-        "node_stream",
-        {
-            "node": root_node.model_dump(),
-            "parent_id": parent_id or "root",
-            "is_root": True,
-        },
     )
 
     dossier = ResearchDossierSchema(
@@ -650,7 +665,12 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
         curiosityScore=min(max(int(dd.get("curiosityScore") or 7), 1), 10),
     )
 
-    await sink.emit("dossier", {"node_id": root_id, "dossier": dossier.model_dump()})
+    cache_service.set(f"dossier:{root_id}", dossier.model_dump(), ttl_seconds=DOSSIER_TTL_SECONDS)
+    await sink.emit("dossier", dossier.model_dump())
+    await sink.emit("node_stream", root_node.model_dump())
+
+    # Emit Phase 5 Complete
+    await _emit_plan_phase(sink, 5, topic, count_findings=len(state.get("findings", [])), count_sources=len(state.get("sources", [])))
 
     # Child nodes
     child_nodes: list[NodeSchema] = []
@@ -683,14 +703,7 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
                 related_to_today=None,
             )
             child_nodes.append(c_node)
-            await sink.emit(
-                "node_stream",
-                {
-                    "node": c_node.model_dump(),
-                    "parent_id": root_id,
-                    "is_root": False,
-                },
-            )
+            await sink.emit("node_stream", c_node.model_dump())
             await asyncio.sleep(0.05)
 
     return {"root_node": root_node.model_dump(), "child_nodes": [c.model_dump() for c in child_nodes]}

@@ -119,9 +119,10 @@ export interface PlanStep {
 /* ── Frontend-only UI types ─────────────────────────────── */
 
 export interface ThoughtStep {
-  type: 'plan' | 'thought';
+  type?: 'plan' | 'thought';
   text: string;
-  timestamp: number;
+  agent?: string;
+  timestamp?: number;
 }
 
 export interface ToolCallEvent {
