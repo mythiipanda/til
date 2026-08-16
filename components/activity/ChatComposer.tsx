@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { CornerDownLeft } from 'lucide-react';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
+import { CornerDownLeft, Sparkles } from 'lucide-react';
 
 export function ChatComposer() {
   const [input, setInput] = useState('');
@@ -24,21 +25,23 @@ export function ChatComposer() {
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[640px] max-w-[92vw] z-20 flex flex-col gap-2 select-none animate-drop">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[680px] max-w-[92vw] z-20 flex flex-col gap-2 select-none animate-drop">
 
       {/* Streaming Assistant Response Preview */}
       {lastAssistant && lastAssistant.content && (
-        <div className="bg-black text-white border-2 border-black p-4 shadow-none max-h-[220px] overflow-y-auto">
-          <div className="flex items-center justify-between border-b border-neutral-800 pb-1 mb-2 font-mono text-[9px] uppercase tracking-widest text-neutral-400">
-            <span>SYNTHESIZED INQUIRY RESPONSE</span>
-            <span>{isChatStreaming ? 'STREAMING...' : 'CITATIONS GROUNDED'}</span>
+        <div className="bg-black text-white border-2 border-black p-5 shadow-none max-h-[260px] overflow-y-auto custom-scrollbar">
+          <div className="flex items-center justify-between border-b border-neutral-800 pb-1.5 mb-2.5 font-mono text-[9px] uppercase tracking-widest text-neutral-400">
+            <span className="flex items-center gap-1.5 font-bold">
+              <Sparkles className="w-3 h-3" /> GROUNDED CITATION RESPONSE
+            </span>
+            <span>{isChatStreaming ? 'STREAMING VIA CEREBRAS...' : 'SYNTHESIZED'}</span>
           </div>
-          <p className="font-body text-sm text-neutral-100 leading-relaxed">
-            {lastAssistant.content}
+          <div className="text-neutral-100 text-sm leading-relaxed">
+            <MarkdownContent content={lastAssistant.content} />
             {isChatStreaming && (
               <span className="inline-block w-1.5 h-3.5 bg-white ml-1 align-middle animate-pulse-block" />
             )}
-          </p>
+          </div>
         </div>
       )}
 

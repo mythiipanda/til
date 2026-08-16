@@ -26,12 +26,14 @@ interface MindMapState {
   // Canvas
   nodes: Node[];
   edges: Edge[];
+  selectedNodeId: string | null;
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   
   // Research flow
   isResearching: boolean;
   currentTopic: string | null;
+  hasNewDossier: boolean;
   
   // SSE activity stream
   thoughts: ThoughtStep[];
@@ -42,6 +44,7 @@ interface MindMapState {
   // Dossier
   activeDossier: ResearchDossier | null;
   isDossierOpen: boolean;
+  isDossierLoading: boolean;
   
   // Chat
   chatMessages: ChatMessage[];
@@ -60,8 +63,10 @@ interface MindMapState {
   loadPrecomputedHub: (hubId: string) => Promise<void>;
   openDossier: (nodeId: string) => Promise<void>;
   closeDossier: () => void;
+  dismissNewDossierAlert: () => void;
   sendChat: (question: string) => void;
   setCategory: (cat: string) => void;
+  setSelectedNode: (nodeId: string | null) => void;
   resetCanvas: () => void;
 }
 
@@ -71,6 +76,7 @@ let chatES: EventSource | null = null;
 export const useMindMapStore = create<MindMapState>((set, get) => ({
   nodes: [],
   edges: [],
+  selectedNodeId: null,
   onNodesChange: (changes) => {
     set({ nodes: applyNodeChanges(changes, get().nodes) });
   },
@@ -80,6 +86,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   
   isResearching: false,
   currentTopic: null,
+  hasNewDossier: false,
   
   thoughts: [],
   toolCalls: [],
@@ -88,6 +95,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   
   activeDossier: null,
   isDossierOpen: false,
+  isDossierLoading: false,
   
   chatMessages: [],
   isChatStreaming: false,
@@ -127,7 +135,6 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       const chosen = pool[Math.floor(Math.random() * pool.length)];
       await get().loadPrecomputedHub(chosen.id);
     } else {
-      // Fallback to live research if completely empty
       get().startResearch(category, category);
     }
   },
@@ -152,6 +159,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     set({
       isResearching: true,
       currentTopic: topic,
+      hasNewDossier: false,
       planSteps: [],
       thoughts: [],
       toolCalls: [],
@@ -160,7 +168,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
     if (!parentId) {
       get().resetCanvas();
-      set({ isResearching: true, currentTopic: topic });
+      set({ isResearching: true, currentTopic: topic, hasNewDossier: false });
     }
 
     const url = api.researchStreamUrl(topic, category, parentId);
@@ -272,12 +280,16 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
             return {
               nodes: [...state.nodes, newNode],
-              edges: newEdges
+              edges: newEdges,
+              selectedNodeId: !parentId ? nodeId : state.selectedNodeId,
             };
           });
         } else if (event === 'dossier') {
-          set({ activeDossier: data as ResearchDossier });
-        } else if (event === 'done' || event === 'error') {
+          set({ activeDossier: data as ResearchDossier, hasNewDossier: true });
+        } else if (event === 'done') {
+          set({ isResearching: false, hasNewDossier: true });
+          es.close();
+        } else if (event === 'error') {
           set({ isResearching: false });
           es.close();
         }
@@ -344,7 +356,17 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         });
       });
       
-      set({ nodes, edges, currentTopic: rootNodeSchema.title, isResearching: false });
+      set({
+        nodes,
+        edges,
+        currentTopic: rootNodeSchema.title,
+        selectedNodeId: rootId,
+        isResearching: false,
+        hasNewDossier: false,
+      });
+
+      // Eagerly pre-populate active dossier for root node
+      get().openDossier(rootId);
     } catch (e) {
       console.error('Failed to load precomputed hub:', e);
     }
@@ -352,23 +374,56 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   
   openDossier: async (nodeId: string) => {
     try {
-      set({ isDossierOpen: true });
-      const currentActive = get().activeDossier;
-      if (currentActive && currentActive.nodeId === nodeId) {
-        return;
+      const node = get().nodes.find(n => n.id === nodeId);
+      set({ isDossierOpen: true, selectedNodeId: nodeId, isDossierLoading: true });
+
+      // Immediate fallback dossier from node data so the drawer is never empty
+      if (node && node.data) {
+        const nData = node.data;
+        const initialDossier: ResearchDossier = {
+          nodeId: nodeId,
+          title: (nData.title as string) || 'Monograph Vector',
+          tagline: (nData.wow_fact as string) || (nData.category as string) || 'Knowledge Discovery Vector',
+          category: (nData.category as string) || 'General',
+          era: (nData.timestamp as string) || 'Historical Era',
+          abstract: (nData.summary as string) || 'Exploration vector synthesized by the knowledge engine.',
+          coreThesis: (nData.summary as string) || '',
+          sources: [],
+          gallery: nData.imageUrl ? [{ imageUrl: nData.imageUrl as string, caption: (nData.title as string) || '' }] : [],
+          timeline: [],
+          mechanisms: [],
+          rabbitHoles: ((nData.rabbit_holes as string[]) || []).map(rh => ({
+            title: rh,
+            teaser: `Inquire further into this connected knowledge vector under ${nData.category || 'General'}.`,
+            affinityCategory: (nData.category as string) || 'General',
+          })),
+          audioTourScript: '',
+          wowFact: (nData.wow_fact as string) || null,
+          curiosityScore: (nData.curiosity_score as number) || null,
+        };
+        set({ activeDossier: initialDossier });
       }
+
+      // Try fetching backend full monograph dossier
       const res = await api.dossier(nodeId);
       if (res.ok) {
         const data = await res.json();
-        set({ activeDossier: data as ResearchDossier });
+        set({ activeDossier: data as ResearchDossier, isDossierLoading: false });
+      } else {
+        set({ isDossierLoading: false });
       }
     } catch (e) {
       console.error('Failed to fetch dossier:', e);
+      set({ isDossierLoading: false });
     }
   },
   
   closeDossier: () => {
     set({ isDossierOpen: false });
+  },
+
+  dismissNewDossierAlert: () => {
+    set({ hasNewDossier: false });
   },
   
   sendChat: (question: string) => {
@@ -433,6 +488,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   setCategory: (cat: string) => {
     set({ selectedCategory: cat });
   },
+
+  setSelectedNode: (nodeId: string | null) => {
+    set({ selectedNodeId: nodeId });
+  },
   
   resetCanvas: () => {
     if (researchES) {
@@ -446,14 +505,17 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     set({
       nodes: [],
       edges: [],
+      selectedNodeId: null,
       isResearching: false,
       currentTopic: null,
+      hasNewDossier: false,
       thoughts: [],
       toolCalls: [],
       sources: [],
       planSteps: [],
       activeDossier: null,
       isDossierOpen: false,
+      isDossierLoading: false,
       chatMessages: [],
       isChatStreaming: false,
       chatNodeTitle: null,

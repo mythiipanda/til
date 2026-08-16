@@ -1,32 +1,44 @@
 'use client';
 
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { X, ExternalLink } from 'lucide-react';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
+import { X, ExternalLink, Sparkles, Compass, Layers, Clock } from 'lucide-react';
 
 export function DossierDrawer() {
   const isDossierOpen = useMindMapStore(s => s.isDossierOpen);
   const activeDossier = useMindMapStore(s => s.activeDossier);
+  const isDossierLoading = useMindMapStore(s => s.isDossierLoading);
   const closeDossier = useMindMapStore(s => s.closeDossier);
   const startResearch = useMindMapStore(s => s.startResearch);
 
   if (!isDossierOpen || !activeDossier) return null;
 
+  const hasFullDossier = (activeDossier.mechanisms && activeDossier.mechanisms.length > 0) || 
+                         (activeDossier.timeline && activeDossier.timeline.length > 0) ||
+                         (activeDossier.sources && activeDossier.sources.length > 0);
+
   return (
-    <div className="fixed inset-y-0 right-0 w-[580px] max-w-[95vw] bg-white border-l-4 border-black z-30 flex flex-col shadow-none select-none animate-fade overflow-hidden">
+    <div className="fixed inset-y-0 right-0 w-[600px] max-w-[96vw] bg-white border-l-4 border-black z-30 flex flex-col shadow-none select-none animate-fade overflow-hidden">
       
       {/* Editorial Header */}
-      <div className="p-4 border-b-2 border-black flex items-center justify-between bg-black text-white">
+      <div className="p-4 border-b-2 border-black flex items-center justify-between bg-black text-white shrink-0">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-widest font-bold bg-white text-black px-1.5 py-0.5">
+          <span className="font-mono text-[10px] uppercase tracking-widest font-bold bg-white text-black px-2 py-0.5">
             {activeDossier.category}
           </span>
           <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-wider">
-            {activeDossier.era || 'HISTORICAL ERA'}
+            {activeDossier.era || 'SYNTHESIS'}
           </span>
+          {isDossierLoading && (
+            <span className="font-mono text-[9px] text-neutral-400 animate-pulse">
+              [FETCHING FULL MONOGRAPH...]
+            </span>
+          )}
         </div>
         <button
           onClick={closeDossier}
           className="p-1 text-neutral-400 hover:text-white transition-colors"
+          title="Close Dossier"
         >
           <X className="w-5 h-5" />
         </button>
@@ -37,8 +49,13 @@ export function DossierDrawer() {
 
         {/* Title Block */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
-            RESEARCH MONOGRAPH / DOSSIER
+          <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 flex items-center justify-between">
+            <span>RESEARCH MONOGRAPH & DOSSIER</span>
+            {activeDossier.curiosityScore && (
+              <span className="bg-neutral-100 border border-black px-1.5 py-0.5 text-black font-bold">
+                CURIOSITY SCORE {activeDossier.curiosityScore}/10
+              </span>
+            )}
           </div>
           <h2 className="font-serif text-3xl md:text-4xl font-bold tracking-tight text-black leading-tight">
             {activeDossier.title}
@@ -50,56 +67,89 @@ export function DossierDrawer() {
           )}
         </div>
 
+        {/* Action Banner for Vector Inquiries */}
+        <div className="p-4 border-2 border-black bg-neutral-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <span className="font-mono text-[9px] uppercase tracking-widest font-bold text-neutral-600 block">
+              CANVAS EXPLORATION VECTOR
+            </span>
+            <span className="font-serif text-xs text-neutral-800">
+              Deepen inquiry and generate new spatial sub-branches from this concept.
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              closeDossier();
+              startResearch(activeDossier.title, activeDossier.category, activeDossier.nodeId);
+            }}
+            className="px-4 py-2 bg-black text-white font-mono text-xs uppercase tracking-wider font-bold hover:bg-neutral-800 transition-colors shrink-0"
+          >
+            Expand Swarm →
+          </button>
+        </div>
+
         {/* Wow Fact Banner */}
         {activeDossier.wowFact && (
-          <div className="p-4 border-2 border-black bg-neutral-50 font-body text-sm text-black leading-relaxed">
-            <span className="font-mono text-[9px] uppercase tracking-widest font-bold block mb-1 text-neutral-500">
-              SALIENT FACT:
+          <div className="p-4 border-2 border-black bg-white space-y-1">
+            <span className="font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-1.5 text-neutral-500">
+              <Sparkles className="w-3 h-3" /> SALIENT FACT & SURPRISE:
             </span>
-            {activeDossier.wowFact}
+            <div className="font-body text-sm text-black leading-relaxed italic">
+              <MarkdownContent content={activeDossier.wowFact} />
+            </div>
           </div>
         )}
 
-        {/* Core Thesis with Boxed Drop Cap */}
-        <div className="space-y-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-            I. CORE THESIS & SCIENTIFIC IMPLICATION
+        {/* Core Thesis with Boxed Initial */}
+        {activeDossier.coreThesis && (
+          <div className="space-y-3">
+            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
+              I. CORE THESIS & SCIENTIFIC IMPLICATION
+            </div>
+            <div className="font-body text-sm md:text-base text-neutral-800 leading-relaxed space-y-2">
+              <MarkdownContent content={activeDossier.coreThesis} />
+            </div>
           </div>
-          <div className="font-body text-sm md:text-base text-neutral-800 leading-relaxed space-y-2">
-            <p className="first-letter:float-left first-letter:text-4xl first-letter:font-serif first-letter:font-bold first-letter:mr-3 first-letter:border-2 first-letter:border-black first-letter:p-2 first-letter:leading-none">
-              {activeDossier.coreThesis}
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* Overview & Abstract */}
-        <div className="space-y-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-            II. EXECUTIVE SYNTHESIS
+        {activeDossier.abstract && (
+          <div className="space-y-3">
+            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
+              II. EXECUTIVE SYNTHESIS
+            </div>
+            <div className="font-body text-sm text-neutral-700 leading-relaxed">
+              <MarkdownContent content={activeDossier.abstract} />
+            </div>
           </div>
-          <p className="font-body text-sm text-neutral-700 leading-relaxed">
-            {activeDossier.abstract}
-          </p>
-        </div>
+        )}
 
         {/* Mechanisms & Principles */}
         {activeDossier.mechanisms && activeDossier.mechanisms.length > 0 && (
           <div className="space-y-4">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-              III. OPERATING MECHANISMS ({activeDossier.mechanisms.length})
+            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
+              <span>III. OPERATING MECHANISMS ({activeDossier.mechanisms.length})</span>
+              <Layers className="w-3.5 h-3.5" />
             </div>
             <div className="space-y-3">
               {activeDossier.mechanisms.map((mech, idx) => (
-                <div key={idx} className="p-4 border border-black space-y-1.5 bg-white">
+                <div key={idx} className="p-4 border border-black space-y-2 bg-white">
                   <div className="font-mono text-[9px] uppercase text-neutral-500">
                     MECHANISM 0{idx + 1}
                   </div>
                   <h4 className="font-serif text-base font-bold text-black">
                     {mech.title}
                   </h4>
-                  <p className="font-body text-xs text-neutral-700 leading-relaxed">
-                    {mech.explanation}
-                  </p>
+                  <div className="font-body text-xs text-neutral-700 leading-relaxed">
+                    <MarkdownContent content={mech.explanation} />
+                  </div>
+                  {mech.bulletPoints && mech.bulletPoints.length > 0 && (
+                    <ul className="list-disc list-inside pt-2 space-y-1 font-body text-xs text-neutral-600 border-t border-neutral-200">
+                      {mech.bulletPoints.map((bp, bIdx) => (
+                        <li key={bIdx}>{bp}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ))}
             </div>
@@ -109,8 +159,9 @@ export function DossierDrawer() {
         {/* Chronological Timeline */}
         {activeDossier.timeline && activeDossier.timeline.length > 0 && (
           <div className="space-y-4">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-              IV. CHRONOLOGY OF OCCURRENCES
+            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
+              <span>IV. CHRONOLOGY OF OCCURRENCES</span>
+              <Clock className="w-3.5 h-3.5" />
             </div>
             <div className="border-l-2 border-black pl-4 ml-1 space-y-4">
               {activeDossier.timeline.map((evt, idx) => (
@@ -118,9 +169,9 @@ export function DossierDrawer() {
                   <div className="font-mono text-[10px] font-bold text-black uppercase">
                     [{evt.date}] — {evt.headline}
                   </div>
-                  <p className="font-body text-xs text-neutral-700 leading-relaxed">
-                    {evt.description}
-                  </p>
+                  <div className="font-body text-xs text-neutral-700 leading-relaxed">
+                    <MarkdownContent content={evt.description} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -130,8 +181,9 @@ export function DossierDrawer() {
         {/* Downstream Rabbit Holes */}
         {activeDossier.rabbitHoles && activeDossier.rabbitHoles.length > 0 && (
           <div className="space-y-3 pt-2">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-              V. DOWNSTREAM INQUIRY VECTORS
+            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
+              <span>V. CONNECTED EXPLORATION VECTORS</span>
+              <Compass className="w-3.5 h-3.5" />
             </div>
             <div className="grid grid-cols-1 gap-2">
               {activeDossier.rabbitHoles.map((rh, idx) => (
@@ -144,7 +196,7 @@ export function DossierDrawer() {
                   className="p-3 border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors duration-100 text-left group flex flex-col justify-between"
                 >
                   <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 group-hover:text-neutral-300">
-                    <span className="uppercase">{rh.affinityCategory || 'EXPLORATION'}</span>
+                    <span className="uppercase">{rh.affinityCategory || 'INQUIRY'}</span>
                     <span>EXPAND CANVASES →</span>
                   </div>
                   <div className="font-serif text-sm font-bold pt-1">

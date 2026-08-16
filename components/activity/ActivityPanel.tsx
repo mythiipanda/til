@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
+import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 
 function getDomain(url: string): string {
   try {
@@ -18,27 +19,51 @@ export function ActivityPanel() {
   const thoughts = useMindMapStore(s => s.thoughts);
   const toolCalls = useMindMapStore(s => s.toolCalls);
   const sources = useMindMapStore(s => s.sources);
+  const activeDossier = useMindMapStore(s => s.activeDossier);
+  const openDossier = useMindMapStore(s => s.openDossier);
+  const nodes = useMindMapStore(s => s.nodes);
 
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
 
   const isVisible = isResearching || thoughts.length > 0 || sources.length > 0;
   if (!isVisible) return null;
 
+  const rootNode = nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) || nodes[0];
+
   return (
     <div className="fixed right-6 top-20 bottom-6 w-[360px] max-w-[90vw] bg-black text-white border-2 border-black z-20 flex flex-col shadow-none select-none animate-fade">
 
       {/* Masthead Header */}
-      <div className="p-3 border-b border-neutral-800 flex items-center justify-between bg-black">
+      <div className="p-3 border-b border-neutral-800 flex items-center justify-between bg-black shrink-0">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 bg-white inline-block animate-pulse" />
+          <span className={`w-2 h-2 ${isResearching ? 'bg-white animate-pulse' : 'bg-white'}`} />
           <span className="font-mono text-[10px] uppercase tracking-widest font-bold">
-            AGENTIC RESEARCH SWARM
+            RESEARCH SWARM MONITOR
           </span>
         </div>
         <span className="font-mono text-[9px] text-neutral-400 uppercase">
           {isResearching ? 'EXECUTING...' : 'COMPLETED'}
         </span>
       </div>
+
+      {/* Completion Monograph CTA Card */}
+      {!isResearching && thoughts.length > 0 && (
+        <div className="p-3 bg-neutral-900 border-b-2 border-black flex flex-col gap-1.5 shrink-0">
+          <div className="flex items-center justify-between font-mono text-[9px] text-neutral-400 uppercase">
+            <span>SYNTHESIS COMPLETE</span>
+            <span>READY</span>
+          </div>
+          <button
+            onClick={() => {
+              if (rootNode) openDossier(rootNode.id);
+            }}
+            className="w-full py-2 bg-white text-black hover:bg-neutral-200 font-mono text-xs uppercase font-bold tracking-wider transition-colors flex items-center justify-center gap-1.5"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Open Researched Dossier</span>
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
 
@@ -71,18 +96,18 @@ export function ActivityPanel() {
               className="w-full flex items-center justify-between p-2.5 bg-neutral-900 border-b border-neutral-800 font-mono text-[10px] uppercase tracking-wider text-neutral-300 hover:text-white"
             >
               <div className="flex items-center gap-2">
-                <span>[ THINKING LOG ]</span>
+                <span>[ AGENT REASONING TRACE ]</span>
                 <span className="text-neutral-500">({thoughts.length})</span>
               </div>
               {isThinkingExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
 
             {isThinkingExpanded && (
-              <div className="p-3 space-y-2.5 max-h-[180px] overflow-y-auto font-mono text-[11px] text-neutral-300 leading-relaxed">
+              <div className="p-3 space-y-2.5 max-h-[220px] overflow-y-auto font-mono text-[11px] text-neutral-300 leading-relaxed">
                 {thoughts.map((t, idx) => (
                   <div key={idx} className="border-l border-neutral-700 pl-2">
                     <span className="text-[9px] text-neutral-500 block">TRACE #{idx + 1}</span>
-                    {t.text}
+                    <MarkdownContent content={t.text} className="text-xs" />
                   </div>
                 ))}
               </div>
@@ -94,7 +119,7 @@ export function ActivityPanel() {
         {toolCalls.length > 0 && (
           <div className="space-y-2">
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-1">
-              [ TOOL INVOCATIONS ]
+              [ RETRIEVAL & ENRICHMENT TOOLS ]
             </div>
             <div className="flex flex-wrap gap-1.5">
               {toolCalls.map((tc, idx) => (
@@ -117,7 +142,7 @@ export function ActivityPanel() {
         {sources.length > 0 && (
           <div className="space-y-2">
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-1">
-              [ GROUNDED SOURCES ({sources.length}) ]
+              [ GROUNDED RETRIEVAL SOURCES ({sources.length}) ]
             </div>
             <div className="space-y-2">
               {sources.map((src, idx) => (
@@ -135,7 +160,7 @@ export function ActivityPanel() {
                     {src.title}
                   </div>
                   <div className="font-body text-[10px] text-neutral-400 line-clamp-2 leading-relaxed">
-                    {src.snippet}
+                    <MarkdownContent content={src.snippet} />
                   </div>
                 </a>
               ))}

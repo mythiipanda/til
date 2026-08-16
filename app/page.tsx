@@ -8,7 +8,7 @@ import { HubBrowser } from '@/components/browse/HubBrowser';
 import { DossierDrawer } from '@/components/dossier/DossierDrawer';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
-import { Plus, RotateCcw } from 'lucide-react';
+import { Plus, RotateCcw, BookOpen, Sparkles, X } from 'lucide-react';
 
 export default function Home() {
   const fetchPrecomputedHubs = useMindMapStore(s => s.fetchPrecomputedHubs);
@@ -17,6 +17,10 @@ export default function Home() {
   const resetCanvas = useMindMapStore(s => s.resetCanvas);
   const nodes = useMindMapStore(s => s.nodes);
   const currentTopic = useMindMapStore(s => s.currentTopic);
+  const hasNewDossier = useMindMapStore(s => s.hasNewDossier);
+  const isDossierOpen = useMindMapStore(s => s.isDossierOpen);
+  const openDossier = useMindMapStore(s => s.openDossier);
+  const dismissNewDossierAlert = useMindMapStore(s => s.dismissNewDossierAlert);
 
   const [isBrowseOpen, setIsBrowseOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
@@ -34,6 +38,8 @@ export default function Home() {
     startResearch(customInput.trim(), 'General');
     setCustomInput('');
   };
+
+  const rootNode = nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) || nodes[0];
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-white text-black font-body select-none">
@@ -124,6 +130,38 @@ export default function Home() {
           <div className="bg-black text-white px-3 py-1 font-mono text-[10px] uppercase tracking-widest border border-black">
             ACTIVE MONOGRAPH: <span className="font-serif font-bold text-xs capitalize ml-1">{currentTopic}</span>
           </div>
+        </div>
+      )}
+
+      {/* Swarm Output Ready Notification Toast */}
+      {hasNewDossier && !isDossierOpen && rootNode && (
+        <div className="fixed top-18 right-6 z-30 bg-black text-white border-2 border-black p-3.5 shadow-none flex items-center gap-3 animate-drop">
+          <Sparkles className="w-4 h-4 shrink-0 text-white" />
+          <div>
+            <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">
+              SYNTHESIS COMPLETE
+            </div>
+            <div className="font-serif text-sm font-bold truncate max-w-xs">
+              {currentTopic}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              openDossier(rootNode.id);
+              dismissNewDossierAlert();
+            }}
+            className="px-3 py-1.5 bg-white text-black font-mono text-xs uppercase font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1 shrink-0"
+          >
+            <BookOpen className="w-3 h-3" />
+            <span>Read Dossier</span>
+          </button>
+          <button
+            onClick={dismissNewDossierAlert}
+            className="p-1 text-neutral-400 hover:text-white"
+            title="Dismiss"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
       
