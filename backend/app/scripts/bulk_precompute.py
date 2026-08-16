@@ -26,9 +26,8 @@ logging.getLogger("primp").setLevel(logging.WARNING)
 logging.getLogger("openai").setLevel(logging.WARNING)
 logging.getLogger("app.services.precompute").setLevel(logging.INFO)
 
-from dotenv import load_dotenv
-
-load_dotenv(os.path.join("..", ".env"))
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env.local"))
+load_dotenv()
 
 from app.services.precompute import list_precomputed_hubs, precompute_bulk
 
