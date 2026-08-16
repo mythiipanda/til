@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import { ReactFlow, Background, Controls, BackgroundVariant } from '@xyflow/react';
+import { useMemo, useCallback } from 'react';
+import { ReactFlow, Background, Controls, BackgroundVariant, Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import ResearchNode from './ResearchNode';
@@ -13,10 +13,19 @@ export function KnowledgeCanvas() {
   const onNodesChange = useMindMapStore(s => s.onNodesChange);
   const onEdgesChange = useMindMapStore(s => s.onEdgesChange);
   const isResearching = useMindMapStore(s => s.isResearching);
+  const selectNode = useMindMapStore(s => s.selectNode);
+  const openDossier = useMindMapStore(s => s.openDossier);
 
   const nodeTypes = useMemo(() => ({
     research: ResearchNode,
   }), []);
+
+  const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (node && node.id) {
+      selectNode(node.id);
+      openDossier(node.id);
+    }
+  }, [selectNode, openDossier]);
 
   const showLanding = nodes.length === 0 && !isResearching;
 
@@ -29,6 +38,7 @@ export function KnowledgeCanvas() {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.12, maxZoom: 1.05, minZoom: 0.7 }}

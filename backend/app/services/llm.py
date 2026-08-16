@@ -16,6 +16,12 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
+from dotenv import load_dotenv
+
+# Ensure environment variables from .env.local and .env are loaded
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), ".env.local"))
+load_dotenv()
+
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import ChatResult
