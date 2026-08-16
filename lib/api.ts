@@ -1,0 +1,41 @@
+const API = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
+
+export const api = {
+  /** Pick a curiosity-ranked random topic from a category's pool. */
+  randomTopic: (category: string) =>
+    fetch(`${API}/api/v1/graph/random-topic?category=${encodeURIComponent(category)}`),
+
+  /** List all pre-researched hub summaries. */
+  precomputedList: () =>
+    fetch(`${API}/api/v1/graph/precomputed`),
+
+  /** Fetch a full pre-researched hub (root + children). */
+  precomputedHub: (hubId: string) =>
+    fetch(`${API}/api/v1/graph/precomputed/${encodeURIComponent(hubId)}`),
+
+  /** Fetch the research dossier for a given node. */
+  dossier: (nodeId: string) =>
+    fetch(`${API}/api/v1/research/dossier/${encodeURIComponent(nodeId)}`),
+
+  /** Catalog of 2000+ real Wikipedia topics. */
+  catalog: (limit = 200) =>
+    fetch(`${API}/api/v1/graph/catalog?limit=${limit}`),
+
+  /** Build SSE URL for live deep research. */
+  researchStreamUrl: (topic: string, category?: string, parentId?: string) => {
+    const params = new URLSearchParams({ topic });
+    if (category) params.set('category', category);
+    if (parentId) params.set('parent_id', parentId);
+    return `${API}/api/v1/research/stream?${params}`;
+  },
+
+  /** Build SSE URL for follow-up chat. */
+  chatStreamUrl: (nodeTitle: string, question: string, ancestors: string[] = []) => {
+    const params = new URLSearchParams({
+      node_title: nodeTitle,
+      question,
+      ancestors: ancestors.join(','),
+    });
+    return `${API}/api/v1/chat/stream?${params}`;
+  },
+};
