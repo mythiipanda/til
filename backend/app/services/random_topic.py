@@ -329,7 +329,9 @@ async def _catalog_pool(category: str) -> list[dict[str, str | int]]:
         pool = enriched[:CATALOG_POOL_KEEP]
         if pool:
             cache_service.set(key, pool, ttl_seconds=CATALOG_POOL_TTL)
-            logger.info(f"[random-topic] catalog pool for {category}: {len(pool)} candidates (from {len(titles)} titles)")
+            logger.info(
+                f"[random-topic] catalog pool for {category}: {len(pool)} candidates (from {len(titles)} titles)"
+            )
         return pool
     except Exception as e:
         logger.warning(f"[random-topic] catalog crawl failed for {category}: {e}")

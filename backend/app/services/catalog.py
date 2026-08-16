@@ -30,9 +30,7 @@ def get_catalog() -> list[dict[str, Any]]:
     return val if isinstance(val, list) else []
 
 
-def _entry(
-    item: dict[str, str | int], category: str, precomputed: bool = False
-) -> dict[str, Any]:
+def _entry(item: dict[str, str | int], category: str, precomputed: bool = False) -> dict[str, Any]:
     return {
         "title": item["title"],
         "summary": str(item.get("summary", ""))[:280],

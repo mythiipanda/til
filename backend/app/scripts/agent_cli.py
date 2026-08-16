@@ -134,18 +134,32 @@ async def _run(cmd: str, args: list[str], state: CliState) -> None:
         return
 
     if cmd == "precompute":
-        cats = [c.strip().title() for c in " ".join(args).split(",") if c.strip()]
-        from app.services.precompute import precompute_batch
+        args_str = " ".join(args).strip()
+        from app.services.precompute import precompute_batch, precompute_bulk
 
-        target = cats or CATEGORIES
-        print(f"{BOLD}Precomputing research hubs for: {', '.join(target)}{RESET}")
+        if args_str.isdigit():
+            count = int(args_str)
+            print(f"{BOLD}Bulk-precomputing {count} research hubs (concurrent on Mistral)...{RESET}")
+            print(f"{DIM}This can take a while; progress is saved as each hub completes.{RESET}\n")
+            hubs = await precompute_bulk(count=count)
+            if not hubs:
+                print(f"{RED}No hubs produced (check logs).{RESET}")
+                return
+            print(f"\n{GREEN}✔ Precomputed {len(hubs)} hubs in this batch.{RESET}")
+            for hub in hubs[:10]:
+                print(f"  {BLUE}• [{hub.category}] {BOLD}{hub.topic}{RESET} {DIM}({hub.id}){RESET}")
+            if len(hubs) > 10:
+                print(f"  {DIM}... and {len(hubs) - 10} more{RESET}")
+            return
+        cats = [c.strip().title() for c in args_str.split(",") if c.strip()]
+        print(f"{BOLD}Precomputing research hubs for: {', '.join(cats) or 'all categories'}{RESET}")
         print(f"{DIM}This runs the full map-reduce graph headlessly for each topic...{RESET}\n")
-        hubs = await precompute_batch(target)
-        if not hubs:
+        batch = await precompute_batch(cats)
+        if not batch:
             print(f"{RED}No hubs produced (check logs).{RESET}")
             return
-        print(f"\n{GREEN}✔ Precomputed {len(hubs)} hubs:{RESET}")
-        for h in hubs:
+        print(f"\n{GREEN}✔ Precomputed {len(batch)} hubs:{RESET}")
+        for h in batch:
             print(f"  {BLUE}• [{h.category}] {BOLD}{h.topic}{RESET} {DIM}({h.id}){RESET}")
         print(f"{DIM}\nInstantly renderable via GET /api/v1/graph/precomputed{RESET}")
         return
@@ -287,7 +301,7 @@ def _help() -> None:
   {CYAN}dossier [node_id]{RESET}  dossier for a node (default: last)
   {CYAN}nodes{RESET}              nodes emitted by the last research run
   {CYAN}cats{RESET}               list the 5 pillar categories
-  {CYAN}precompute [cats]{RESET}  batch-run research hubs headlessly (comma-separated)
+  {CYAN}precompute [count|cats]{RESET} bulk-precompute N hubs concurrently; or per-category
   {CYAN}catalog{RESET}            bulk-build 500+ topic catalog from deep crawls
   {CYAN}help{RESET}               this help
   {CYAN}quit{RESET}               leave""")
