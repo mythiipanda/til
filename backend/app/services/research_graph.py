@@ -304,6 +304,20 @@ async def researcher_node(state: ResearcherWorkerState, config: RunnableConfig) 
 
     sources = await search_web_ladder(angle.question, max_results=5)
 
+    # Emit discovered sources immediately to the live stream
+    for s in sources:
+        await sink.emit(
+            "source",
+            {
+                "id": s.id or str(uuid.uuid4())[:8],
+                "title": s.title,
+                "url": s.url,
+                "snippet": s.snippet[:250],
+                "publisher": s.publisher,
+                "reliabilityScore": s.reliabilityScore,
+            },
+        )
+
     await sink.emit(
         "tool_result",
         {
@@ -368,19 +382,6 @@ async def researcher_node(state: ResearcherWorkerState, config: RunnableConfig) 
                 )
             )
 
-    for f in findings:
-        await sink.emit(
-            "source",
-            {
-                "id": str(uuid.uuid4())[:8],
-                "title": f.source_title,
-                "url": f.source_url,
-                "snippet": f.quote[:250],
-                "publisher": f.source_publisher,
-                "reliabilityScore": f.reliability_score,
-            },
-        )
-
     return {"findings": findings}
 
 
@@ -399,7 +400,7 @@ async def aggregator_node(state: ResearchGraphState, config: RunnableConfig) -> 
         "thought",
         {
             "agent": "Aggregator Agent",
-            "text": f"Collected {len(findings)} grounded facts across {len(angles)} research angles.",
+            "text": f"Collected {len(findings)} verified facts across {len(angles)} research vectors.",
         },
     )
     await _emit_plan_phase(sink, 2, state["topic"], count_findings=len(findings))
