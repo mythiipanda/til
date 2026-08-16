@@ -150,6 +150,21 @@ async def _run(cmd: str, args: list[str], state: CliState) -> None:
         print(f"{DIM}\nInstantly renderable via GET /api/v1/graph/precomputed{RESET}")
         return
 
+    if cmd == "catalog":
+        from app.services.catalog import build_catalog
+
+        print(f"{BOLD}Building bulk topic catalog...{RESET}")
+        print(f"{DIM}Deep-crawling all {len(CATEGORIES)}+ categories (this may take several minutes)...{RESET}\n")
+        catalog = await build_catalog()
+        print(f"\n{GREEN}✔ Catalog ready: {len(catalog)} topics{RESET}")
+        if catalog:
+            print(f"\n{BOLD}Top by pageviews:{RESET}")
+            for e in catalog[:10]:
+                tag = f"{YELLOW}[precomputed]{RESET}" if e.get("precomputed") else ""
+                print(f"  {BLUE}• {e['title']}{RESET} {DIM}({e['category']}, {e['pageviews']} views){RESET} {tag}")
+        print(f"{DIM}\nServed via GET /api/v1/graph/catalog{RESET}")
+        return
+
     if cmd in ("quit", "exit"):
         print("Bye!")
         sys.exit(0)
@@ -273,6 +288,7 @@ def _help() -> None:
   {CYAN}nodes{RESET}              nodes emitted by the last research run
   {CYAN}cats{RESET}               list the 5 pillar categories
   {CYAN}precompute [cats]{RESET}  batch-run research hubs headlessly (comma-separated)
+  {CYAN}catalog{RESET}            bulk-build 500+ topic catalog from deep crawls
   {CYAN}help{RESET}               this help
   {CYAN}quit{RESET}               leave""")
 

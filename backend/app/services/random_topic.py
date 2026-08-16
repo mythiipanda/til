@@ -75,6 +75,11 @@ POOL_TTL = 6 * 3600  # refetch the category pool at most every 6h
 CANDIDATE_SAMPLE = 6
 LLM_SAMPLE_SIZE = 8
 
+# Catalog harvest: keep many more pageview-notable candidates per category than
+# the live pick pool (60). 21 categories x this = thousands of deduped topics.
+CATALOG_POOL_KEEP = 200
+CATALOG_POOL_TTL = 7 * 86400  # refetch the bulk catalog at most weekly
+
 # Signal pool refresh TTL — refetch today's trending/on-this-day hooks at most every 6h.
 SIGNAL_POOL_TTL = 6 * 3600
 # Cap how long we wait for live signals on each pick; the crawl + seed pools are
@@ -300,6 +305,34 @@ async def _deep_crawl_pool(category: str) -> list[dict[str, str | int]]:
         return pool
     except Exception as e:
         logger.warning(f"[random-topic] deep crawl failed for {category}: {e}")
+        return []
+
+
+async def _catalog_pool(category: str) -> list[dict[str, str | int]]:
+    """Bulk harvest for a category: deep-crawl + batch-extract up to CATALOG_POOL_KEEP candidates.
+
+    The live pick pool truncates to POOL_PAGEVIEWS_KEEP (60) for freshness; the
+    catalog keeps a much larger slice (200) so we can preload hundreds of topics
+    without re-crawling per request. Cached weekly.
+    """
+    key = f"topics:catalog:{category.lower()}"
+    cached = cache_service.get(key)
+    if cached and isinstance(cached, list) and cached:
+        return cached  # type: ignore[return-value]
+
+    try:
+        titles = await _collect_category_tree(category)
+        if not titles:
+            return []
+        enriched = await _batch_extracts(titles, category)
+        enriched.sort(key=lambda c: int(c["pageviews"]), reverse=True)
+        pool = enriched[:CATALOG_POOL_KEEP]
+        if pool:
+            cache_service.set(key, pool, ttl_seconds=CATALOG_POOL_TTL)
+            logger.info(f"[random-topic] catalog pool for {category}: {len(pool)} candidates (from {len(titles)} titles)")
+        return pool
+    except Exception as e:
+        logger.warning(f"[random-topic] catalog crawl failed for {category}: {e}")
         return []
 
 

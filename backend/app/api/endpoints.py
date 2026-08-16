@@ -10,6 +10,7 @@ from app.schemas.graph import (
     RandomTopicResponse,
     ResearchDossierSchema,
 )
+from app.services.catalog import get_catalog
 from app.services.chat_agent import stream_chat
 from app.services.precompute import get_precomputed_hub, list_precomputed_hubs
 from app.services.random_topic import pick_random_topic
@@ -44,6 +45,24 @@ async def random_topic(
     result.node.rabbit_holes = []
     logger.info(f"[random-topic] {category} -> '{result.node.title}' in {(time.time() - start_time) * 1000:.0f}ms")
     return result
+
+
+@router.get("/graph/catalog")
+async def list_catalog(limit: int = Query(500, ge=1, le=2000)):
+    """List hundreds of pre-curated real Wikipedia topics for instant browsing."""
+    catalog = get_catalog()
+    if not catalog:
+        # Fall back to the precomputed hub index if the catalog is empty.
+        catalog = [
+            {"title": h["topic"], "summary": h.get("summary", ""), "category": h["category"], "precomputed": True}
+            for h in list_precomputed_hubs()
+        ]
+    else:
+        # Surface already-researched topics first; then rank the rest by pageviews.
+        precomputed = [t for t in catalog if t.get("precomputed")]
+        fresh = [t for t in catalog if not t.get("precomputed")]
+        catalog = precomputed + fresh
+    return {"total": len(catalog), "topics": catalog[:limit]}
 
 
 @router.get("/graph/precomputed", response_model=list[PrecomputedHubSummarySchema])
