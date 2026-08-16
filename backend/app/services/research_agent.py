@@ -76,20 +76,25 @@ async def stream_deep_research(
                 continue
 
             if event.get("event") == "done":
-                # Capture dossier for the /research/dossier/{id} endpoint.
-                yield emit_sse(event["event"], event["data"])
-                # Wait for the graph task to fully finish, then drain remaining.
+                # Wait for the graph task to fully finish, then drain any remaining events first.
                 await task
                 while not queue.empty():
                     leftover = queue.get_nowait()
+                    if leftover.get("event") == "dossier":
+                        node_id = leftover["data"].get("node_id") or leftover["data"].get("nodeId")
+                        dossier = leftover["data"].get("dossier", leftover["data"])
+                        if node_id:
+                            cache_service.set(_dossier_key(node_id), dossier, ttl_seconds=DOSSIER_TTL_SECONDS)
                     if leftover.get("event") not in ("done",):
                         yield emit_sse(leftover["event"], leftover["data"])
+                # Yield done as the absolute last event
+                yield emit_sse(event["event"], event["data"])
                 break
 
             # Persist dossiers emitted by the graph so they can be retrieved later.
             if event.get("event") == "dossier":
-                node_id = event["data"].get("node_id")
-                dossier = event["data"].get("dossier", {})
+                node_id = event["data"].get("node_id") or event["data"].get("nodeId")
+                dossier = event["data"].get("dossier", event["data"])
                 if node_id:
                     cache_service.set(_dossier_key(node_id), dossier, ttl_seconds=DOSSIER_TTL_SECONDS)
 

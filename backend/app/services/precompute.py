@@ -59,7 +59,8 @@ def get_precomputed_hub(hub_id: str) -> PrecomputedHubSchema | None:
 def _dossier_from_events(events: list[dict[str, Any]]) -> dict | None:
     for ev in events:
         if ev.get("event") == "dossier":
-            return ev.get("data", {}).get("dossier")
+            data = ev.get("data", {})
+            return data.get("dossier", data)
     return None
 
 
@@ -68,7 +69,10 @@ def _node_streams(events: list[dict[str, Any]]) -> list[tuple[dict, bool]]:
     out = []
     for ev in events:
         if ev.get("event") == "node_stream":
-            out.append((ev["data"]["node"], bool(ev["data"].get("is_root"))))
+            data = ev.get("data", {})
+            node = data.get("node", data)
+            is_root = bool(data.get("is_root") or (len(out) == 0))
+            out.append((node, is_root))
     return out
 
 
