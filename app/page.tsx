@@ -46,7 +46,7 @@ export default function Home() {
       {/* Full-bleed spatial canvas */}
       <KnowledgeCanvas />
       
-      {/* Top Editorial Masthead Bar */}
+      {/* Top Masthead Bar */}
       <header className="fixed top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between bg-white border-2 border-black p-2 md:px-4 shadow-none gap-2">
         
         {/* Left: Brand & Home Reset */}
@@ -54,7 +54,7 @@ export default function Home() {
           <button
             onClick={resetCanvas}
             className="flex items-center gap-1.5 font-serif text-lg font-extrabold tracking-tight hover:opacity-75 transition-opacity"
-            title="Reset to Cover"
+            title="Go to Home Cover"
           >
             <span className="bg-black text-white px-2 py-0.5 font-mono text-xs font-bold">TDI</span>
             <span className="underline decoration-2 underline-offset-2">LEARNED</span>
@@ -62,8 +62,8 @@ export default function Home() {
 
           <div className="hidden lg:block h-4 w-px bg-black" />
 
-          <span className="hidden lg:block font-mono text-[10px] text-neutral-500 uppercase tracking-widest">
-            DISCOVERY ENGINE
+          <span className="hidden lg:block font-serif italic text-xs text-neutral-600">
+            Today I Learned
           </span>
         </div>
 
@@ -82,11 +82,11 @@ export default function Home() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          {/* Swarm Live Indicator */}
+          {/* Researching Live Indicator */}
           {isResearching && (
             <div className="flex items-center gap-1.5 px-2 py-1 bg-black text-white font-mono text-[10px] uppercase tracking-wider animate-pulse">
               <span className="w-1.5 h-1.5 bg-white" />
-              <span>LIVE SWARM</span>
+              <span>RESEARCHING...</span>
             </div>
           )}
 
@@ -96,7 +96,7 @@ export default function Home() {
             className="px-3 py-1 bg-white border border-black font-mono text-[10px] uppercase tracking-wider font-bold hover:bg-black hover:text-white transition-colors duration-100 flex items-center gap-1"
           >
             <Plus className="w-3 h-3" />
-            <span className="hidden sm:inline">CUSTOM RESEARCH</span>
+            <span className="hidden sm:inline">RESEARCH ANY TOPIC</span>
           </button>
 
           {/* Browse Catalog Button */}
@@ -108,7 +108,7 @@ export default function Home() {
                 : 'bg-black text-white hover:bg-white hover:text-black'
             }`}
           >
-            {isBrowseOpen ? 'CLOSE CATALOG' : 'CATALOG (876)'}
+            {isBrowseOpen ? 'CLOSE LIBRARY' : 'BROWSE 800+ TOPICS'}
           </button>
 
           {/* Canvas Clear */}
@@ -116,7 +116,7 @@ export default function Home() {
             <button
               onClick={resetCanvas}
               className="p-1 border border-black hover:bg-black hover:text-white transition-colors"
-              title="Clear Canvas"
+              title="Reset to Cover"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -128,18 +128,18 @@ export default function Home() {
       {currentTopic && nodes.length > 0 && (
         <div className="fixed top-18 left-6 z-10 pointer-events-none hidden sm:block">
           <div className="bg-black text-white px-3 py-1 font-mono text-[10px] uppercase tracking-widest border border-black">
-            ACTIVE MONOGRAPH: <span className="font-serif font-bold text-xs capitalize ml-1">{currentTopic}</span>
+            CURRENT TOPIC: <span className="font-serif font-bold text-xs capitalize ml-1">{currentTopic}</span>
           </div>
         </div>
       )}
 
-      {/* Swarm Output Ready Notification Toast */}
+      {/* Research Output Ready Notification Toast */}
       {hasNewDossier && !isDossierOpen && rootNode && (
         <div className="fixed top-18 right-6 z-30 bg-black text-white border-2 border-black p-3.5 shadow-none flex items-center gap-3 animate-drop">
           <Sparkles className="w-4 h-4 shrink-0 text-white" />
           <div>
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">
-              SYNTHESIS COMPLETE
+              RESEARCH READY
             </div>
             <div className="font-serif text-sm font-bold truncate max-w-xs">
               {currentTopic}
@@ -153,7 +153,7 @@ export default function Home() {
             className="px-3 py-1.5 bg-white text-black font-mono text-xs uppercase font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1 shrink-0"
           >
             <BookOpen className="w-3 h-3" />
-            <span>Read Dossier</span>
+            <span>Read Story</span>
           </button>
           <button
             onClick={dismissNewDossierAlert}
@@ -171,18 +171,18 @@ export default function Home() {
           <div className="w-full max-w-lg bg-white border-4 border-black p-6 space-y-4 shadow-none animate-drop">
             <div className="flex items-center justify-between border-b-2 border-black pb-2">
               <span className="font-mono text-xs uppercase tracking-widest font-bold">
-                COMMISSION LIVE RESEARCH SWARM
+                RESEARCH ANY TOPIC
               </span>
               <button
                 onClick={() => setIsCustomModalOpen(false)}
                 className="font-mono text-sm font-bold hover:opacity-60"
               >
-                [ESC / ✕]
+                [✕]
               </button>
             </div>
 
             <p className="font-body text-xs text-neutral-700 leading-relaxed">
-              Commission the Cerebras + Mistral agent swarm to perform deep web retrieval, synthesis, timeline extraction, and spatial graph mapping in real time.
+              Ask our AI research assistant to look up verified web sources, extract key timelines, and build an interactive topic map for you in real time.
             </p>
 
             <form onSubmit={handleCustomSubmit} className="space-y-4 pt-2">
@@ -191,7 +191,7 @@ export default function Home() {
                 autoFocus
                 value={customInput}
                 onChange={e => setCustomInput(e.target.value)}
-                placeholder="Inquiry topic (e.g. Bronze Age Collapse, Dark Matter, CRISPR)..."
+                placeholder="Enter any topic or question (e.g. Bronze Age Collapse, Dark Matter, How CRISPR works)..."
                 className="w-full border-2 border-black p-3 font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50"
               />
 
@@ -208,7 +208,7 @@ export default function Home() {
                   disabled={!customInput.trim()}
                   className="px-6 py-2 bg-black text-white font-mono text-xs uppercase tracking-wider font-bold hover:bg-neutral-800 disabled:opacity-40"
                 >
-                  Launch Swarm →
+                  Start Research →
                 </button>
               </div>
             </form>

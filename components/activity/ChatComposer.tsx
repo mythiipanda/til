@@ -32,9 +32,9 @@ export function ChatComposer() {
         <div className="bg-black text-white border-2 border-black p-5 shadow-none max-h-[260px] overflow-y-auto custom-scrollbar">
           <div className="flex items-center justify-between border-b border-neutral-800 pb-1.5 mb-2.5 font-mono text-[9px] uppercase tracking-widest text-neutral-400">
             <span className="flex items-center gap-1.5 font-bold">
-              <Sparkles className="w-3 h-3" /> GROUNDED CITATION RESPONSE
+              <Sparkles className="w-3 h-3 text-white" /> AI RESEARCH ANSWER
             </span>
-            <span>{isChatStreaming ? 'STREAMING VIA CEREBRAS...' : 'SYNTHESIZED'}</span>
+            <span>{isChatStreaming ? 'STREAMING ANSWER...' : 'CITATIONS ATTACHED'}</span>
           </div>
           <div className="text-neutral-100 text-sm leading-relaxed">
             <MarkdownContent content={lastAssistant.content} />
@@ -51,14 +51,14 @@ export function ChatComposer() {
         className="bg-white border-2 border-black flex items-center shadow-none focus-within:border-4"
       >
         <div className="px-3 font-mono text-[10px] uppercase tracking-wider text-neutral-500 border-r border-black hidden sm:block shrink-0">
-          Q&A CONTEXT
+          FOLLOW-UP
         </div>
 
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={`Inquire further regarding "${currentTopic}"...`}
+          placeholder={`Ask anything about "${currentTopic}"...`}
           className="flex-1 bg-transparent outline-none font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic px-4 py-3"
         />
 

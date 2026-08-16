@@ -14,8 +14,8 @@ from app.api.viewer import router as viewer_router
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 app = FastAPI(
-    title="Infinite Curiosity Engine API",
-    description="Agentic, infinite-canvas discovery engine powered by Cerebras inference, Mistral precomputation, and edge media caching.",
+    title="TDILEARNED API",
+    description="Backend for TDILEARNED (Today I Learned) knowledge discovery application.",
     version="1.0.0",
 )
 
@@ -34,7 +34,7 @@ app.include_router(viewer_router)
 
 @app.get("/")
 async def root():
-    return {"message": "Infinite Curiosity Engine Backend Active", "docs_url": "/docs", "health_url": "/api/v1/health"}
+    return {"message": "TDILEARNED Backend Active", "docs_url": "/docs", "health_url": "/api/v1/health"}
 
 
 if __name__ == "__main__":

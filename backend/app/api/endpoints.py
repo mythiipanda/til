@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/v1", tags=["Research & Graph Discovery"])
 async def health_check():
     return {
         "status": "healthy",
-        "service": "Agentic Deep Research & Curiosity Engine Backend",
+        "service": "TDILEARNED (Today I Learned) Backend",
         "inference_engine": "Cerebras (map-reduce research graph + ReAct follow-up chat)",
         "multi_agent_framework": "LangGraph (Planner, Parallel Researchers, Aggregator, Extractor, Synthesizer)",
         "cache_type": "Redis / In-Memory",

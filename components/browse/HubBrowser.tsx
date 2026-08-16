@@ -34,12 +34,13 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
       {/* Header */}
       <div className="p-4 border-b-2 border-black flex items-center justify-between bg-black text-white">
         <div>
-          <h2 className="font-serif text-base font-bold uppercase tracking-wider">ARCHIVAL CATALOG</h2>
-          <p className="font-mono text-[9px] text-neutral-400 mt-0.5">{filteredHubs.length} PRECOMPUTED MONOGRAPHS</p>
+          <h2 className="font-serif text-base font-bold uppercase tracking-wider">TOPIC LIBRARY</h2>
+          <p className="font-mono text-[9px] text-neutral-400 mt-0.5">{filteredHubs.length} CURATED TOPICS</p>
         </div>
         <button 
           onClick={onClose}
           className="p-1 text-neutral-400 hover:text-white transition-colors"
+          title="Close"
         >
           <X className="w-5 h-5" />
         </button>
@@ -51,7 +52,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
           <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Filter archives by keyword..."
+            placeholder="Search topics, questions, or ideas..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white border border-black pl-9 pr-3 py-2 font-body text-xs text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:border-2 focus:border-black"
@@ -89,7 +90,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
       <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
         {filteredHubs.length === 0 ? (
           <div className="text-center py-12 font-mono text-xs text-neutral-500">
-            [ NO ARCHIVES MATCH CRITERIA ]
+            [ NO TOPICS MATCH SEARCH ]
           </div>
         ) : (
           filteredHubs.map(hub => (
@@ -100,7 +101,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
             >
               <div className="flex items-center justify-between w-full font-mono text-[9px] text-neutral-500 group-hover:text-neutral-300">
                 <span className="uppercase font-bold">{hub.category}</span>
-                <span>OPEN ARCHIVE →</span>
+                <span>OPEN TOPIC →</span>
               </div>
               <h3 className="font-serif text-sm font-bold leading-snug line-clamp-2">
                 {hub.topic}

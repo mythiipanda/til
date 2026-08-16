@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
-import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, BookOpen, Sparkles } from 'lucide-react';
 
 function getDomain(url: string): string {
   try {
@@ -19,7 +19,6 @@ export function ActivityPanel() {
   const thoughts = useMindMapStore(s => s.thoughts);
   const toolCalls = useMindMapStore(s => s.toolCalls);
   const sources = useMindMapStore(s => s.sources);
-  const activeDossier = useMindMapStore(s => s.activeDossier);
   const openDossier = useMindMapStore(s => s.openDossier);
   const nodes = useMindMapStore(s => s.nodes);
 
@@ -33,25 +32,25 @@ export function ActivityPanel() {
   return (
     <div className="fixed right-6 top-20 bottom-6 w-[360px] max-w-[90vw] bg-black text-white border-2 border-black z-20 flex flex-col shadow-none select-none animate-fade">
 
-      {/* Masthead Header */}
+      {/* Header */}
       <div className="p-3 border-b border-neutral-800 flex items-center justify-between bg-black shrink-0">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 ${isResearching ? 'bg-white animate-pulse' : 'bg-white'}`} />
           <span className="font-mono text-[10px] uppercase tracking-widest font-bold">
-            RESEARCH SWARM MONITOR
+            AI RESEARCH ASSISTANT
           </span>
         </div>
         <span className="font-mono text-[9px] text-neutral-400 uppercase">
-          {isResearching ? 'EXECUTING...' : 'COMPLETED'}
+          {isResearching ? 'RESEARCHING...' : 'RESEARCH READY'}
         </span>
       </div>
 
-      {/* Completion Monograph CTA Card */}
+      {/* Completion CTA Card */}
       {!isResearching && thoughts.length > 0 && (
         <div className="p-3 bg-neutral-900 border-b-2 border-black flex flex-col gap-1.5 shrink-0">
           <div className="flex items-center justify-between font-mono text-[9px] text-neutral-400 uppercase">
-            <span>SYNTHESIS COMPLETE</span>
-            <span>READY</span>
+            <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-white" /> STORY READY</span>
+            <span>CITATIONS ATTACHED</span>
           </div>
           <button
             onClick={() => {
@@ -60,18 +59,18 @@ export function ActivityPanel() {
             className="w-full py-2 bg-white text-black hover:bg-neutral-200 font-mono text-xs uppercase font-bold tracking-wider transition-colors flex items-center justify-center gap-1.5"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Open Researched Dossier</span>
+            <span>Read Full Story & Summary</span>
           </button>
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
 
-        {/* Plan DAG Steps */}
+        {/* Plan Steps */}
         {planSteps.length > 0 && (
           <div className="space-y-2">
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-1">
-              [ EXECUTION PLAN ]
+              [ RESEARCH STEPS ]
             </div>
             <div className="space-y-1.5 pl-1">
               {planSteps.map((step, idx) => (
@@ -96,7 +95,7 @@ export function ActivityPanel() {
               className="w-full flex items-center justify-between p-2.5 bg-neutral-900 border-b border-neutral-800 font-mono text-[10px] uppercase tracking-wider text-neutral-300 hover:text-white"
             >
               <div className="flex items-center gap-2">
-                <span>[ AGENT REASONING TRACE ]</span>
+                <span>[ AI REASONING & NOTES ]</span>
                 <span className="text-neutral-500">({thoughts.length})</span>
               </div>
               {isThinkingExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -106,7 +105,7 @@ export function ActivityPanel() {
               <div className="p-3 space-y-2.5 max-h-[220px] overflow-y-auto font-mono text-[11px] text-neutral-300 leading-relaxed">
                 {thoughts.map((t, idx) => (
                   <div key={idx} className="border-l border-neutral-700 pl-2">
-                    <span className="text-[9px] text-neutral-500 block">TRACE #{idx + 1}</span>
+                    <span className="text-[9px] text-neutral-500 block">NOTE #{idx + 1}</span>
                     <MarkdownContent content={t.text} className="text-xs" />
                   </div>
                 ))}
@@ -115,11 +114,11 @@ export function ActivityPanel() {
           </div>
         )}
 
-        {/* Tool Invocations */}
+        {/* Tools Used */}
         {toolCalls.length > 0 && (
           <div className="space-y-2">
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-1">
-              [ RETRIEVAL & ENRICHMENT TOOLS ]
+              [ TOOLS & DATA SOURCES ]
             </div>
             <div className="flex flex-wrap gap-1.5">
               {toolCalls.map((tc, idx) => (
@@ -142,7 +141,7 @@ export function ActivityPanel() {
         {sources.length > 0 && (
           <div className="space-y-2">
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-1">
-              [ GROUNDED RETRIEVAL SOURCES ({sources.length}) ]
+              [ VERIFIED SOURCES ({sources.length}) ]
             </div>
             <div className="space-y-2">
               {sources.map((src, idx) => (

@@ -4,7 +4,7 @@ import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
-import { Sparkles, ArrowUpRight, BookOpen, Layers } from 'lucide-react';
+import { Sparkles, ArrowUpRight, BookOpen, Plus } from 'lucide-react';
 
 interface ResearchNodeData extends Record<string, unknown> {
   id?: string;
@@ -43,20 +43,20 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
       <div className="dragHandle cursor-grab active:cursor-grabbing border-b-2 border-black p-2.5 flex items-center justify-between bg-black text-white">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[9px] uppercase tracking-widest font-bold">
-            {data.category || 'INQUIRY'}
+            {data.category || 'TOPIC'}
           </span>
           {data.isRoot ? (
             <span className="font-mono text-[9px] bg-white text-black px-1.5 py-0.2 uppercase font-bold tracking-tight">
-              ROOT MONOGRAPH
+              MAIN TOPIC
             </span>
           ) : (
             <span className="font-mono text-[9px] text-neutral-400 uppercase tracking-tight">
-              SUB-VECTOR
+              SUBTOPIC
             </span>
           )}
         </div>
         <span className="font-mono text-[9px] text-neutral-400">
-          {data.curiosity_score ? `SCORE ${data.curiosity_score}/10` : 'GROUNDED'}
+          {data.curiosity_score ? `RATING ${data.curiosity_score}/10` : 'VERIFIED'}
         </span>
       </div>
 
@@ -92,17 +92,16 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
         {/* Wow Fact Callout */}
         {data.wow_fact && (
           <div className="p-2.5 border-l-2 border-black bg-neutral-50 text-[11px] font-body italic text-neutral-900 leading-snug flex items-start gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5 text-neutral-600" />
             <span className="line-clamp-2">"{data.wow_fact}"</span>
           </div>
         )}
 
-        {/* Downstream Vectors */}
+        {/* Downstream Rabbit Holes */}
         {data.rabbit_holes && data.rabbit_holes.length > 0 && (
           <div className="pt-2 border-t border-neutral-200 space-y-1.5">
-            <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 flex items-center justify-between">
-              <span>Connected Vectors:</span>
-              <Layers className="w-3 h-3" />
+            <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500">
+              Related rabbit holes:
             </div>
             <div className="space-y-1">
               {data.rabbit_holes.slice(0, 3).map((rh, i) => (
@@ -126,15 +125,16 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
             className="nodrag nopan flex items-center gap-1 font-bold text-black uppercase tracking-wider hover:underline underline-offset-2"
           >
             <BookOpen className="w-3 h-3" />
-            <span>{data.isRoot ? 'Read Full Dossier' : 'Inspect Vector'}</span>
+            <span>{data.isRoot ? 'Read Full Story' : 'Read Overview'}</span>
           </button>
 
           {!data.isRoot && (
             <button
               onClick={() => startResearch(data.title, data.category || undefined, targetNodeId)}
-              className="nodrag nopan text-neutral-500 hover:text-black uppercase tracking-tight font-medium"
+              className="nodrag nopan text-neutral-600 hover:text-black uppercase tracking-tight font-medium flex items-center gap-0.5"
             >
-              Expand +
+              <Plus className="w-3 h-3" />
+              <span>Explore deeper</span>
             </button>
           )}
         </div>
