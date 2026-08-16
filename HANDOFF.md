@@ -1,103 +1,108 @@
-# TDILEARNED — Master Handoff & Architecture Guide
+# TDILEARNED — Master Handoff & Future Action Plan
 
-> **Live Production State**: Verified end-to-end working system.
+> **System Status**: Verified working end-to-end (Frontend Canvas + FastAPI + Cerebras Live Research + Mistral Bulk Precompute).
 > **Branding**: **TDILEARNED (Today I Learned)**
-> **Tech Stack**: Next.js 15 App Router, React Flow (@xyflow/react), Zustand, Tailwind CSS, FastAPI, LangGraph, Cerebras CS-3 (Live Inference), Mistral (Batch Precompute), DuckDuckGo / Tavily / Wikipedia retrieval ladder.
+> **Last Updated**: August 16, 2026
 
 ---
 
-## 1. Product Vision & User Experience
+## 1. Executive Product Vision
 
-**TDILEARNED** is an infinite-canvas knowledge discovery engine. It turns curiosity into an interactive, spatial mindmap where users can explore fascinating historical, scientific, and cultural breakthroughs.
-
-The core insight: **The research itself is engaging and transparent.**
-- Users select an instant pre-researched topic or start a custom live research inquiry.
-- A swarm of sub-agents autonomously plans angles, retrieves verified web & encyclopedia sources, cross-verifies facts, synthesizes long-form monographs, and pins archival images & map coordinates onto an infinite canvas.
-- When users explore subtopic rabbit holes or ask follow-up questions, full discovery context is preserved across the frontend and backend.
+**TDILEARNED** is an agentic, infinite-canvas discovery engine ("Wikipedia meets Manus").
+- Users pick a curated topic or start an autonomous research inquiry.
+- A swarm of sub-agents plans research angles, retrieves live web & encyclopedia sources, cross-verifies facts, synthesizes deep-dive monographs with timelines and mechanisms, and pins visual artifacts onto a spatial mindmap.
+- **Key Insight**: The research process itself is the entertainment — watching thoughts, tool executions, and citations appear in real time.
 
 ---
 
-## 2. Verified Working Features
+## 2. Verified Working Features & Architecture
 
-### 2.1. Spatial Infinite Canvas & Dynamic Layout
-- **Full-Bleed Canvas**: Centered, high-contrast monochrome design system with `@xyflow/react`.
-- **Large Knowledge Cards**: Main topics (`420px`) and subtopics (`380px`) with high-res archival image headers, markdown summaries, did-you-know callouts, and clickable rabbit hole vectors.
-- **Dynamic Radial Expansion**: Connected subtopic nodes expand in wide radial orbits (`560px` radius) around their parent card.
+```
+Browser (Next.js 15 App Router + React Flow + Zustand)
+   │  GET /api/v1/research/stream    (SSE: plan, thoughts, tools, sources, nodes, dossier, done)
+   │  GET /api/v1/chat/stream        (SSE: follow-up Q&A with source citations)
+   │  GET /api/v1/graph/precomputed  (List 877+ ready hubs instantly)
+   │  GET /api/v1/graph/catalog      (2,000+ real Wikipedia discovery candidates)
+   ▼
+FastAPI Backend (backend/)
+   ├─ research_graph.py   LangGraph 5-phase swarm (Planner → Researchers → Aggregator → Extractor → Synthesizer → Spatial)
+   ├─ research_agent.py   SSE adapter draining graph events to client
+   ├─ chat_agent.py       ReAct follow-up loop with source grounding
+   ├─ random_topic.py     Curiosity-ranked Wikipedia topic selector
+   ├─ precompute.py       Offline bulk hub precompute runner (Mistral)
+   ├─ tools.py            Retrieval ladder (Tavily → DuckDuckGo → Wikipedia) + Media/Geo tools
+   ├─ llm.py              Cerebras (Live) & Mistral (Batch) provider factory with concurrency guard
+   └─ cache.py            Redis / Disk JSON multi-tier cache
+```
 
-### 2.2. Manus / Gemini-Style Sequential Research Swarm
-- **5 Sequential Research Phases**:
-  1. `Phase 1`: Formulating research angles & exploration scope (Planner)
-  2. `Phase 2`: Deep web & encyclopedia retrieval (Parallel Web Search & Extraction)
-  3. `Phase 3`: Cross-verifying claims & curating verified citations (Reference Extractor)
-  4. `Phase 4`: Synthesizing story monograph, mechanisms & timeline (Storyteller)
-  5. `Phase 5`: Curating archival media & geographic coordinates (Spatial Architect)
-- **Live Activity Panel**: Real-time progress counter (`PHASE X OF 5`), animated phase indicators, live tool call chips, verified source links, and expandable reasoning notes.
-- **Guaranteed Completion**: Upon research completion, all phases transition to checked `[✓]`, the full monograph dossier is preserved in client cache, and focus smoothly targets the newly researched card.
-
-### 2.3. End-to-End Context Inheritance & Authentic Concept Naming
-- **Unbroken Context Trail**: Subtopic expansions pass `context_chain`, `parent_summary`, and `teaser_context` to the backend planner, ensuring deep dives research the exact historical/scientific breakthrough rather than generic definitions.
-- **Zero Metaphorical Clickbait**: Model schemas strictly enforce authentic entity and concept names (e.g. *"Black-Scholes Model"*, *"Fast Fourier Transform"*), moving curiosity hooks to taglines and wow-facts.
-- **Clean Q&A Retrieval**: User questions have prompt boilerplate stripped before web search, and Cerebras responds as an authoritative educator without robotic meta-disclaimers.
+### 2.1. Verified Milestones
+- **877+ Pre-Researched Hubs**: Persisted to disk with full monographs, timelines, mechanisms, and child vectors.
+- **Bulk Precompute Runner**: Tested & verified (`python -m app.scripts.bulk_precompute 1` completed cleanly in 49s).
+- **Zustand Monograph Cache**: `dossiersByNodeId` in `useMindMapStore.ts` prevents subtopics from falling back to empty cards.
+- **Authentic Entity Naming**: Eliminated metaphorical clickbait (e.g., *"Magic Math Switch"*) in favor of real scientific/historical concepts.
+- **Robust Type Safety**: `npm run typecheck` (`tsc --noEmit`) passes with 0 errors.
 
 ---
 
-## 3. How to Run the Services
+## 3. High-Priority Gaps & Next Steps for Tomorrow
 
-### 3.1. Running Frontend (Next.js 15)
+### Gap 1: Real-Time SSE Chunking & Activity Pacing
+- **The Issue**: Because Cerebras processes generation at ~3,000 tokens/sec, Phases 3–5 (claim verification, monograph synthesis, spatial pinning) finish in under 1.5 seconds. When the browser receives these events in a fast TCP burst, the Activity Panel appears to sit on Phase 2 and then suddenly mark everything as done.
+- **Action Plan**:
+  1. In `research_agent.py` and `research_graph.py`, introduce an async queue rate-limiter or small micro-yield cadence so the browser renders each phase transition and source citation with fluid animations.
+  2. Stream intermediate researcher findings live as DuckDuckGo / Tavily return search snippets rather than waiting for full page extraction.
+
+### Gap 2: Follow-Up Chat & Mindmap Interactivity
+- **The Issue**: The current chat composer floats at the bottom of the screen as a single input without permanent conversation history on the canvas.
+- **Action Plan**:
+  1. Allow users to "pin" chat answers directly onto the React Flow canvas as connected sticky note cards.
+  2. Maintain multi-turn memory per node so users can have extended conversations about specific subtopics.
+
+### Gap 3: Recursive Multi-Level Context Passing
+- **The Issue**: When expanding 3+ levels deep (e.g. *2008 Crisis* $\rightarrow$ *Subprime Mortgages* $\rightarrow$ *CDOs* $\rightarrow$ *Tranches*), deep subtopics need the full ancestral chain to avoid drifting into generic definitions.
+- **Action Plan**:
+  1. Pass the full node ancestor chain in `startResearch(topic, category, parentId)` from the Zustand store.
+  2. Include parent summary and root topic in the initial `Planner` prompt.
+
+### Gap 4: Audio Tour & Interactive Visuals
+- **The Issue**: The backend synthesizes `audioTourScript` and OpenStreetMap coordinates, but they are only rendered as static text in the dossier.
+- **Action Plan**:
+  1. Connect `audioTourScript` to an edge TTS provider (e.g., OpenAI TTS or browser Web Speech API) with play/pause controls.
+  2. Embed an interactive mini-map component in the dossier for geographic coordinates.
+
+---
+
+## 4. Operational Execution Commands
+
+### 4.1. Start Local Frontend (Next.js 15)
 ```bash
-# In the root project directory:
+# In project root:
 npm run dev
-# Active on: http://localhost:3000
+# Running on http://localhost:3000
 ```
 
-### 3.2. Running Backend (FastAPI with `uv`)
+### 4.2. Start Local Backend (FastAPI with `uv`)
 ```bash
-# In the root project directory:
+# In project root:
 uv run --project backend uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# Or inside the backend/ directory:
-cd backend
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-# Active on: http://localhost:8000
+# Running on http://localhost:8000
 ```
 
-### 3.3. Running Bulk Offline Precomputation
-To precompute hundreds or thousands more deep-dive hubs and dossiers in the background using Mistral:
-
-```bash
-# From project root:
-uv run --project backend python -m app.scripts.bulk_precompute 1000
-
-# Or from backend/ directory:
-cd backend
-uv run python -m app.scripts.bulk_precompute 1000
+### 4.3. Run Bulk Precomputation (Generate 2,000+ Topics)
+#### Windows Command Prompt (`cmd.exe`) — Run from anywhere:
+```cmd
+cd /d C:\Users\15980\Downloads\til\backend && uv run python -m app.scripts.bulk_precompute 2000
 ```
-*(Replace `1000` with the desired number of hubs to generate. The script is crash-safe and appends each new hub and dossier to disk immediately upon completion).*
+
+#### Windows PowerShell — Run from anywhere:
+```powershell
+uv run --project C:\Users\15980\Downloads\til\backend python -m app.scripts.bulk_precompute 2000
+```
 
 ---
 
-## 4. Next Steps & Roadmap for Full Consumer Product
-
-### 4.1. Context & Graph Memory
-- **Persistent Graph Sessions**: Add IndexedDB or Supabase session saving so users can save, share, or resume their discovery graphs via unique URLs.
-- **Multi-Branch Context Merging**: Allow users to connect two separate nodes on the canvas to synthesize an AI bridge comparing both concepts.
-
-### 4.2. Chat & Follow-Up Interface
-- **Inline Canvas Notes / Sticky Annotations**: Allow users to drag follow-up Q&A answers directly onto the canvas as connected note cards.
-- **Voice & Audio Tour**: Hook up the generated `audioTourScript` to an edge TTS provider (e.g. OpenAI TTS or ElevenLabs) so users can listen to podcast-style overviews of any topic.
-
-### 4.3. Rich Media & Interactive Visualizations
-- **Interactive Mini-Maps**: Embed Leaflet / Mapbox interactive views for geographic coordinates in the dossier drawer.
-- **Timeline Slider**: Add an interactive horizontal timeline scrubber at the bottom of the dossier drawer.
-
-### 4.4. Performance & Scalability
-- **Cloudflare Edge Proxy Activation**: Deploy the Cloudflare worker (`/cloudflare`) to cache all Wikimedia Commons thumbnails and OpenStreetMap tiles with zero egress cost.
-- **Redis Multi-Tier Cache**: Connect a hosted Redis instance via `REDIS_URL` for instant sub-millisecond precomputed hub responses in production.
-
----
-
-## 5. Verification Checklist
-- [x] `npm run typecheck` (`tsc --noEmit`) passes with 0 errors.
-- [x] Backend SSE research stream executes end-to-end through all 5 phases.
-- [x] Node and dossier schemas align cleanly between FastAPI and TypeScript types.
-- [x] Git commits staged per logical change.
+## 5. Verification Checklist Before Finalizing Tomorrow
+- [ ] Static Types: `npm run typecheck` (`tsc --noEmit`) passes with 0 errors.
+- [ ] Backend Code Quality: `ruff check backend/` completes cleanly.
+- [ ] Live Research Flow: Expand a subtopic on canvas and verify continuous, fluid event delivery in the Activity Panel.
+- [ ] Dossier View: Verify full story, timeline, mechanisms, and sources open smoothly for both root and child nodes.

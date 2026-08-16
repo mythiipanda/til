@@ -12,7 +12,7 @@ const ALLOWED_HOSTS = [
   'images.unsplash.com',
 ];
 
-const CUSTOM_USER_AGENT = 'InfiniteCuriosityEngine/1.0 (https://curiosity.platform; contact@curiosity.platform)';
+const CUSTOM_USER_AGENT = 'TDILEARNED-Agent/2.0 (educational research platform; contact@tdilearned.app)';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

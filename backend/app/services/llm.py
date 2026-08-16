@@ -34,7 +34,7 @@ _CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
 _MISTRAL_BASE_URL = "https://api.mistral.ai/v1"
 
 _THIRD_PARTY_HEADER = "X-Cerebras-3rd-Party-Integration"
-_THIRD_PARTY_VALUE = "infinite-curiosity-engine"
+_THIRD_PARTY_VALUE = "tdilearned-agent"
 
 # Max concurrent in-flight LLM requests across the whole backend. Cerebras
 # throttles above this (429 queue_exceeded), and parallel researchers in the

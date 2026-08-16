@@ -61,7 +61,7 @@ export function ActivityPanel() {
           )}
           <div>
             <div className="font-mono text-[11px] uppercase tracking-widest font-bold text-white">
-              AI RESEARCH ENGINE
+              AI RESEARCH AGENT
             </div>
             <div className="font-mono text-[9px] text-neutral-400">
               {isResearching 
