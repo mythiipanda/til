@@ -48,9 +48,6 @@ async def random_topic(
     """Pick a curiosity-worthy random topic from a category (AI-powered random Wikipedia)."""
     start_time = time.time()
     result = await pick_random_topic(category)
-    result.node.sources_count = 0
-    result.node.curiosity_score = None
-    result.node.rabbit_holes = []
     logger.info(f"[random-topic] {category} -> '{result.node.title}' in {(time.time() - start_time) * 1000:.0f}ms")
     return result
 

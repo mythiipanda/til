@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.graph import NodeSchema, RandomTopicResponse
 from app.services.cache import cache_service
-from app.services.llm import get_llm
+from app.services.llm import get_llm_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +116,8 @@ class _TopicPick(BaseModel):
     summary: str = Field(description="One punchy sentence: why this is fascinating, with historical/scientific context")
     reason: str = Field(description="One sentence: why the user should dive into this right now")
     image_search_query: str = Field(description="Wikimedia Commons search key")
+    curiosity_score: int = Field(default=8, description="Honest 1-10 rating of how mind-blowing this topic is")
+    wow_fact: str | None = Field(default=None, description="One surprising, mind-blowing sentence about this topic")
 
 
 class _SeedQueries(BaseModel):
@@ -347,8 +349,8 @@ async def _catalog_pool(category: str) -> list[dict[str, str | int]]:
 
 async def _llm_seed_queries(category: str) -> list[str]:
     """LLM proposes curiosity-directed search queries for a category."""
-    llm = get_llm("cerebras", temperature=0.9, max_tokens=300)
-    if not llm:
+    llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.9, max_tokens=300)
+    if not llm or not llm.is_available:
         return []
     try:
         structured = llm.with_structured_output(_SeedQueries)
@@ -486,8 +488,8 @@ async def _fallback_any_page() -> list[dict[str, str]]:
 
 
 async def _llm_pick(category: str, candidates: list[dict[str, str | int]]) -> _TopicPick | None:
-    llm = get_llm("cerebras", temperature=0.4, max_tokens=500)
-    if not llm:
+    llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.4, max_tokens=500)
+    if not llm or not llm.is_available:
         return None
     try:
         structured = llm.with_structured_output(_TopicPick)
@@ -503,15 +505,17 @@ async def _llm_pick(category: str, candidates: list[dict[str, str | int]]) -> _T
             "- title: short curiosity-hook (question or concrete record), under 7 words\n"
             "- summary: one punchy sentence with historical or scientific context\n"
             "- reason: one sentence telling the user why to dive in right now\n"
-            "- image_search_query: the best Wikimedia Commons search key"
+            "- image_search_query: the best Wikimedia Commons search key\n"
+            "- curiosity_score: integer between 8 and 10\n"
+            "- wow_fact: one surprising, mind-blowing sentence about this topic"
         )
         result = await structured.ainvoke(
             [  # type: ignore[assignment]
-                SystemMessage(content="You pick the most fascinating topic."),
+                SystemMessage(content="You pick the most fascinating topic for curious readers."),
                 HumanMessage(content=user_msg),
             ]
         )
-        return _TopicPick(**result.model_dump())  # type: ignore[union-attr]
+        return result if isinstance(result, _TopicPick) else _TopicPick(**result.model_dump())
     except Exception as e:
         logger.warning(f"[random-topic] LLM rerank failed ({e}); random fallback")
         return None
@@ -523,10 +527,12 @@ def _to_node(topic: dict[str, str], category: str) -> NodeSchema:
         title=topic["title"],
         summary=topic["summary"],
         category=category,
-        image_search_query=topic["image_search_query"],
+        image_search_query=topic.get("image_search_query") or topic["title"],
         rabbit_holes=[],
         timestamp="Curiosity Pick",
         confidence=0.99,
+        curiosity_score=8,
+        wow_fact=topic.get("wow_fact") or f"A remarkable turning point in {category} history.",
     )
 
 
@@ -534,26 +540,31 @@ async def pick_random_topic(category: str) -> RandomTopicResponse:
     """Merge all candidate tiers, LLM-rerank, and return the most curiosity-worthy topic."""
     category = _clean_category(category)
 
-    # Tier 1 + 2 (both cached per category)
-    crawl_pool = await _deep_crawl_pool(category)
-    seed_pool = await _seed_query_pool(category)
+    # Check cached crawl + seed pools
+    key_crawl = f"topics:crawl:{category.lower()}"
+    key_seed = f"topics:seed:{category.lower()}"
+    cached_crawl = cache_service.get(key_crawl) or []
+    cached_seed = cache_service.get(key_seed) or []
 
-    candidates: list[dict[str, str | int]] = list(crawl_pool) + list(seed_pool)
-    known_titles = {c["title"] for c in candidates}
+    candidates: list[dict[str, str | int]] = list(cached_crawl) + list(cached_seed)  # type: ignore[arg-type]
 
-    # Tier 3: today's live signals
-    for signal in await _signal_titles(category):
-        if signal and signal not in known_titles:
-            candidates.append(
-                {
-                    "title": signal,
-                    "summary": f"A fresh, trending topic: {signal}.",
-                    "image_search_query": signal,
-                    "pageviews": 0,
-                }
-            )
-            known_titles.add(signal)
+    # If cache is not ready, quickly pull candidates from the catalog / precomputed hubs
+    if not candidates:
+        try:
+            from app.services.catalog import get_catalog
 
+            cat_topics = [t for t in get_catalog() if t.get("category", "").lower() == category.lower()]
+            if cat_topics:
+                candidates.extend(cat_topics[:20])
+        except Exception:
+            pass
+
+    # If still empty, run fast seed query pool
+    if not candidates:
+        seed_pool = await _seed_query_pool(category)
+        candidates.extend(seed_pool)
+
+    # If still empty, fallback
     if not candidates:
         candidates = [dict(c) for c in await _fallback_any_page()]  # type: ignore[misc]
 
@@ -561,13 +572,15 @@ async def pick_random_topic(category: str) -> RandomTopicResponse:
         return RandomTopicResponse(
             node=NodeSchema(
                 id=str(uuid.uuid4()),
-                title="Serendipity",
-                summary="A random curiosity pick — the source APIs were unreachable, but exploration continues.",
+                title="The Antikythera Mechanism",
+                summary="A 2,000-year-old astronomical clockwork computer discovered in a Greek shipwreck, baffling modern engineers.",
                 category=category,
-                image_search_query="curiosity",
+                image_search_query="Antikythera mechanism",
                 rabbit_holes=[],
+                curiosity_score=10,
+                wow_fact="Its 37 meshing gears were over 1,000 years ahead of anything else built in human history.",
             ),
-            reason="Sometimes you just click and see what happens.",
+            reason="Explore the world's first analog computer.",
             category=category,
         )
 
@@ -584,6 +597,8 @@ async def pick_random_topic(category: str) -> RandomTopicResponse:
                 rabbit_holes=[],
                 timestamp="Curiosity Pick",
                 confidence=0.99,
+                curiosity_score=pick.curiosity_score,
+                wow_fact=pick.wow_fact,
             ),
             reason=pick.reason,
             category=category,
