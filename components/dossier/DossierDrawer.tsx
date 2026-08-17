@@ -1,10 +1,36 @@
 'use client';
 
+import { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 import { AudioTourPlayer } from './AudioTourPlayer';
 import { MapViewer } from './MapViewer';
-import { X, ExternalLink, Sparkles, Compass, Layers, Clock, ArrowRight } from 'lucide-react';
+import { 
+  X, 
+  ExternalLink, 
+  Sparkles, 
+  Compass, 
+  Layers, 
+  Clock, 
+  ArrowRight,
+  Minus,
+  Maximize2,
+  Loader2,
+  CheckCircle2,
+  Search,
+  Globe,
+  ChevronDown,
+  ChevronUp,
+  BookOpen
+} from 'lucide-react';
+
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch {
+    return url;
+  }
+}
 
 export function DossierDrawer() {
   const isDossierOpen = useMindMapStore(s => s.isDossierOpen);
@@ -12,254 +38,540 @@ export function DossierDrawer() {
   const isDossierLoading = useMindMapStore(s => s.isDossierLoading);
   const closeDossier = useMindMapStore(s => s.closeDossier);
   const startResearch = useMindMapStore(s => s.startResearch);
+  const isResearching = useMindMapStore(s => s.isResearching);
+  const currentTopic = useMindMapStore(s => s.currentTopic);
+  const planSteps = useMindMapStore(s => s.planSteps);
+  const thoughts = useMindMapStore(s => s.thoughts);
+  const toolCalls = useMindMapStore(s => s.toolCalls);
+  const sources = useMindMapStore(s => s.sources);
+  const workstationTab = useMindMapStore(s => s.workstationTab);
+  const setWorkstationTab = useMindMapStore(s => s.setWorkstationTab);
 
-  if (!isDossierOpen || !activeDossier) return null;
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
+
+  if (!isDossierOpen) return null;
+
+  const runningStepIdx = planSteps.findIndex(s => s.status === 'running');
+  const completedStepsCount = planSteps.filter(s => s.status === 'done').length;
+  const currentStepNumber = runningStepIdx !== -1 ? runningStepIdx + 1 : completedStepsCount;
+
+  // Minimized dock state in bottom-right corner
+  if (isMinimized) {
+    return (
+      <div className="fixed right-6 bottom-6 z-30 bg-black text-white border-2 border-black p-3 font-mono text-xs uppercase font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade">
+        <div className="flex items-center gap-2">
+          {isResearching ? (
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
+          ) : (
+            <span className="w-2 h-2 bg-white" />
+          )}
+          <span className="truncate max-w-[200px]">
+            {isResearching 
+              ? `AGENT: ${currentTopic || 'RESEARCHING...'}` 
+              : `STORY: ${activeDossier?.title || currentTopic || 'MONOGRAPH'}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 border-l border-neutral-700 pl-2">
+          <button
+            onClick={() => setIsMinimized(false)}
+            className="p-1 hover:bg-white hover:text-black transition-colors"
+            title="Expand Workstation"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={closeDossier}
+            className="p-1 hover:bg-white hover:text-black transition-colors"
+            title="Close Workstation"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[600px] max-w-[96vw] bg-white border-l-4 border-black z-30 flex flex-col shadow-none select-none animate-fade overflow-hidden">
+    <div className="fixed inset-y-0 right-0 w-[620px] max-w-[96vw] bg-white border-l-4 border-black z-30 flex flex-col shadow-none select-none animate-fade overflow-hidden">
       
-      {/* Editorial Header */}
-      <div className="p-4 border-b-2 border-black flex items-center justify-between bg-black text-white shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-widest font-bold bg-white text-black px-2 py-0.5">
-            {activeDossier.category}
-          </span>
-          <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-wider">
-            {activeDossier.era || 'OVERVIEW'}
-          </span>
-          {isDossierLoading && (
-            <span className="font-mono text-[9px] text-neutral-400 animate-pulse">
-              [FETCHING FULL STORY...]
+      {/* Unified Window Titlebar & Tab Bar */}
+      <div className="border-b-2 border-black bg-black text-white shrink-0">
+        
+        {/* Top Action & Window Controls */}
+        <div className="px-4 py-2.5 flex items-center justify-between border-b border-neutral-800">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs uppercase font-bold bg-white text-black px-2 py-0.5">
+              TDI
             </span>
-          )}
-        </div>
-        <button
-          onClick={closeDossier}
-          className="p-1 text-neutral-400 hover:text-white transition-colors"
-          title="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Monograph Document Body */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar">
-
-        {/* Title Block */}
-        <div className="space-y-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 flex items-center justify-between">
-            <span>TODAY I LEARNED STORY</span>
-            {activeDossier.curiosityScore && (
-              <span className="bg-neutral-100 border border-black px-1.5 py-0.5 text-black font-bold">
-                CURIOSITY RATING {activeDossier.curiosityScore}/10
-              </span>
-            )}
-          </div>
-          <h2 className="font-serif text-3xl md:text-4xl font-bold tracking-tight text-black leading-tight">
-            {activeDossier.title}
-          </h2>
-          {activeDossier.tagline && (
-            <p className="font-serif italic text-base text-neutral-700 pt-1">
-              "{activeDossier.tagline}"
-            </p>
-          )}
-        </div>
-
-        {/* Audio Tour Player */}
-        {activeDossier.audioTourScript && (
-          <AudioTourPlayer
-            script={activeDossier.audioTourScript}
-            topicTitle={activeDossier.title}
-          />
-        )}
-
-
-        {/* Action Banner for Vector Inquiries */}
-        <div className="p-4 border-2 border-black bg-neutral-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <span className="font-mono text-[9px] uppercase tracking-widest font-bold text-neutral-600 block">
-              EXPAND THIS TOPIC
-            </span>
-            <span className="font-serif text-xs text-neutral-800">
-              Grow new connected branches and explore deeper questions about this concept.
+            <span className="font-mono text-[10px] text-neutral-300 uppercase tracking-wider font-bold truncate max-w-[280px]">
+              {currentTopic || activeDossier?.title || 'RESEARCH WORKSTATION'}
             </span>
           </div>
+
+          <div className="flex items-center gap-1.5 font-mono text-xs">
+            <button
+              onClick={() => setIsMinimized(true)}
+              className="p-1 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
+              title="Minimize Window"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={closeDossier}
+              className="p-1 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
+              title="Close Window"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center px-4 pt-1 bg-neutral-950">
           <button
-            onClick={() => {
-              closeDossier();
-              startResearch(
-                activeDossier.title,
-                activeDossier.category,
-                activeDossier.nodeId,
-                activeDossier.abstract || activeDossier.coreThesis,
-                activeDossier.tagline || activeDossier.wowFact || `Deep dive into ${activeDossier.title}`
-              );
-            }}
-            className="px-4 py-2 bg-black text-white font-mono text-xs uppercase tracking-wider font-bold hover:bg-neutral-800 transition-colors shrink-0 flex items-center gap-1"
+            onClick={() => setWorkstationTab('monograph')}
+            className={`px-4 py-2 font-mono text-[11px] uppercase tracking-wider font-bold transition-colors border-t-2 border-r-2 ${
+              workstationTab === 'monograph'
+                ? 'bg-white text-black border-white'
+                : 'bg-transparent text-neutral-400 border-transparent hover:text-white'
+            }`}
           >
-            <span>Deep-Dive Topic</span>
-            <ArrowRight className="w-3 h-3" />
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Story Monograph</span>
+              {isDossierLoading && (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              )}
+            </div>
+          </button>
+
+          <button
+            onClick={() => setWorkstationTab('agent')}
+            className={`px-4 py-2 font-mono text-[11px] uppercase tracking-wider font-bold transition-colors border-t-2 border-r-2 ${
+              workstationTab === 'agent'
+                ? 'bg-white text-black border-white'
+                : 'bg-transparent text-neutral-400 border-transparent hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {isResearching ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
+              <span>Agent Activity</span>
+              {sources.length > 0 && (
+                <span className="font-mono text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.2">
+                  {sources.length}
+                </span>
+              )}
+            </div>
           </button>
         </div>
 
-        {/* Did You Know Fact Banner */}
-        {activeDossier.wowFact && (
-          <div className="p-4 border-2 border-black bg-white space-y-1">
-            <span className="font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-1.5 text-neutral-500">
-              <Sparkles className="w-3 h-3 text-neutral-600" /> DID YOU KNOW?
-            </span>
-            <div className="font-body text-sm text-black leading-relaxed italic">
-              <MarkdownContent content={activeDossier.wowFact} />
-            </div>
-          </div>
-        )}
+      </div>
 
-        {/* Core Thesis */}
-        {activeDossier.coreThesis && (
-          <div className="space-y-3">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-              1. THE BIG PICTURE & MAIN TAKEAWAY
-            </div>
-            <div className="font-body text-sm md:text-base text-neutral-800 leading-relaxed space-y-2">
-              <MarkdownContent content={activeDossier.coreThesis} />
-            </div>
-          </div>
-        )}
-
-        {/* Overview & Abstract */}
-        {activeDossier.abstract && (
-          <div className="space-y-3">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-              2. SUMMARY & KEY CONTEXT
-            </div>
-            <div className="font-body text-sm text-neutral-700 leading-relaxed">
-              <MarkdownContent content={activeDossier.abstract} />
-            </div>
-          </div>
-        )}
-
-        {/* Mechanisms & Principles */}
-        {activeDossier.mechanisms && activeDossier.mechanisms.length > 0 && (
-          <div className="space-y-4">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
-              <span>3. HOW IT WORKS & KEY CONCEPTS ({activeDossier.mechanisms.length})</span>
-              <Layers className="w-3.5 h-3.5" />
-            </div>
-            <div className="space-y-3">
-              {activeDossier.mechanisms.map((mech, idx) => (
-                <div key={idx} className="p-4 border border-black space-y-2 bg-white">
-                  <div className="font-mono text-[9px] uppercase text-neutral-500">
-                    CONCEPT 0{idx + 1}
-                  </div>
-                  <h4 className="font-serif text-base font-bold text-black">
-                    {mech.title}
-                  </h4>
-                  <div className="font-body text-xs text-neutral-700 leading-relaxed">
-                    <MarkdownContent content={mech.explanation} />
-                  </div>
-                  {mech.bulletPoints && mech.bulletPoints.length > 0 && (
-                    <ul className="list-disc list-inside pt-2 space-y-1 font-body text-xs text-neutral-600 border-t border-neutral-200">
-                      {mech.bulletPoints.map((bp, bIdx) => (
-                        <li key={bIdx}>{bp}</li>
-                      ))}
-                    </ul>
+      {/* Tab 1: Monograph Document View */}
+      {workstationTab === 'monograph' && (
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar">
+          {activeDossier ? (
+            <>
+              {/* Title Block */}
+              <div className="space-y-3">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 flex items-center justify-between">
+                  <span className="bg-black text-white px-2 py-0.5 font-bold">
+                    {activeDossier.category || 'TOPIC MONOGRAPH'}
+                  </span>
+                  {activeDossier.curiosityScore && (
+                    <span className="bg-neutral-100 border border-black px-1.5 py-0.5 text-black font-bold">
+                      CURIOSITY RATING {activeDossier.curiosityScore}/10
+                    </span>
                   )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+                <h2 className="font-serif text-3xl md:text-4xl font-bold tracking-tight text-black leading-tight">
+                  {activeDossier.title}
+                </h2>
+                {activeDossier.tagline && (
+                  <p className="font-serif italic text-base text-neutral-700 pt-1">
+                    "{activeDossier.tagline}"
+                  </p>
+                )}
+              </div>
 
-        {/* Chronological Timeline */}
-        {activeDossier.timeline && activeDossier.timeline.length > 0 && (
-          <div className="space-y-4">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
-              <span>4. KEY TIMELINE</span>
-              <Clock className="w-3.5 h-3.5" />
-            </div>
-            <div className="border-l-2 border-black pl-4 ml-1 space-y-4">
-              {activeDossier.timeline.map((evt, idx) => (
-                <div key={idx} className="relative space-y-1">
-                  <div className="font-mono text-[10px] font-bold text-black uppercase">
-                    [{evt.date}] — {evt.headline}
-                  </div>
-                  <div className="font-body text-xs text-neutral-700 leading-relaxed">
-                    <MarkdownContent content={evt.description} />
-                  </div>
+              {/* Audio Tour Player */}
+              {activeDossier.audioTourScript && (
+                <AudioTourPlayer
+                  script={activeDossier.audioTourScript}
+                  topicTitle={activeDossier.title}
+                />
+              )}
+
+              {/* Action Banner for Vector Inquiries */}
+              <div className="p-4 border-2 border-black bg-neutral-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <span className="font-mono text-[9px] uppercase tracking-widest font-bold text-neutral-600 block">
+                    DEEP-DIVE THIS TOPIC
+                  </span>
+                  <span className="font-serif text-xs text-neutral-800">
+                    Grow new connected branches and discover deeper questions about this concept.
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Geographic & Historical Epicenter Map */}
-        {activeDossier.geography && (
-          <MapViewer geography={activeDossier.geography} />
-        )}
-
-        {/* Downstream Rabbit Holes */}
-        {activeDossier.rabbitHoles && activeDossier.rabbitHoles.length > 0 && (
-          <div className="space-y-3 pt-2">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
-              <span>5. RELATED RABBIT HOLES TO EXPLORE</span>
-              <Compass className="w-3.5 h-3.5" />
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              {activeDossier.rabbitHoles.map((rh, idx) => (
                 <button
-                  key={idx}
                   onClick={() => {
-                    closeDossier();
                     startResearch(
-                      rh.title,
-                      rh.affinityCategory || activeDossier.category,
+                      activeDossier.title,
+                      activeDossier.category,
                       activeDossier.nodeId,
                       activeDossier.abstract || activeDossier.coreThesis,
-                      rh.teaser || `Exploring rabbit hole: ${rh.title}`
+                      activeDossier.tagline || activeDossier.wowFact || `Deep dive into ${activeDossier.title}`
                     );
                   }}
-                  className="p-3 border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors duration-100 text-left group flex flex-col justify-between"
+                  className="px-4 py-2.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase tracking-wider font-bold transition-colors duration-100 shrink-0 flex items-center gap-1.5"
                 >
-                  <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 group-hover:text-neutral-300">
-                    <span className="uppercase">{rh.affinityCategory || 'RELATED TOPIC'}</span>
-                    <span>EXPAND TOPIC →</span>
-                  </div>
-                  <div className="font-serif text-sm font-bold pt-1">
-                    {rh.title}
-                  </div>
-                  <p className="font-body text-xs text-neutral-600 group-hover:text-neutral-300 pt-1 line-clamp-2">
-                    {rh.teaser}
-                  </p>
+                  <span>Deep-Dive Topic</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
 
-        {/* Grounded Source Citations */}
-        {activeDossier.sources && activeDossier.sources.length > 0 && (
-          <div className="space-y-3 pt-4 border-t-2 border-black">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold">
-              SOURCES & CITATIONS ({activeDossier.sources.length})
-            </div>
-            <div className="space-y-1.5 font-mono text-[10px]">
-              {activeDossier.sources.map((src, idx) => (
-                <a
-                  key={idx}
-                  href={src.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 border border-neutral-200 hover:border-black flex items-center justify-between text-neutral-700 hover:text-black transition-colors"
+              {/* Did You Know Fact Banner */}
+              {activeDossier.wowFact && (
+                <div className="p-4 border-2 border-black bg-white space-y-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-1.5 text-neutral-500">
+                    <Sparkles className="w-3 h-3 text-neutral-600" /> DID YOU KNOW?
+                  </span>
+                  <div className="font-body text-sm text-black leading-relaxed italic">
+                    <MarkdownContent content={activeDossier.wowFact} />
+                  </div>
+                </div>
+              )}
+
+              {/* Core Thesis */}
+              {activeDossier.coreThesis && (
+                <div className="space-y-3">
+                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
+                    1. THE BIG PICTURE &amp; MAIN TAKEAWAY
+                  </div>
+                  <div className="font-body text-sm md:text-base text-neutral-800 leading-relaxed space-y-2">
+                    <MarkdownContent content={activeDossier.coreThesis} />
+                  </div>
+                </div>
+              )}
+
+              {/* Overview & Abstract */}
+              {activeDossier.abstract && (
+                <div className="space-y-3">
+                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
+                    2. SUMMARY &amp; KEY CONTEXT
+                  </div>
+                  <div className="font-body text-sm text-neutral-700 leading-relaxed">
+                    <MarkdownContent content={activeDossier.abstract} />
+                  </div>
+                </div>
+              )}
+
+              {/* Mechanisms & Principles */}
+              {activeDossier.mechanisms && activeDossier.mechanisms.length > 0 && (
+                <div className="space-y-4">
+                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
+                    <span>3. HOW IT WORKS &amp; KEY CONCEPTS ({activeDossier.mechanisms.length})</span>
+                    <Layers className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="space-y-3">
+                    {activeDossier.mechanisms.map((mech, idx) => (
+                      <div key={idx} className="p-4 border border-black space-y-2 bg-white">
+                        <div className="font-mono text-[9px] uppercase text-neutral-500">
+                          CONCEPT 0{idx + 1}
+                        </div>
+                        <h4 className="font-serif text-base font-bold text-black">
+                          {mech.title}
+                        </h4>
+                        <div className="font-body text-xs text-neutral-700 leading-relaxed">
+                          <MarkdownContent content={mech.explanation} />
+                        </div>
+                        {mech.bulletPoints && mech.bulletPoints.length > 0 && (
+                          <ul className="list-disc list-inside pt-2 space-y-1 font-body text-xs text-neutral-600 border-t border-neutral-200">
+                            {mech.bulletPoints.map((bp, bIdx) => (
+                              <li key={bIdx}>{bp}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Chronological Timeline */}
+              {activeDossier.timeline && activeDossier.timeline.length > 0 && (
+                <div className="space-y-4">
+                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
+                    <span>4. KEY TIMELINE</span>
+                    <Clock className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="border-l-2 border-black pl-4 ml-1 space-y-4">
+                    {activeDossier.timeline.map((evt, idx) => (
+                      <div key={idx} className="relative space-y-1">
+                        <div className="font-mono text-[10px] font-bold text-black uppercase">
+                          [{evt.date}] — {evt.headline}
+                        </div>
+                        <div className="font-body text-xs text-neutral-700 leading-relaxed">
+                          <MarkdownContent content={evt.description} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Geographic & Historical Epicenter Map */}
+              {activeDossier.geography && (
+                <MapViewer geography={activeDossier.geography} />
+              )}
+
+              {/* Downstream Rabbit Holes */}
+              {activeDossier.rabbitHoles && activeDossier.rabbitHoles.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
+                    <span>5. RELATED RABBIT HOLES TO EXPLORE</span>
+                    <Compass className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {activeDossier.rabbitHoles.map((rh, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          startResearch(
+                            rh.title,
+                            rh.affinityCategory || activeDossier.category,
+                            activeDossier.nodeId,
+                            activeDossier.abstract || activeDossier.coreThesis,
+                            rh.teaser || `Exploring rabbit hole: ${rh.title}`
+                          );
+                        }}
+                        className="p-3 border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors duration-100 text-left group flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 group-hover:text-neutral-300">
+                          <span className="uppercase">{rh.affinityCategory || 'RELATED TOPIC'}</span>
+                          <span>EXPAND TOPIC →</span>
+                        </div>
+                        <div className="font-serif text-sm font-bold pt-1">
+                          {rh.title}
+                        </div>
+                        <p className="font-body text-xs text-neutral-600 group-hover:text-neutral-300 pt-1 line-clamp-2">
+                          {rh.teaser}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Grounded Source Citations */}
+              {activeDossier.sources && activeDossier.sources.length > 0 && (
+                <div className="space-y-3 pt-4 border-t-2 border-black">
+                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold">
+                    SOURCES &amp; CITATIONS ({activeDossier.sources.length})
+                  </div>
+                  <div className="space-y-1.5 font-mono text-[10px]">
+                    {activeDossier.sources.map((src, idx) => (
+                      <a
+                        key={idx}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 border border-neutral-200 hover:border-black flex items-center justify-between text-neutral-700 hover:text-black transition-colors"
+                      >
+                        <span className="truncate pr-2">[{idx + 1}] {src.title}</span>
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-20 font-mono text-xs text-neutral-500 space-y-3">
+              <p>[ SELECT ANY NODE ON THE CANVAS TO READ MONOGRAPH ]</p>
+              {isResearching && (
+                <button
+                  onClick={() => setWorkstationTab('agent')}
+                  className="px-4 py-2 bg-black text-white font-mono text-xs uppercase font-bold hover:bg-neutral-800"
                 >
-                  <span className="truncate pr-2">[{idx + 1}] {src.title}</span>
-                  <ExternalLink className="w-3 h-3 shrink-0" />
-                </a>
-              ))}
+                  View Live Agent Stream →
+                </button>
+              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-      </div>
+      {/* Tab 2: Agent Activity Stream View */}
+      {workstationTab === 'agent' && (
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar">
+          
+          {/* Active Dispatch Header */}
+          <div className="p-4 border-2 border-black bg-neutral-50 flex items-center justify-between">
+            <div>
+              <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 font-bold">
+                {isResearching ? 'LIVE AGENT SWARM' : 'SYNTHESIS COMPLETE'}
+              </div>
+              <div className="font-serif text-base font-bold text-black truncate max-w-sm">
+                {currentTopic || 'Research Topic'}
+              </div>
+            </div>
+            {!isResearching && activeDossier && (
+              <button
+                onClick={() => setWorkstationTab('monograph')}
+                className="px-4 py-2 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100 flex items-center gap-1.5 shrink-0"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>View Story</span>
+              </button>
+            )}
+          </div>
+
+          {/* Plan Steps */}
+          {planSteps.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between font-mono text-xs uppercase tracking-widest font-bold text-black border-b-2 border-black pb-1.5">
+                <span>[ RESEARCH PHASES ]</span>
+                <span>{completedStepsCount}/{planSteps.length} COMPLETE</span>
+              </div>
+              <div className="space-y-2">
+                {planSteps.map((step, idx) => {
+                  const isDone = step.status === 'done';
+                  const isRunning = step.status === 'running';
+
+                  return (
+                    <div 
+                      key={step.id || idx} 
+                      className={`flex items-start gap-3 text-xs font-mono p-3 border-2 transition-colors duration-100 ${
+                        isRunning 
+                          ? 'border-black bg-black text-white font-bold' 
+                          : isDone 
+                          ? 'border-neutral-300 bg-neutral-50 text-neutral-800' 
+                          : 'border-neutral-200 text-neutral-400'
+                      }`}
+                    >
+                      <div className="shrink-0 mt-0.5">
+                        {isDone ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-black" />
+                        ) : isRunning ? (
+                          <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                        ) : (
+                          <span className="w-2.5 h-2.5 border border-neutral-400 inline-block" />
+                        )}
+                      </div>
+                      <div className="flex-1 leading-snug">
+                        <div>{step.title}</div>
+                        {isRunning && (
+                          <div className="font-mono text-[9px] text-neutral-300 mt-1 uppercase">
+                            Active: {step.agent || 'Deep Retrieval Agent'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Thinking Trace */}
+          {thoughts.length > 0 && (
+            <div className="border-2 border-black bg-white">
+              <button
+                onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
+                className="w-full flex items-center justify-between p-3 bg-neutral-100 border-b-2 border-black font-mono text-[10px] uppercase font-bold tracking-wider text-black hover:bg-neutral-200"
+              >
+                <div className="flex items-center gap-2">
+                  <Compass className="w-3.5 h-3.5 text-black" />
+                  <span>[ AI REASONING &amp; FIELD NOTES ]</span>
+                  <span className="text-neutral-500">({thoughts.length})</span>
+                </div>
+                {isThinkingExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              {isThinkingExpanded && (
+                <div className="p-4 space-y-3 max-h-[260px] overflow-y-auto font-body text-xs text-neutral-800 leading-relaxed custom-scrollbar">
+                  {thoughts.map((t, idx) => (
+                    <div key={idx} className="border-l-2 border-black pl-3 space-y-0.5">
+                      <span className="font-mono text-[9px] text-neutral-500 block uppercase font-bold">
+                        {t.agent || `INSIGHT #${idx + 1}`}
+                      </span>
+                      <MarkdownContent content={t.text} className="text-xs text-black" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tools Used */}
+          {toolCalls.length > 0 && (
+            <div className="space-y-2">
+              <div className="font-mono text-xs uppercase tracking-widest font-bold text-black border-b-2 border-black pb-1.5 flex items-center justify-between">
+                <span>[ AGENT ACTIONS &amp; TOOLS ]</span>
+                <span>{toolCalls.length} EXECUTED</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {toolCalls.map((tc, idx) => (
+                  <div
+                    key={tc.id || idx}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] uppercase font-bold border-2 ${
+                      tc.status === 'running' 
+                        ? 'border-black bg-black text-white' 
+                        : 'border-neutral-300 bg-white text-black'
+                    }`}
+                  >
+                    <Search className="w-3 h-3" />
+                    <span>{tc.name}</span>
+                    <span>{tc.status === 'running' ? '●' : '✓'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Discovered Citations */}
+          {sources.length > 0 && (
+            <div className="space-y-3">
+              <div className="font-mono text-xs uppercase tracking-widest font-bold text-black border-b-2 border-black pb-1.5 flex items-center justify-between">
+                <span>[ DISCOVERED CITATIONS ]</span>
+                <span>{sources.length} SOURCES</span>
+              </div>
+              <div className="space-y-2.5">
+                {sources.map((src, idx) => (
+                  <a
+                    key={src.id || idx}
+                    href={src.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-3 bg-white hover:bg-black text-black hover:text-white border-2 border-black transition-colors duration-100 group"
+                  >
+                    <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 group-hover:text-neutral-400 uppercase mb-1">
+                      <span className="flex items-center gap-1">
+                        <Globe className="w-3 h-3" />
+                        {getDomain(src.url)}
+                      </span>
+                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <div className="font-serif text-sm font-bold text-black group-hover:text-white line-clamp-1 mb-1">
+                      {src.title}
+                    </div>
+                    <div className="font-body text-xs text-neutral-700 group-hover:text-neutral-300 line-clamp-2 leading-relaxed">
+                      <MarkdownContent content={src.snippet} />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
     </div>
   );
 }

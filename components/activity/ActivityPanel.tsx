@@ -13,7 +13,10 @@ import {
   ExternalLink,
   Search,
   Globe,
-  Compass
+  Compass,
+  Minus,
+  Maximize2,
+  X
 } from 'lucide-react';
 
 function getDomain(url: string): string {
@@ -31,14 +34,18 @@ export function ActivityPanel() {
   const toolCalls = useMindMapStore(s => s.toolCalls);
   const sources = useMindMapStore(s => s.sources);
   const openDossier = useMindMapStore(s => s.openDossier);
+  const isDossierOpen = useMindMapStore(s => s.isDossierOpen);
   const nodes = useMindMapStore(s => s.nodes);
   const lastResearchedNodeId = useMindMapStore(s => s.lastResearchedNodeId);
   const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
   const activeDossier = useMindMapStore(s => s.activeDossier);
 
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
 
-  const isVisible = isResearching || thoughts.length > 0 || sources.length > 0;
+  // If dossier is open on the right side, or dismissed, hide panel to prevent overlap
+  const isVisible = (isResearching || thoughts.length > 0 || sources.length > 0) && !isDossierOpen && !isDismissed;
   if (!isVisible) return null;
 
   const targetNodeId = lastResearchedNodeId || activeDossier?.nodeId || selectedNodeId || nodes[0]?.id;
@@ -47,12 +54,48 @@ export function ActivityPanel() {
   const completedStepsCount = planSteps.filter(s => s.status === 'done').length;
   const currentStepNumber = runningStepIdx !== -1 ? runningStepIdx + 1 : completedStepsCount;
 
+  // Minimized floating dock state
+  if (isMinimized) {
+    return (
+      <div className="fixed right-6 bottom-6 z-20 bg-black text-white border-2 border-black p-2.5 font-mono text-xs uppercase font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade">
+        <div className="flex items-center gap-2">
+          {isResearching ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <CheckCircle2 className="w-3.5 h-3.5" />
+          )}
+          <span>
+            {isResearching 
+              ? `AGENT SWARM: ${completedStepsCount}/${planSteps.length || 4}`
+              : `RESEARCH COMPLETE (${sources.length} SOURCES)`}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 border-l border-neutral-700 pl-2">
+          <button
+            onClick={() => setIsMinimized(false)}
+            className="p-1 hover:bg-white hover:text-black transition-colors"
+            title="Expand Activity Log"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setIsDismissed(true)}
+            className="p-1 hover:bg-white hover:text-black transition-colors"
+            title="Dismiss Activity Panel"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed right-6 top-20 bottom-6 w-[400px] max-w-[92vw] bg-white text-black border-2 border-black z-20 flex flex-col shadow-none select-none animate-fade">
 
-      {/* Masthead Header */}
-      <div className="p-4 border-b-2 border-black flex items-center justify-between bg-black text-white shrink-0">
-        <div className="flex items-center gap-3">
+      {/* Window Titlebar */}
+      <div className="p-3.5 border-b-2 border-black flex items-center justify-between bg-black text-white shrink-0">
+        <div className="flex items-center gap-2.5">
           {isResearching ? (
             <Loader2 className="w-4 h-4 text-white animate-spin shrink-0" />
           ) : (
@@ -60,7 +103,7 @@ export function ActivityPanel() {
           )}
           <div>
             <div className="font-mono text-xs uppercase tracking-widest font-bold">
-              AGENT REASONING LOG
+              AGENT LOG
             </div>
             <div className="font-mono text-[9px] text-neutral-400">
               {isResearching 
@@ -69,9 +112,24 @@ export function ActivityPanel() {
             </div>
           </div>
         </div>
-        <span className="font-mono text-[9px] px-2 py-0.5 border border-white text-white font-bold uppercase">
-          {isResearching ? 'LIVE' : 'VERIFIED'}
-        </span>
+
+        {/* Window Controls */}
+        <div className="flex items-center gap-1.5 font-mono text-xs">
+          <button
+            onClick={() => setIsMinimized(true)}
+            className="p-1 border border-white hover:bg-white hover:text-black transition-colors"
+            title="Minimize Window"
+          >
+            <Minus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setIsDismissed(true)}
+            className="p-1 border border-white hover:bg-white hover:text-black transition-colors"
+            title="Close Window"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Completion Monograph CTA */}

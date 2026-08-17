@@ -24,6 +24,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
   const openDossier = useMindMapStore(s => s.openDossier);
   const selectNode = useMindMapStore(s => s.selectNode);
   const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
+  const closeDossier = useMindMapStore(s => s.closeDossier);
 
   const targetNodeId = String(data.id || data.nodeId || '');
   const isSelected = selectedNodeId === targetNodeId;

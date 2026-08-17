@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { KnowledgeCanvas } from '@/components/canvas/KnowledgeCanvas';
 import { DossierDrawer } from '@/components/dossier/DossierDrawer';
-import { ActivityPanel } from '@/components/activity/ActivityPanel';
 import { ArrowLeft, Copy, Check, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -123,9 +122,6 @@ export default function SharedMindMapPage() {
 
       {/* Dossier Drawer */}
       <DossierDrawer />
-
-      {/* Activity Panel */}
-      <ActivityPanel />
     </div>
   );
 }

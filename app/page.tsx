@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { KnowledgeCanvas } from '@/components/canvas/KnowledgeCanvas';
-import { ActivityPanel } from '@/components/activity/ActivityPanel';
 import { ChatComposer } from '@/components/activity/ChatComposer';
 import { HubBrowser } from '@/components/browse/HubBrowser';
 import { DossierDrawer } from '@/components/dossier/DossierDrawer';
@@ -55,6 +54,24 @@ export default function Home() {
   const handleSurpriseMe = () => {
     const randomCat = FLAGSHIP_CATEGORIES[Math.floor(Math.random() * FLAGSHIP_CATEGORIES.length)];
     loadRandomHubByCategory(randomCat);
+  };
+
+  const handleToggleBrowse = () => {
+    setIsBrowseOpen(prev => !prev);
+    setIsLibraryOpen(false);
+    setIsShareOpen(false);
+  };
+
+  const handleToggleLibrary = () => {
+    setIsLibraryOpen(prev => !prev);
+    setIsBrowseOpen(false);
+    setIsShareOpen(false);
+  };
+
+  const handleToggleShare = () => {
+    setIsShareOpen(prev => !prev);
+    setIsBrowseOpen(false);
+    setIsLibraryOpen(false);
   };
 
   const targetNodeId = lastResearchedNodeId || activeDossier?.nodeId || selectedNodeId || nodes[0]?.id;
@@ -110,9 +127,9 @@ export default function Home() {
         <div className="flex items-center gap-2">
           {/* Researching Live Indicator */}
           {isResearching && (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-black text-white font-mono text-[10px] uppercase tracking-wider animate-pulse">
-              <span className="w-1.5 h-1.5 bg-white" />
-              <span>RESEARCHING...</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-black text-white font-mono text-[10px] uppercase tracking-wider font-bold">
+              <span className="w-2 h-2 bg-white animate-pulse" />
+              <span>DISPATCHING...</span>
             </div>
           )}
 
@@ -122,12 +139,12 @@ export default function Home() {
             className="px-3 py-1 bg-white border border-black font-mono text-[10px] uppercase tracking-wider font-bold hover:bg-black hover:text-white transition-colors duration-100 flex items-center gap-1"
           >
             <Plus className="w-3 h-3" />
-            <span className="hidden sm:inline">RESEARCH ANY TOPIC</span>
+            <span className="hidden sm:inline">RESEARCH TOPIC</span>
           </button>
 
           {/* Browse Catalog Button */}
           <button
-            onClick={() => setIsBrowseOpen(!isBrowseOpen)}
+            onClick={handleToggleBrowse}
             className={`px-3 py-1 font-mono text-[10px] uppercase tracking-wider font-bold transition-colors duration-100 border border-black ${
               isBrowseOpen
                 ? 'bg-black text-white'
@@ -139,8 +156,10 @@ export default function Home() {
 
           {/* My Library & History Drawer */}
           <button
-            onClick={() => setIsLibraryOpen(true)}
-            className="p-1.5 border border-black hover:bg-black hover:text-white transition-colors"
+            onClick={handleToggleLibrary}
+            className={`p-1.5 border border-black transition-colors ${
+              isLibraryOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
+            }`}
             title="My Saved Mindmaps & History"
           >
             <Bookmark className="w-3.5 h-3.5" />
@@ -149,8 +168,10 @@ export default function Home() {
           {/* Share & Export Modal */}
           {nodes.length > 0 && currentTopic && (
             <button
-              onClick={() => setIsShareOpen(true)}
-              className="p-1.5 border border-black hover:bg-black hover:text-white transition-colors"
+              onClick={handleToggleShare}
+              className={`p-1.5 border border-black transition-colors ${
+                isShareOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
+              }`}
               title="Share & Export Mindmap"
             >
               <Share2 className="w-3.5 h-3.5" />
@@ -161,7 +182,7 @@ export default function Home() {
           {nodes.length > 0 && (
             <button
               onClick={resetCanvas}
-              className="p-1 border border-black hover:bg-black hover:text-white transition-colors"
+              className="p-1.5 border border-black hover:bg-black hover:text-white transition-colors"
               title="Reset to Cover"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -169,7 +190,7 @@ export default function Home() {
           )}
 
           {/* Supabase User Profile / Sign in Menu */}
-          <UserMenu onOpenLibrary={() => setIsLibraryOpen(true)} />
+          <UserMenu onOpenLibrary={handleToggleLibrary} />
         </div>
       </header>
 
@@ -273,7 +294,6 @@ export default function Home() {
 
       {/* Floating Panels & Overlays */}
       {isBrowseOpen && <HubBrowser onClose={() => setIsBrowseOpen(false)} />}
-      <ActivityPanel />
       <ChatComposer />
       <DossierDrawer />
       <MyMindMapsDrawer
