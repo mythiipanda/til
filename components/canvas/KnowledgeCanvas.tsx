@@ -24,7 +24,8 @@ function CanvasInner() {
   const isResearching = useMindMapStore(s => s.isResearching);
   const selectNode = useMindMapStore(s => s.selectNode);
   const openDossier = useMindMapStore(s => s.openDossier);
-  const { fitView } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, setCenter } = useReactFlow();
+  const loadRandomHubByCategory = useMindMapStore(s => s.loadRandomHubByCategory);
 
   const prevNodeCount = useRef(nodes.length);
   const isDragging = useRef(false);
@@ -57,13 +58,24 @@ function CanvasInner() {
 
   const handleNodeDragStop = useCallback(() => {
     isDragging.current = false;
-    // A drag just ended — flush the debounced autosave so positions are durable
-    // even if the tab closes before the debounce fires.
     useMindMapStore.getState().flushCanvasAutosave?.();
   }, []);
 
-  // Flush the debounced autosave when the tab is hidden/closed, so the very
-  // latest canvas state survives a background-tab eviction or crash.
+  const handleRecenterRoot = useCallback(() => {
+    const rootNode = nodes[0];
+    if (rootNode && rootNode.position) {
+      setCenter(rootNode.position.x + 160, rootNode.position.y + 100, { zoom: 1.0, duration: 500 });
+    } else {
+      fitView({ padding: 0.15, duration: 400 });
+    }
+  }, [nodes, setCenter, fitView]);
+
+  const handleSurpriseMe = useCallback(() => {
+    const cats = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'];
+    const randomCat = cats[Math.floor(Math.random() * cats.length)];
+    loadRandomHubByCategory(randomCat);
+  }, [loadRandomHubByCategory]);
+
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
@@ -112,6 +124,53 @@ function CanvasInner() {
         />
         <Controls position="bottom-left" showInteractive={false} />
       </ReactFlow>
+
+      {/* Floating Canvas Navigation HUD (Bottom-Right) */}
+      {nodes.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-20 flex items-center gap-1.5 bg-white border-2 border-black p-1.5 shadow-none nodrag">
+          <button
+            onClick={() => zoomIn({ duration: 250 })}
+            className="w-7 h-7 flex items-center justify-center font-mono text-sm font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
+            title="Zoom In (+)"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            onClick={() => zoomOut({ duration: 250 })}
+            className="w-7 h-7 flex items-center justify-center font-mono text-sm font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
+            title="Zoom Out (-)"
+            aria-label="Zoom out"
+          >
+            -
+          </button>
+          <button
+            onClick={() => fitView({ padding: 0.15, duration: 400 })}
+            className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
+            title="Fit Entire Map to Screen"
+            aria-label="Fit entire map"
+          >
+            [FIT]
+          </button>
+          <button
+            onClick={handleRecenterRoot}
+            className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
+            title="Center on Origin Subject"
+            aria-label="Center on origin subject"
+          >
+            ● ROOT
+          </button>
+          <div className="w-px h-4 bg-neutral-300 mx-0.5" />
+          <button
+            onClick={handleSurpriseMe}
+            className="px-2.5 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold bg-black text-white hover:bg-neutral-800 transition-colors"
+            title="Jump to Another Random Curiosity Hub"
+            aria-label="Jump to another random curiosity hub"
+          >
+            ✦ NEXT
+          </button>
+        </div>
+      )}
     </div>
   );
 }

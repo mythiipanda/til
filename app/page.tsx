@@ -10,7 +10,7 @@ import { MyMindMapsDrawer } from '@/components/library/MyMindMapsDrawer';
 import { ShareModal } from '@/components/share/ShareModal';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
-import { Plus, RotateCcw, BookOpen, Sparkles, X, Share2, Bookmark } from 'lucide-react';
+import { Plus, RotateCcw, BookOpen, Sparkles, X, Share2, Bookmark, Keyboard, Command } from 'lucide-react';
 
 const FLAGSHIP_CATEGORIES = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'] as const;
 
@@ -35,6 +35,7 @@ export default function Home() {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [customInput, setCustomInput] = useState('');
   const startResearch = useMindMapStore(s => s.startResearch);
 
@@ -49,6 +50,50 @@ export default function Home() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [restoreSessionFromLocalStorage]);
+
+  // Global Keyboard Shortcuts Listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        if (e.key === 'Escape') {
+          target.blur();
+        }
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCustomModalOpen(true);
+      } else if (e.key === '/') {
+        e.preventDefault();
+        setIsCustomModalOpen(true);
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setIsShortcutsOpen((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        setIsBrowseOpen(false);
+        setIsLibraryOpen(false);
+        setIsShareOpen(false);
+        setIsCustomModalOpen(false);
+        setIsShortcutsOpen(false);
+      } else if (e.key.toLowerCase() === 's' && !e.metaKey && !e.ctrlKey) {
+        handleSurpriseMe();
+      } else if (e.key.toLowerCase() === 'b' && !e.metaKey && !e.ctrlKey) {
+        handleToggleBrowse();
+      } else if (e.key.toLowerCase() === 'l' && !e.metaKey && !e.ctrlKey) {
+        handleToggleLibrary();
+      } else if (['1', '2', '3', '4', '5'].includes(e.key)) {
+        const catIdx = parseInt(e.key, 10) - 1;
+        if (FLAGSHIP_CATEGORIES[catIdx]) {
+          loadRandomHubByCategory(FLAGSHIP_CATEGORIES[catIdx]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [loadRandomHubByCategory]);
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,18 +112,21 @@ export default function Home() {
     setIsBrowseOpen(prev => !prev);
     setIsLibraryOpen(false);
     setIsShareOpen(false);
+    setIsShortcutsOpen(false);
   };
 
   const handleToggleLibrary = () => {
     setIsLibraryOpen(prev => !prev);
     setIsBrowseOpen(false);
     setIsShareOpen(false);
+    setIsShortcutsOpen(false);
   };
 
   const handleToggleShare = () => {
     setIsShareOpen(prev => !prev);
     setIsBrowseOpen(false);
     setIsLibraryOpen(false);
+    setIsShortcutsOpen(false);
   };
 
   const targetNodeId = lastResearchedNodeId || activeDossier?.nodeId || selectedNodeId || nodes[0]?.id;
@@ -186,6 +234,18 @@ export default function Home() {
               <Share2 className="w-3.5 h-3.5" />
             </button>
           )}
+
+          {/* Keyboard Shortcuts Cheat Sheet */}
+          <button
+            onClick={() => setIsShortcutsOpen(prev => !prev)}
+            className={`p-1.5 border border-black transition-colors ${
+              isShortcutsOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
+            }`}
+            title="Keyboard Shortcuts (?)"
+            aria-label="Keyboard shortcuts cheat sheet"
+          >
+            <Keyboard className="w-3.5 h-3.5" />
+          </button>
 
           {/* Canvas Clear */}
           {nodes.length > 0 && (
@@ -299,6 +359,69 @@ export default function Home() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard Shortcuts Cheat Sheet Modal */}
+      {isShortcutsOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border-2 border-black p-6 md:p-7 space-y-4 shadow-none animate-fade select-none">
+            <div className="flex items-center justify-between border-b-2 border-black pb-3">
+              <div className="flex items-center gap-2">
+                <Keyboard className="w-4 h-4 text-black" />
+                <h3 className="font-serif text-base font-bold tracking-tight text-black">
+                  Keyboard Shortcuts
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsShortcutsOpen(false)}
+                className="p-1 border border-black hover:bg-black hover:text-white transition-colors"
+                aria-label="Close shortcuts modal"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 font-mono text-xs text-neutral-800">
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+                <span className="font-serif text-neutral-700">Research Custom Topic</span>
+                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">⌘ / Ctrl + K</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+                <span className="font-serif text-neutral-700">Quick Search Inquiry</span>
+                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">/</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+                <span className="font-serif text-neutral-700">Surprise Me (Instant Hub)</span>
+                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">S</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+                <span className="font-serif text-neutral-700">Browse 2000+ Topics</span>
+                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">B</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+                <span className="font-serif text-neutral-700">My Saved Mindmaps</span>
+                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">L</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+                <span className="font-serif text-neutral-700">Flagship Category Pillars</span>
+                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">1 - 5</span>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="font-serif text-neutral-700">Close Active View / Modal</span>
+                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">ESC</span>
+              </div>
+            </div>
+
+            <div className="pt-2 text-center border-t border-neutral-200">
+              <button
+                onClick={() => setIsShortcutsOpen(false)}
+                className="w-full py-2 bg-black text-white hover:bg-neutral-800 font-mono text-xs uppercase font-bold tracking-wider transition-colors"
+              >
+                Got It
+              </button>
+            </div>
           </div>
         </div>
       )}
