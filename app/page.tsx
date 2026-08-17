@@ -217,47 +217,53 @@ export default function Home() {
       {/* Custom Inquiry Modal */}
       {isCustomModalOpen && (
         <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white border-4 border-black p-6 space-y-4 shadow-none animate-drop">
-            <div className="flex items-center justify-between border-b-2 border-black pb-2">
-              <span className="font-mono text-xs uppercase tracking-widest font-bold">
-                RESEARCH ANY TOPIC
-              </span>
+          <div className="w-full max-w-lg bg-white border-2 border-black p-6 md:p-8 space-y-5 shadow-none animate-fade">
+            <div className="flex items-center justify-between border-b-2 border-black pb-3">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs uppercase font-bold bg-black text-white px-2 py-0.5">
+                  TDI
+                </span>
+                <h3 className="font-serif text-lg font-bold tracking-tight text-black">
+                  Propose Custom Inquiry
+                </h3>
+              </div>
               <button
                 onClick={() => setIsCustomModalOpen(false)}
-                className="font-mono text-sm font-bold hover:opacity-60"
+                className="p-1 border border-black hover:bg-black hover:text-white transition-colors duration-100"
+                aria-label="Close modal"
               >
-                [✕]
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <p className="font-body text-xs text-neutral-700 leading-relaxed">
-              Ask our AI research assistant to look up verified web sources, extract key timelines, and build an interactive topic map for you in real time.
+              Dispatch autonomous research agents to discover verified citations, extract chronological events, and synthesize an interactive spatial mindmap.
             </p>
 
-            <form onSubmit={handleCustomSubmit} className="space-y-4 pt-2">
+            <form onSubmit={handleCustomSubmit} className="space-y-4 pt-1">
               <input
                 type="text"
                 autoFocus
                 value={customInput}
                 onChange={e => setCustomInput(e.target.value)}
-                placeholder="Enter any topic or question (e.g. Bronze Age Collapse, Dark Matter, How CRISPR works)..."
-                className="w-full border-2 border-black p-3 font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50"
+                placeholder="e.g. Voynich Manuscript, Fermi Paradox, Bronze Age Collapse..."
+                className="w-full border-2 border-black p-3.5 font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50"
               />
 
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
                   onClick={() => setIsCustomModalOpen(false)}
-                  className="px-4 py-2 border border-neutral-400 font-mono text-xs uppercase hover:border-black"
+                  className="font-mono text-xs uppercase font-bold text-neutral-600 hover:text-black tracking-wider underline underline-offset-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!customInput.trim()}
-                  className="px-6 py-2 bg-black text-white font-mono text-xs uppercase tracking-wider font-bold hover:bg-neutral-800 disabled:opacity-40"
+                  className="px-6 py-3 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase tracking-widest font-bold transition-colors duration-100 disabled:opacity-40"
                 >
-                  Start Research →
+                  Dispatch Agents →
                 </button>
               </div>
             </form>

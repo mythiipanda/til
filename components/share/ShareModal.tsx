@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { X, Copy, Check, Share2, FileText, Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react';
+import { X, Copy, Check, Share2, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 interface ShareModalProps {
@@ -11,7 +11,7 @@ interface ShareModalProps {
 }
 
 export function ShareModal({ isOpen, onClose }: ShareModalProps) {
-  const { currentTopic, nodes, dossiersByNodeId, generateShareLink, activeDossier } = useMindMapStore();
+  const { currentTopic, nodes, generateShareLink, activeDossier } = useMindMapStore();
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [loadingLink, setLoadingLink] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -74,94 +74,107 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
       if (node.type === 'note') {
         md += `### 📌 Pinned Insight: ${data.question}\n\n`;
         md += `${data.answer}\n\n`;
+        if (data.citations && data.citations.length > 0) {
+          md += `*Sources:*\n`;
+          data.citations.forEach((c: any) => {
+            md += `- [${c.title || c.url}](${c.url})\n`;
+          });
+          md += `\n`;
+        }
       } else {
-        md += `### 🌐 ${data.title}\n\n`;
-        md += `${data.summary || ''}\n\n`;
-        if (data.rabbit_holes && data.rabbit_holes.length > 0) {
-          md += `**Connected Vectors:** ${data.rabbit_holes.join(', ')}\n\n`;
+        md += `### ${data.title} (${data.category || 'Concept'})\n\n`;
+        md += `${data.summary}\n\n`;
+        if (data.wow_fact) {
+          md += `> **Key Fact**: ${data.wow_fact}\n\n`;
         }
       }
     });
 
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-monograph.md`;
-    link.click();
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-monograph.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const handleExportPNG = async () => {
-    const flowEl = document.querySelector('.react-flow__viewport') as HTMLElement;
-    if (!flowEl) return;
+  const handleExportPng = async () => {
+    const canvasElement = document.querySelector('.react-flow') as HTMLElement;
+    if (!canvasElement) return;
 
     try {
       setExportingImg(true);
-      const dataUrl = await toPng(flowEl, {
+      const dataUrl = await toPng(canvasElement, {
         backgroundColor: '#FFFFFF',
-        quality: 0.95,
+        pixelRatio: 2,
       });
 
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `${currentTopic ? currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tdilearned'}-canvas.png`;
-      link.click();
-    } catch (err) {
-      console.error('Failed to export canvas image:', err);
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${(currentTopic || 'mindmap').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-canvas.png`;
+      a.click();
+    } catch (e) {
+      console.error('Failed to export canvas PNG:', e);
     } finally {
       setExportingImg(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="relative w-full max-w-[460px] bg-white border border-neutral-200 rounded-2xl shadow-2xl p-6 overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-none p-4 animate-fade">
+      <div className="relative w-full max-w-lg bg-white border-2 border-black p-6 md:p-8 space-y-6 shadow-none">
+        
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-neutral-900 flex items-center justify-center text-white">
-              <Share2 className="w-3.5 h-3.5" />
-            </div>
+        <div className="flex items-center justify-between pb-4 border-b-2 border-black">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs uppercase font-bold bg-black text-white px-2 py-0.5">
+              EXPORT
+            </span>
             <div>
-              <h2 className="text-sm font-semibold text-neutral-900 tracking-tight">Share & Export Mindmap</h2>
-              <p className="text-[11px] text-neutral-500 truncate max-w-[280px]">
-                {currentTopic || 'Active Discovery Session'}
+              <h2 className="font-serif text-lg font-bold tracking-tight text-black">
+                Share & Export Monograph
+              </h2>
+              <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest truncate max-w-[280px]">
+                {currentTopic || 'Spatial Exploration'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-neutral-400 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors"
+            className="p-1 border border-black hover:bg-black hover:text-white transition-colors duration-100"
+            aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="pt-5 space-y-5">
-          {/* Public Link Share */}
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold text-neutral-900">
-              Public Interactive Canvas Link
+        {/* Share Link Generation */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="font-mono text-[11px] uppercase font-bold tracking-wider text-black">
+              1. Public Interactive Link
             </label>
-            <p className="text-[11px] text-neutral-500">
-              Anyone with this link can interactively zoom, pan, and read all researched monographs.
-            </p>
+            <span className="font-mono text-[10px] text-neutral-500 uppercase">Instant Web Access</span>
+          </div>
 
-            {shareUrl ? (
-              <div className="flex items-center gap-2 mt-2">
+          {shareUrl ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
                   value={shareUrl}
-                  className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono text-neutral-800 select-all outline-none"
+                  className="w-full px-3 py-2.5 bg-neutral-50 border-2 border-black font-mono text-xs text-black outline-none"
                 />
                 <button
                   onClick={handleCopyLink}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-neutral-900 hover:bg-black text-white rounded-xl text-xs font-medium transition-all shadow-xs shrink-0"
+                  className="px-4 py-2.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100 flex items-center gap-1.5 shrink-0"
                 >
                   {copied ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-green-400" />
-                      <span>Copied!</span>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Copied</span>
                     </>
                   ) : (
                     <>
@@ -171,58 +184,84 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
                   )}
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={handleGenerateLink}
-                disabled={loadingLink || nodes.length === 0}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-900 hover:bg-black text-white rounded-xl text-xs font-medium transition-all shadow-sm disabled:opacity-50"
-              >
-                {loadingLink ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                ) : (
-                  <>
-                    <Share2 className="w-3.5 h-3.5" />
-                    Generate Public Share Link
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-
-          <div className="border-t border-neutral-100 pt-4">
-            <label className="block text-xs font-semibold text-neutral-900 mb-2">
-              Export Formats
-            </label>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                onClick={handleExportMarkdown}
-                disabled={nodes.length === 0}
-                className="flex items-center gap-2.5 p-3 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 hover:border-neutral-300 rounded-xl text-left transition-all group disabled:opacity-50"
-              >
-                <div className="w-8 h-8 rounded-lg bg-white border border-neutral-200 flex items-center justify-center text-neutral-800 shadow-2xs group-hover:scale-105 transition-transform">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-neutral-900">Markdown (.md)</p>
-                  <p className="text-[10px] text-neutral-500">For Notion & Obsidian</p>
-                </div>
-              </button>
-
-              <button
-                onClick={handleExportPNG}
-                disabled={nodes.length === 0 || exportingImg}
-                className="flex items-center gap-2.5 p-3 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 hover:border-neutral-300 rounded-xl text-left transition-all group disabled:opacity-50"
-              >
-                <div className="w-8 h-8 rounded-lg bg-white border border-neutral-200 flex items-center justify-center text-neutral-800 shadow-2xs group-hover:scale-105 transition-transform">
-                  {exportingImg ? <Loader2 className="w-4 h-4 animate-spin text-neutral-800" /> : <ImageIcon className="w-4 h-4" />}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-neutral-900">Canvas Image</p>
-                  <p className="text-[10px] text-neutral-500">High-res PNG render</p>
-                </div>
-              </button>
+              <p className="font-mono text-[10px] text-neutral-500">
+                Anyone with this URL can navigate and view this mindmap and its dossiers.
+              </p>
             </div>
+          ) : (
+            <button
+              onClick={handleGenerateLink}
+              disabled={loadingLink}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-black text-black hover:text-white border-2 border-black font-mono text-xs uppercase font-bold tracking-widest transition-colors duration-100 disabled:opacity-40"
+            >
+              {loadingLink ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  <span>Generate Shareable URL</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Thick Horizontal Rule */}
+        <div className="border-t-2 border-black pt-5 space-y-3">
+          <label className="block font-mono text-[11px] uppercase font-bold tracking-wider text-black">
+            2. Offline Document &amp; Image Exports
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Markdown Export */}
+            <button
+              onClick={handleExportMarkdown}
+              className="p-4 bg-white hover:bg-black text-black hover:text-white border-2 border-black transition-colors duration-100 text-left space-y-2 group"
+            >
+              <div className="flex items-center justify-between">
+                <FileText className="w-5 h-5" />
+                <span className="font-mono text-[10px] uppercase font-bold border border-current px-1.5 py-0.5">
+                  .MD
+                </span>
+              </div>
+              <div>
+                <h3 className="font-serif text-sm font-bold">Markdown Monograph</h3>
+                <p className="font-body text-xs text-neutral-600 group-hover:text-neutral-300 leading-snug pt-0.5">
+                  Full text, chronology, and insights formatted for Obsidian &amp; Notion.
+                </p>
+              </div>
+            </button>
+
+            {/* PNG Canvas Export */}
+            <button
+              onClick={handleExportPng}
+              disabled={exportingImg}
+              className="p-4 bg-white hover:bg-black text-black hover:text-white border-2 border-black transition-colors duration-100 text-left space-y-2 group disabled:opacity-40"
+            >
+              <div className="flex items-center justify-between">
+                <ImageIcon className="w-5 h-5" />
+                <span className="font-mono text-[10px] uppercase font-bold border border-current px-1.5 py-0.5">
+                  .PNG
+                </span>
+              </div>
+              <div>
+                <h3 className="font-serif text-sm font-bold">Canvas Image</h3>
+                <p className="font-body text-xs text-neutral-600 group-hover:text-neutral-300 leading-snug pt-0.5">
+                  High-resolution raster screenshot of the current spatial graph.
+                </p>
+              </div>
+            </button>
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-neutral-200 pt-3 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 border-2 border-black font-mono text-xs uppercase font-bold tracking-wider hover:bg-black hover:text-white transition-colors duration-100"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

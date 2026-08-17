@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { X, Mail, Sparkles, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Mail, Check, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -10,11 +10,20 @@ interface AuthModalProps {
   onSuccess?: () => void;
 }
 
-export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sentMagicLink, setSentMagicLink] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setTimeout(() => {
+        setSentMagicLink(false);
+        setErrorMsg(null);
+      }, 100);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -34,102 +43,172 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
       if (error) throw error;
       setSentMagicLink(true);
-      if (onSuccess) onSuccess();
     } catch (e: any) {
       console.error('Magic link error:', e);
-      setErrorMsg(e.message || 'Failed to send Magic Link.');
+      setErrorMsg(e.message || 'Failed to send Magic Link. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const getEmailProviderLink = () => {
+    const domain = email.split('@')[1]?.toLowerCase() || '';
+    if (domain.includes('gmail')) return 'https://mail.google.com';
+    if (domain.includes('outlook') || domain.includes('hotmail')) return 'https://outlook.live.com';
+    if (domain.includes('yahoo')) return 'https://mail.yahoo.com';
+    if (domain.includes('proton')) return 'https://mail.proton.me';
+    return null;
+  };
+
+  const emailProviderUrl = getEmailProviderLink();
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="relative w-full max-w-[400px] bg-white border border-neutral-200 rounded-2xl shadow-2xl p-6 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center text-white font-mono font-bold text-xs tracking-tighter">
-              TD
-            </div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-none p-4 animate-fade">
+      <div className="relative w-full max-w-md bg-white border-2 border-black p-6 md:p-8 space-y-6 shadow-none">
+        
+        {/* Header Bar */}
+        <div className="flex items-center justify-between pb-4 border-b-2 border-black">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs uppercase font-bold bg-black text-white px-2 py-0.5">
+              TDI
+            </span>
             <div>
-              <h2 className="text-sm font-semibold text-neutral-900 tracking-tight">TDILEARNED Account</h2>
-              <p className="text-[11px] text-neutral-500">Sign in with passwordless magic link</p>
+              <h2 className="font-serif text-lg font-bold tracking-tight text-black">
+                {sentMagicLink ? 'Check Your Inbox' : 'Account Access'}
+              </h2>
+              <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest">
+                {sentMagicLink ? 'Magic Link Dispatched' : 'Passwordless Session Sync'}
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-neutral-400 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors"
+            className="p-1 border border-black hover:bg-black hover:text-white transition-colors duration-100"
+            aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Error message */}
+        {/* Error Notification */}
         {errorMsg && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-xs text-red-700">
-            <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+          <div className="p-3 bg-white border-2 border-black flex items-start gap-2.5 font-mono text-xs text-black">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {sentMagicLink ? (
-          <div className="py-8 text-center space-y-3 animate-in fade-in zoom-in-95">
-            <div className="w-12 h-12 bg-neutral-100 border border-neutral-200 rounded-full flex items-center justify-center mx-auto text-neutral-900">
-              <Check className="w-6 h-6" />
+          <div className="py-4 space-y-6 animate-fade">
+            <div className="space-y-2">
+              <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                // DISPATCH CONFIRMED
+              </div>
+              <h3 className="font-serif text-2xl font-bold text-black leading-tight">
+                One-Click Access Link Sent
+              </h3>
+              <p className="font-body text-xs text-neutral-700 leading-relaxed">
+                A secure passwordless login link has been dispatched to:
+              </p>
+              <div className="p-3 bg-neutral-50 border-2 border-black font-mono text-xs font-bold text-black break-all">
+                {email}
+              </div>
             </div>
-            <h3 className="text-base font-semibold text-neutral-900">Check your inbox</h3>
-            <p className="text-xs text-neutral-500 max-w-[280px] mx-auto leading-relaxed">
-              We sent a passwordless sign-in link to <span className="font-semibold text-neutral-800">{email}</span>. Click the link to log in immediately.
-            </p>
-            <button
-              onClick={() => setSentMagicLink(false)}
-              className="text-xs font-medium text-neutral-500 hover:text-neutral-900 underline pt-2"
-            >
-              Use a different email
-            </button>
+
+            {/* Instruction Steps */}
+            <div className="border-t border-black pt-4 space-y-2 font-mono text-xs text-neutral-800">
+              <div className="flex items-center gap-3">
+                <span className="w-5 h-5 bg-black text-white flex items-center justify-center font-bold text-[10px]">
+                  1
+                </span>
+                <span>Open your email client</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="w-5 h-5 bg-black text-white flex items-center justify-center font-bold text-[10px]">
+                  2
+                </span>
+                <span>Click &quot;Sign In to TDILEARNED&quot;</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="w-5 h-5 bg-black text-white flex items-center justify-center font-bold text-[10px]">
+                  3
+                </span>
+                <span>Your saved mindmaps sync automatically</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2 pt-2">
+              {emailProviderUrl && (
+                <a
+                  href={emailProviderUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-widest transition-colors duration-100"
+                >
+                  <span>Open {email.split('@')[1]}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              )}
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSentMagicLink(false)}
+                  className="font-mono text-xs text-neutral-600 hover:text-black uppercase tracking-wider underline underline-offset-2"
+                >
+                  ← Use different email
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 border-2 border-black font-mono text-xs uppercase font-bold tracking-wider hover:bg-black hover:text-white transition-colors duration-100"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="pt-5 space-y-4">
-            <form onSubmit={handleMagicLink} className="space-y-3.5">
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-700 mb-1.5">
-                  Email address
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="curious.researcher@example.com"
-                    className="w-full pl-9 pr-3 py-2.5 bg-neutral-50 border border-neutral-200 focus:border-neutral-900 focus:bg-white rounded-xl text-xs text-neutral-900 placeholder:text-neutral-400 outline-none transition-all"
-                  />
-                </div>
+          <form onSubmit={handleMagicLink} className="space-y-5 pt-2">
+            <div className="space-y-2">
+              <label className="block font-mono text-[11px] uppercase font-bold tracking-widest text-black">
+                Email Address
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@domain.com"
+                  className="w-full px-4 py-3 bg-white border-2 border-black font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50 transition-none"
+                />
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading || !email.trim()}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-900 hover:bg-black text-white rounded-xl text-xs font-medium transition-all shadow-sm active:scale-[0.99] disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 text-neutral-300" />
-                    Send Passwordless Magic Link
-                  </>
-                )}
-              </button>
-            </form>
+            <button
+              type="submit"
+              disabled={loading || !email.trim()}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-widest transition-colors duration-100 disabled:opacity-40"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-current" />
+              ) : (
+                <>
+                  <span>Send Passwordless Link</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
 
-            <p className="text-[10px] text-neutral-400 text-center leading-normal pt-1">
-              No passwords required. Your mindmaps and pinned research are automatically synced to your account.
-            </p>
-          </div>
+            <div className="border-t border-neutral-200 pt-3">
+              <p className="font-body text-xs text-neutral-600 leading-relaxed">
+                Zero passwords required. Your mindmaps and research dossiers will be permanently preserved and accessible from any device.
+              </p>
+            </div>
+          </form>
         )}
       </div>
     </div>

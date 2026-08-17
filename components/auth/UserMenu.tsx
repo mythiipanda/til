@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { AuthModal } from './AuthModal';
-import { User, LogOut, Bookmark, Cloud, ChevronDown, Sparkles } from 'lucide-react';
+import { User, LogOut, Bookmark, Cloud, ChevronDown } from 'lucide-react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 
 interface UserMenuProps {
@@ -24,7 +24,11 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+      if (currentUser) {
+        setIsAuthOpen(false);
+      }
     });
 
     return () => {
@@ -44,12 +48,12 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
       return;
     }
 
-    setSaveStatus('Saving...');
+    setSaveStatus('SAVING...');
     const res = await saveMindMap();
     if (res.error) {
-      setSaveStatus('Error');
+      setSaveStatus('ERROR');
     } else {
-      setSaveStatus('Saved ✔');
+      setSaveStatus('SAVED ✔');
     }
 
     setTimeout(() => setSaveStatus(null), 2500);
@@ -63,15 +67,15 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
           <div className="relative">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 px-2.5 py-1.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-full text-xs font-medium text-neutral-800 transition-colors shadow-xs"
+              className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-black text-black hover:text-white border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
             >
-              <div className="w-5 h-5 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[10px] font-mono">
+              <span className="w-4 h-4 bg-black text-white flex items-center justify-center text-[9px] font-bold">
                 {user.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-              <span className="max-w-[100px] truncate text-[11px] font-medium hidden sm:inline">
+              </span>
+              <span className="max-w-[120px] truncate hidden sm:inline">
                 {user.user_metadata?.full_name || user.email?.split('@')[0]}
               </span>
-              <ChevronDown className="w-3 h-3 text-neutral-500" />
+              <ChevronDown className="w-3.5 h-3.5" />
             </button>
 
             {isDropdownOpen && (
@@ -80,49 +84,54 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
                   className="fixed inset-0 z-40"
                   onClick={() => setIsDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-neutral-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95">
-                  <div className="px-3.5 py-2 border-b border-neutral-100">
-                    <p className="text-[11px] font-medium text-neutral-900 truncate">
-                      {user.user_metadata?.full_name || 'Researcher'}
+                <div className="absolute right-0 mt-2 w-64 bg-white border-2 border-black z-50 animate-fade">
+                  <div className="p-3 border-b-2 border-black bg-neutral-50">
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                      CURRENT SESSION
                     </p>
-                    <p className="text-[10px] text-neutral-400 truncate">{user.email}</p>
+                    <p className="font-mono text-xs font-bold text-black truncate pt-0.5">
+                      {user.email}
+                    </p>
                   </div>
 
-                  <div className="py-1">
+                  <div className="p-1 space-y-0.5">
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
                         if (onOpenLibrary) onOpenLibrary();
                       }}
-                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-neutral-700 hover:bg-neutral-50 transition-colors text-left"
+                      className="w-full flex items-center justify-between p-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left"
                     >
-                      <Bookmark className="w-3.5 h-3.5 text-neutral-500" />
-                      My Library & History
+                      <span className="flex items-center gap-2">
+                        <Bookmark className="w-3.5 h-3.5" />
+                        <span>Library & History</span>
+                      </span>
+                      <span className="text-[10px] opacity-60">→</span>
                     </button>
 
                     {nodes.length > 0 && currentTopic && (
                       <button
                         onClick={handleQuickSave}
-                        className="w-full flex items-center justify-between px-3.5 py-2 text-xs text-neutral-700 hover:bg-neutral-50 transition-colors text-left"
+                        className="w-full flex items-center justify-between p-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left"
                       >
                         <span className="flex items-center gap-2">
-                          <Cloud className="w-3.5 h-3.5 text-neutral-500" />
-                          Save Mindmap
+                          <Cloud className="w-3.5 h-3.5" />
+                          <span>Save to Cloud</span>
                         </span>
                         {saveStatus && (
-                          <span className="text-[10px] text-neutral-500 font-mono">{saveStatus}</span>
+                          <span className="font-bold text-[10px]">{saveStatus}</span>
                         )}
                       </button>
                     )}
                   </div>
 
-                  <div className="border-t border-neutral-100 pt-1 mt-1">
+                  <div className="border-t-2 border-black p-1">
                     <button
                       onClick={handleSignOut}
-                      className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors text-left"
+                      className="w-full flex items-center gap-2 p-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left font-bold"
                     >
-                      <LogOut className="w-3.5 h-3.5 text-red-500" />
-                      Sign Out
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 </div>
@@ -130,22 +139,19 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsAuthOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-black text-white rounded-full text-xs font-medium transition-all shadow-xs active:scale-[0.98]"
-            >
-              <User className="w-3 h-3 text-neutral-300" />
-              <span>Sign in</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setIsAuthOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-widest transition-colors duration-100"
+          >
+            <User className="w-3.5 h-3.5" />
+            <span>Sign In</span>
+          </button>
         )}
       </div>
 
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
-        onSuccess={() => setIsAuthOpen(false)}
       />
     </>
   );
