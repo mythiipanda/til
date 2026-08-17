@@ -24,6 +24,7 @@ export interface NodeSchema extends Record<string, unknown> {
   curiosity_score?: number | null;
   wow_fact?: string | null;
   related_to_today?: string | null;
+  suggested_questions?: string[];
 }
 
 export interface SourceCitation {
@@ -82,6 +83,7 @@ export interface ResearchDossier {
   mechanisms: MechanismCard[];
   geography?: Geography | null;
   rabbitHoles: RabbitHoleTeaser[];
+  suggestedQuestions?: string[];
   audioTourScript: string;
   wowFact?: string | null;
   curiosityScore?: number | null;

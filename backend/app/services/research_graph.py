@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.graph import (
     Coordinates,
+    GalleryItemSchema,
     GeographySchema,
     MechanismCardSchema,
     NodeSchema,
@@ -98,6 +99,10 @@ class LLMDeepDossierOutput(BaseModel):
     audioTourScript: str = Field(description="Captivating podcast-style voiceover script in everyday language")
     wowFact: str = Field(description="The single most surprising, mind-blowing sentence about this topic")
     curiosityScore: int = Field(description="Honest 1-10 rating: how mind-blowing is this?")
+    suggested_questions: list[str] = Field(
+        default_factory=list,
+        description="3 provocative, natural curiosity questions a reader might ask next about this topic (e.g. 'How did the gears model lunar irregularities?', 'Why did this technology disappear for centuries?')",
+    )
 
 
 class LLMChildBranchDefinition(BaseModel):
@@ -110,8 +115,13 @@ class LLMChildBranchDefinition(BaseModel):
     location_name: str | None = Field(None, description="Location name")
     image_search_query: str = Field(description="Specific Wikimedia Commons image search keyword")
     rabbit_holes: list[str] = Field(description="3 specific, real sub-topic names")
+    suggested_questions: list[str] = Field(
+        default_factory=list,
+        description="3 provocative, natural curiosity questions about this sub-topic",
+    )
     curiosityScore: int = Field(description="Honest 1-10 curiosity rating")
     curiosityReason: str = Field(description="One phrase explaining why it is fascinating")
+
 
 
 class LLMSeedTreeWithBranches(BaseModel):
@@ -544,6 +554,11 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
             audioTourScript=f"Let's explore the fascinating story of {topic}.",
             wowFact=f"The most surprising documented detail about {topic}.",
             curiosityScore=7,
+            suggested_questions=[
+                f"Why was {topic} so historically groundbreaking?",
+                f"How do the core mechanisms of {topic} work in detail?",
+                f"What modern discoveries or concepts trace back to {topic}?",
+            ],
         )
 
     await _emit_plan_phase(
@@ -601,37 +616,46 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
         },
     )
 
-    call_id_img = str(uuid.uuid4())[:8]
-    image_query = state.get("image_query") or topic
+    # Wikimedia Commons gallery
+    call_id_wiki = str(uuid.uuid4())[:8]
     await sink.emit(
         "tool_call",
         {
-            "call_id": call_id_img,
-            "tool": "WikimediaArchive",
-            "query": image_query,
+            "call_id": call_id_wiki,
+            "tool": "WikimediaCommonsArchive",
+            "query": topic,
             "status": "running",
         },
     )
-    gallery = await wikimedia_archive_tool(image_query, max_images=3)
-    if not gallery:
-        gallery = await wikimedia_archive_tool(topic, max_images=3)
-    for item in gallery:
-        item.imageUrl = proxy_media_url(item.imageUrl)
+    raw_images = await wikimedia_archive_tool(topic, max_images=3)
+    if not raw_images and dd.get("title"):
+        raw_images = await wikimedia_archive_tool(dd["title"], max_images=3)
     await sink.emit(
         "tool_result",
         {
-            "call_id": call_id_img,
-            "tool": "WikimediaArchive",
-            "preview": f"Retrieved {len(gallery)} archival illustrations",
-            "count": len(gallery),
+            "call_id": call_id_wiki,
+            "tool": "WikimediaCommonsArchive",
+            "preview": f"Archived {len(raw_images)} historical Wikimedia records",
+            "count": len(raw_images),
             "status": "success",
         },
     )
+
+    gallery = [
+        GalleryItemSchema(
+            imageUrl=proxy_media_url(img.imageUrl),
+            caption=img.caption,
+            license=img.license or "Creative Commons",
+            originUrl=img.originUrl,
+        )
+        for img in raw_images
+    ]
 
     tx, ty = calculate_osm_tiles(lat, lng)
     root_coords = Coordinates(lat=lat, lng=lng, tileX=tx, tileY=ty, location_name=loc_name)
     root_id = str(uuid.uuid4())
     main_image_url = gallery[0].imageUrl if gallery else None
+    suggested_q = dd.get("suggested_questions") or []
 
     root_node = NodeSchema(
         id=root_id,
@@ -642,6 +666,7 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
         image_search_query=topic,
         imageUrl=main_image_url,
         rabbit_holes=[rh["title"] for rh in dd.get("rabbitHoles", [])][:3],
+        suggested_questions=suggested_q[:4],
         timestamp=dd.get("era"),
         confidence=0.98,
         audio_summary=(dd.get("audioTourScript") or "")[:160] + "...",
@@ -681,6 +706,7 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
             )
             for rh in dd.get("rabbitHoles", [])
         ],
+        suggestedQuestions=suggested_q[:4],
         audioTourScript=dd.get("audioTourScript", ""),
         wowFact=dd.get("wowFact"),
         curiosityScore=min(max(int(dd.get("curiosityScore") or 7), 1), 10),
@@ -717,6 +743,7 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
                 image_search_query=branch.get("image_search_query") or topic,
                 imageUrl=c_img,
                 rabbit_holes=branch.get("rabbit_holes", [])[:3],
+                suggested_questions=branch.get("suggested_questions", [])[:3],
                 timestamp=branch.get("era"),
                 confidence=0.96,
                 audio_summary=branch.get("summary"),

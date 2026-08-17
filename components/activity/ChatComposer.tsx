@@ -33,55 +33,29 @@ export function ChatComposer() {
                      nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) || 
                      nodes[0];
 
-  // Dynamically generate natural curiosity questions based on active card data
-  const suggestedQuestions: Array<{ label: string; query: string }> = [];
-
-  // 1. From mechanisms
-  if (activeDossier?.mechanisms && activeDossier.mechanisms.length > 0) {
-    const firstMech = activeDossier.mechanisms[0];
-    if (firstMech?.title) {
-      suggestedQuestions.push({
-        label: `How does the ${firstMech.title.toLowerCase()} work?`,
-        query: `How does the ${firstMech.title} mechanism work in the context of ${currentTopic}?`,
-      });
+  // Consume pure LLM-generated suggested questions (Zero Client Hardcoding)
+  const rawLlmQuestions: string[] = [];
+  const nodeQuestions = (activeNode?.data?.suggested_questions as string[]) || [];
+  const dossierQuestions = activeDossier?.suggestedQuestions || [];
+  
+  [...nodeQuestions, ...dossierQuestions].forEach((q) => {
+    if (q && typeof q === 'string' && !rawLlmQuestions.includes(q.trim())) {
+      rawLlmQuestions.push(q.trim());
     }
-  }
-
-  // 2. From rabbit holes
-  const rawRabbitHoles: string[] = [];
-  if (activeNode?.data?.rabbit_holes && Array.isArray(activeNode.data.rabbit_holes)) {
-    activeNode.data.rabbit_holes.forEach((rh: string) => {
-      if (rh && typeof rh === 'string' && !rawRabbitHoles.includes(rh)) {
-        rawRabbitHoles.push(rh);
-      }
-    });
-  } else if (activeDossier?.rabbitHoles && Array.isArray(activeDossier.rabbitHoles)) {
-    activeDossier.rabbitHoles.forEach((rh) => {
-      if (rh?.title && !rawRabbitHoles.includes(rh.title)) {
-        rawRabbitHoles.push(rh.title);
-      }
-    });
-  }
-
-  rawRabbitHoles.slice(0, 2).forEach((rh) => {
-    const cleanRh = rh.trim().replace(/[.?]$/, '');
-    suggestedQuestions.push({
-      label: `How does ${cleanRh} connect to this?`,
-      query: `How does ${cleanRh} connect to ${currentTopic}?`,
-    });
   });
 
-  // 3. From wow fact or timeline
-  if (suggestedQuestions.length < 3) {
-    if (activeDossier?.wowFact || activeNode?.data?.wow_fact) {
-      suggestedQuestions.push({
-        label: `Why was ${currentTopic} so significant?`,
-        query: `Why was ${currentTopic} so significant and what made it so surprising or impactful?`,
-      });
-    } else {
-      suggestedQuestions.push({
-        label: `What were the key turning points?`,
-        query: `What were the key turning points and milestones in the history of ${currentTopic}?`,
+  const suggestedQuestions: Array<{ label: string; query: string }> = rawLlmQuestions.slice(0, 3).map((q) => ({
+    label: q,
+    query: q,
+  }));
+
+  // Fallback for pre-migration cards without model-generated questions
+  if (suggestedQuestions.length === 0) {
+    if (activeDossier?.rabbitHoles && activeDossier.rabbitHoles.length > 0) {
+      activeDossier.rabbitHoles.slice(0, 3).forEach((rh) => {
+        if (rh.teaser) {
+          suggestedQuestions.push({ label: rh.teaser, query: `${rh.teaser} (Context: ${currentTopic})` });
+        }
       });
     }
   }
@@ -106,6 +80,7 @@ export function ChatComposer() {
     pinChatToCanvas(question, answer);
     setPinnedMsgIndices(prev => [...prev, idx]);
   };
+
 
 
   return (
