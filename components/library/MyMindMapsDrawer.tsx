@@ -26,7 +26,7 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
 
       const { data, error } = await supabase
         .from('mindmaps')
-        .select('id, title, root_topic, category, node_count, updated_at, share_slug')
+        .select('id, title, root_topic, category, nodes, updated_at, share_slug')
         .order('updated_at', { ascending: false });
 
       if (!error && data) {
@@ -215,7 +215,7 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
                               {map.category || 'GENERAL'}
                             </span>
                             <span className="font-mono text-[10px] text-neutral-500 group-hover:text-neutral-300">
-                              {map.node_count || 0} nodes
+                              {map.nodes?.length || 0} nodes
                             </span>
                           </div>
                           <h3 className="font-serif text-base font-bold truncate">

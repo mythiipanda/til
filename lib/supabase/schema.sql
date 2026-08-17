@@ -42,10 +42,10 @@ create table if not exists public.mindmaps (
   category text default 'General',
   share_slug text unique,
   is_public boolean default false,
-  viewport jsonb default '{"x": 0, "y": 0, "zoom": 1}'::jsonb,
   nodes jsonb not null default '[]'::jsonb,
   edges jsonb not null default '[]'::jsonb,
-  node_count int default 1,
+  dossiers jsonb default '{}'::jsonb,
+  context_chain jsonb default '[]'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

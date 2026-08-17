@@ -67,7 +67,6 @@ interface MindMapState {
     title: string;
     root_topic: string;
     category?: string;
-    node_count?: number;
     updated_at: string;
     share_slug?: string;
   }>;
@@ -820,7 +819,6 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
               category,
               nodes: nodes as any,
               edges: edges as any,
-              node_count: nodes.length,
               share_slug: slug,
               updated_at: new Date().toISOString()
             })
@@ -839,7 +837,6 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
               category,
               nodes: nodes as any,
               edges: edges as any,
-              node_count: nodes.length,
               share_slug: slug,
               is_public: false,
             })
@@ -998,7 +995,6 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         category,
         nodes: nodes as any,
         edges: edges as any,
-        node_count: nodes.length,
         share_slug: slug,
         is_public: true,
         updated_at: new Date().toISOString(),
