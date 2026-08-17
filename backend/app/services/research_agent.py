@@ -64,8 +64,8 @@ async def stream_deep_research(
     try:
         while True:
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=0.25)
-            except TimeoutError:
+                event = queue.get_nowait()
+            except asyncio.QueueEmpty:
                 if task.done():
                     # Surface a graph exception if the run died mid-stream.
                     exc = task.exception() if not task.cancelled() else None
@@ -73,6 +73,7 @@ async def stream_deep_research(
                         logger.error(f"Research graph failed: {exc}")
                         yield emit_sse("error", {"message": f"Research run failed: {exc}"})
                     break
+                await asyncio.sleep(0.25)
                 continue
 
             if event.get("event") == "done":

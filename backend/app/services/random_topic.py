@@ -451,11 +451,17 @@ async def _signal_titles(category: str) -> list[str]:
             return []
 
     task = asyncio.create_task(_refresh())
-    try:
-        return await asyncio.wait_for(asyncio.shield(task), timeout=SIGNAL_FETCH_TIMEOUT)
-    except TimeoutError:
-        logger.info("[random-topic] signal refresh exceeded budget; continuing without fresh hooks")
-        return (cached or {}).get("titles", []) if isinstance(cached, dict) else []
+    deadline = time.monotonic() + SIGNAL_FETCH_TIMEOUT
+    while not task.done():
+        if time.monotonic() >= deadline:
+            logger.info("[random-topic] signal refresh exceeded budget; continuing without fresh hooks")
+            return (cached or {}).get("titles", []) if isinstance(cached, dict) else []
+        await asyncio.sleep(0.1)
+    return (
+        task.result()
+        if not task.cancelled()
+        else ((cached or {}).get("titles", []) if isinstance(cached, dict) else [])
+    )
 
 
 async def _fallback_any_page() -> list[dict[str, str]]:
