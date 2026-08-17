@@ -10,6 +10,8 @@ import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
 import { Plus, RotateCcw, BookOpen, Sparkles, X } from 'lucide-react';
 
+const FLAGSHIP_CATEGORIES = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'] as const;
+
 export default function Home() {
   const fetchPrecomputedHubs = useMindMapStore(s => s.fetchPrecomputedHubs);
   const loadRandomHubByCategory = useMindMapStore(s => s.loadRandomHubByCategory);
@@ -43,6 +45,11 @@ export default function Home() {
     setCustomInput('');
   };
 
+  const handleSurpriseMe = () => {
+    const randomCat = FLAGSHIP_CATEGORIES[Math.floor(Math.random() * FLAGSHIP_CATEGORIES.length)];
+    loadRandomHubByCategory(randomCat);
+  };
+
   const targetNodeId = lastResearchedNodeId || activeDossier?.nodeId || selectedNodeId || nodes[0]?.id;
 
   return (
@@ -51,7 +58,7 @@ export default function Home() {
       <KnowledgeCanvas />
       
       {/* Top Masthead Bar */}
-      <header className="fixed top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between bg-white border-2 border-black p-2 md:px-4 shadow-none gap-2">
+      <header className="fixed top-4 left-4 right-4 z-20 flex items-center justify-between bg-white border-2 border-black p-2 md:px-4 shadow-none gap-2">
         
         {/* Left: Brand & Home Reset */}
         <div className="flex items-center gap-3">
@@ -71,9 +78,9 @@ export default function Home() {
           </span>
         </div>
 
-        {/* Center: Fast Category Switcher */}
-        <div className="hidden md:flex items-center gap-1">
-          {CATEGORIES.map((cat) => (
+        {/* Center: 5 Flagship Pillars + Surprise Me */}
+        <div className="hidden md:flex items-center gap-1.5">
+          {FLAGSHIP_CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => loadRandomHubByCategory(cat)}
@@ -82,6 +89,14 @@ export default function Home() {
               {cat}
             </button>
           ))}
+          <button
+            onClick={handleSurpriseMe}
+            className="px-2.5 py-1 font-mono text-[10px] uppercase font-bold tracking-wider bg-neutral-100 border border-neutral-400 hover:bg-black hover:text-white hover:border-black transition-colors flex items-center gap-1"
+            title="Surprise me with a random topic"
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>Surprise Me</span>
+          </button>
         </div>
 
         {/* Right: Actions */}

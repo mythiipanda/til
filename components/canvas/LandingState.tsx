@@ -3,12 +3,15 @@
 import { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
-import { Sparkles, ArrowRight, Search } from 'lucide-react';
+import { Sparkles, ArrowRight, Search, ChevronDown, ChevronUp, Shuffle } from 'lucide-react';
+
+const FLAGSHIP_CATEGORIES = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'] as const;
 
 export default function LandingState() {
   const [customTopic, setCustomTopic] = useState('');
   const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
   const [isStartingResearch, setIsStartingResearch] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   const loadRandomHubByCategory = useMindMapStore(s => s.loadRandomHubByCategory);
   const startResearch = useMindMapStore(s => s.startResearch);
@@ -23,6 +26,11 @@ export default function LandingState() {
     }
   };
 
+  const handleSurpriseMe = async () => {
+    const randomCat = FLAGSHIP_CATEGORIES[Math.floor(Math.random() * FLAGSHIP_CATEGORIES.length)];
+    await handleCategoryClick(randomCat);
+  };
+
   const handleCustomResearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customTopic.trim()) return;
@@ -30,9 +38,11 @@ export default function LandingState() {
     startResearch(customTopic.trim(), 'General');
   };
 
+  const remainingCategories = CATEGORIES.filter(c => !FLAGSHIP_CATEGORIES.includes(c as any));
+
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center z-10 select-none overflow-y-auto p-4 md:p-8 texture-paper">
-      <div className="w-full max-w-4xl bg-white border-2 border-black p-6 md:p-12 space-y-8 shadow-none animate-drop">
+      <div className="w-full max-w-4xl bg-white border-2 border-black p-6 md:p-10 space-y-7 shadow-none animate-drop my-auto">
 
         {/* Masthead Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b-2 border-black pb-3 gap-2">
@@ -50,56 +60,91 @@ export default function LandingState() {
         </div>
 
         {/* Hero Title & Subtext */}
-        <div className="space-y-3">
-          <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-normal tracking-tight text-black leading-tight">
+        <div className="space-y-2">
+          <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl font-normal tracking-tight text-black leading-tight">
             What did you <span className="italic font-normal">learn today?</span>
           </h1>
-          <p className="font-body text-sm sm:text-base text-neutral-700 max-w-2xl leading-relaxed">
-            Explore the fascinating stories and surprising connections you never knew you were curious about. Pick a category to jump in right away, or search any topic you want to explore.
+          <p className="font-body text-xs sm:text-sm text-neutral-700 max-w-2xl leading-relaxed">
+            Explore the fascinating stories and surprising connections you never knew you were curious about. Pick a pillar to jump in right away, or search any topic you want to explore.
           </p>
         </div>
 
-        {/* Category Fast Launch Grid */}
-        <div className="space-y-3 pt-2">
+        {/* Category Fast Launch Grid (5 Flagship Pillars) */}
+        <div className="space-y-2.5 pt-1">
           <div className="flex items-center justify-between border-b border-black pb-1">
             <span className="font-mono text-[10px] uppercase tracking-widest font-bold flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3" /> [ 1 ] PICK A CATEGORY TO EXPLORE INSTANTLY
+              <Sparkles className="w-3 h-3" /> [ 1 ] CHOOSE A KNOWLEDGE PILLAR
             </span>
-            <span className="font-mono text-[10px] text-neutral-500 hidden sm:inline">
-              Instant topic selection
-            </span>
+            <button
+              onClick={handleSurpriseMe}
+              disabled={loadingCategory !== null || isStartingResearch}
+              className="font-mono text-[10px] uppercase font-bold text-neutral-700 hover:text-black flex items-center gap-1 hover:underline"
+            >
+              <Shuffle className="w-3 h-3" />
+              <span>Surprise Me</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-1">
-            {CATEGORIES.map((cat, idx) => {
+            {FLAGSHIP_CATEGORIES.map((cat, idx) => {
               const isLoading = loadingCategory === cat;
               return (
                 <button
                   key={cat}
                   disabled={isLoading || isStartingResearch}
                   onClick={() => handleCategoryClick(cat)}
-                  className="group p-3 border border-black bg-white hover:bg-black hover:text-white transition-colors duration-100 text-left flex flex-col justify-between h-24 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-black"
+                  className="group p-3 border border-black bg-white hover:bg-black hover:text-white transition-colors duration-100 text-left flex flex-col justify-between h-20 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-black"
                 >
                   <div className="flex items-center justify-between w-full font-mono text-[10px] text-neutral-400 group-hover:text-neutral-300">
                     <span>0{idx + 1}</span>
                     <ArrowRight className="w-3 h-3" />
                   </div>
                   <div>
-                    <span className="font-serif text-sm sm:text-base font-bold uppercase tracking-tight block">
+                    <span className="font-serif text-sm font-bold uppercase tracking-tight block">
                       {cat}
                     </span>
                     <span className="font-mono text-[9px] text-neutral-500 group-hover:text-neutral-300">
-                      {isLoading ? 'Opening topic...' : 'Explore topic →'}
+                      {isLoading ? 'Opening...' : 'Explore topic →'}
                     </span>
                   </div>
                 </button>
               );
             })}
           </div>
+
+          {/* Expandable Additional Categories */}
+          <div className="pt-1">
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className="font-mono text-[10px] uppercase tracking-wider text-neutral-500 hover:text-black flex items-center gap-1 transition-colors"
+            >
+              <span>{showAllCategories ? '− Less categories' : `+ ${remainingCategories.length} More Categories (Geography, Health, Society...)`}</span>
+              {showAllCategories ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+
+            {showAllCategories && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-2 animate-drop">
+                {remainingCategories.map((cat) => {
+                  const isLoading = loadingCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      disabled={isLoading || isStartingResearch}
+                      onClick={() => handleCategoryClick(cat)}
+                      className="p-2 border border-neutral-300 hover:border-black hover:bg-black hover:text-white font-mono text-[10px] uppercase text-left flex items-center justify-between transition-colors"
+                    >
+                      <span className="truncate">{cat}</span>
+                      <ArrowRight className="w-2.5 h-2.5 opacity-60" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Live Scratch Inquiry Form */}
-        <div className="space-y-3 pt-4 border-t-2 border-black">
+        <div className="space-y-2.5 pt-2 border-t-2 border-black">
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] uppercase tracking-widest font-bold flex items-center gap-1.5">
               <Search className="w-3 h-3" /> [ 2 ] OR SEARCH ANY TOPIC YOU'RE CURIOUS ABOUT
@@ -120,7 +165,7 @@ export default function LandingState() {
             <button
               type="submit"
               disabled={!customTopic.trim() || isStartingResearch}
-              className="px-6 py-3 bg-black text-white font-mono text-xs uppercase tracking-wider font-bold hover:bg-neutral-800 transition-colors duration-100 disabled:opacity-40 flex items-center justify-center gap-1.5"
+              className="px-6 py-3 bg-black text-white font-mono text-xs uppercase tracking-wider font-bold hover:bg-neutral-800 transition-colors duration-100 disabled:opacity-40 flex items-center justify-center gap-1.5 shrink-0"
             >
               <span>{isStartingResearch ? 'Researching...' : 'Research Topic'}</span>
               <ArrowRight className="w-3 h-3" />
@@ -132,3 +177,4 @@ export default function LandingState() {
     </div>
   );
 }
+

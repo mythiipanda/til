@@ -33,20 +33,57 @@ export function ChatComposer() {
                      nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) || 
                      nodes[0];
 
-  // Dynamically extract AI-generated rabbit holes and curiosity vectors from model output
-  const aiSuggestedVectors: string[] = [];
+  // Dynamically generate natural curiosity questions based on active card data
+  const suggestedQuestions: Array<{ label: string; query: string }> = [];
+
+  // 1. From mechanisms
+  if (activeDossier?.mechanisms && activeDossier.mechanisms.length > 0) {
+    const firstMech = activeDossier.mechanisms[0];
+    if (firstMech?.title) {
+      suggestedQuestions.push({
+        label: `How does the ${firstMech.title.toLowerCase()} work?`,
+        query: `How does the ${firstMech.title} mechanism work in the context of ${currentTopic}?`,
+      });
+    }
+  }
+
+  // 2. From rabbit holes
+  const rawRabbitHoles: string[] = [];
   if (activeNode?.data?.rabbit_holes && Array.isArray(activeNode.data.rabbit_holes)) {
     activeNode.data.rabbit_holes.forEach((rh: string) => {
-      if (rh && typeof rh === 'string' && !aiSuggestedVectors.includes(rh)) {
-        aiSuggestedVectors.push(rh);
+      if (rh && typeof rh === 'string' && !rawRabbitHoles.includes(rh)) {
+        rawRabbitHoles.push(rh);
       }
     });
   } else if (activeDossier?.rabbitHoles && Array.isArray(activeDossier.rabbitHoles)) {
     activeDossier.rabbitHoles.forEach((rh) => {
-      if (rh?.title && !aiSuggestedVectors.includes(rh.title)) {
-        aiSuggestedVectors.push(rh.title);
+      if (rh?.title && !rawRabbitHoles.includes(rh.title)) {
+        rawRabbitHoles.push(rh.title);
       }
     });
+  }
+
+  rawRabbitHoles.slice(0, 2).forEach((rh) => {
+    const cleanRh = rh.trim().replace(/[.?]$/, '');
+    suggestedQuestions.push({
+      label: `How does ${cleanRh} connect to this?`,
+      query: `How does ${cleanRh} connect to ${currentTopic}?`,
+    });
+  });
+
+  // 3. From wow fact or timeline
+  if (suggestedQuestions.length < 3) {
+    if (activeDossier?.wowFact || activeNode?.data?.wow_fact) {
+      suggestedQuestions.push({
+        label: `Why was ${currentTopic} so significant?`,
+        query: `Why was ${currentTopic} so significant and what made it so surprising or impactful?`,
+      });
+    } else {
+      suggestedQuestions.push({
+        label: `What were the key turning points?`,
+        query: `What were the key turning points and milestones in the history of ${currentTopic}?`,
+      });
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -58,10 +95,10 @@ export function ChatComposer() {
     sendChat(q);
   };
 
-  const handleVectorQuestion = (vectorTitle: string) => {
+  const handleSelectSuggestedQuestion = (query: string) => {
     if (isChatStreaming) return;
     setIsExpanded(true);
-    sendChat(`How does ${vectorTitle} relate to ${currentTopic}?`);
+    sendChat(query);
   };
 
   const handlePin = (idx: number, question: string, answer: string) => {
@@ -69,6 +106,7 @@ export function ChatComposer() {
     pinChatToCanvas(question, answer);
     setPinnedMsgIndices(prev => [...prev, idx]);
   };
+
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[720px] max-w-[94vw] z-20 flex flex-col gap-2 select-none animate-drop">
@@ -166,20 +204,21 @@ export function ChatComposer() {
         </div>
       )}
 
-      {/* Dynamic AI-Generated Follow-up Vectors (Zero Hardcoding) */}
-      {chatMessages.length === 0 && aiSuggestedVectors.length > 0 && (
+      {/* Natural Curiosity Questions */}
+      {chatMessages.length === 0 && suggestedQuestions.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-600 bg-white/90 backdrop-blur-xs px-2 py-1 border border-neutral-300 shrink-0">
-            Suggested:
+          <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-600 bg-white/95 px-2 py-1 border border-neutral-300 shrink-0 flex items-center gap-1">
+            <Sparkles className="w-2.5 h-2.5" />
+            <span>Suggested:</span>
           </span>
-          {aiSuggestedVectors.slice(0, 3).map((vec, i) => (
+          {suggestedQuestions.map((q, i) => (
             <button
               key={i}
-              onClick={() => handleVectorQuestion(vec)}
-              className="bg-white hover:bg-black hover:text-white text-black border border-neutral-300 hover:border-black px-2.5 py-1 font-body text-xs whitespace-nowrap transition-colors duration-100 flex items-center gap-1 shrink-0"
-              title={`Ask how ${vec} connects`}
+              onClick={() => handleSelectSuggestedQuestion(q.query)}
+              className="bg-white hover:bg-black hover:text-white text-black border border-neutral-300 hover:border-black px-2.5 py-1 font-body text-xs whitespace-nowrap transition-colors duration-100 flex items-center gap-1.5 shrink-0 shadow-xs"
+              title={q.query}
             >
-              <span className="truncate max-w-[200px]">{vec}</span>
+              <span>{q.label}</span>
               <ArrowUpRight className="w-3 h-3 opacity-60 shrink-0" />
             </button>
           ))}
