@@ -12,38 +12,20 @@ DISK_TTL_FLOOR = 60  # don't bother persisting entries with TTL under 60s
 
 
 class CacheService:
-    """Multi-tier cache: Azure Redis (when configured) → disk JSON (fallback) → memory.
+    """Two-tier cache: disk JSON (fallback) → memory.
 
     Used to deduplicate expensive work (deep category crawls, LLM seed-query
     pools, live signal pools) so repeated calls within the TTL window hit the
     cache instead of re-querying upstream APIs.
 
-    The disk tier keeps these expensive pools alive across process restarts even
-    when no Redis is configured — critical for production cold starts.
+    The disk tier keeps these expensive pools alive across process restarts —
+    critical for production cold starts.
     """
 
     def __init__(self):
         self._memory_cache: dict[str, tuple[float, dict[str, Any] | list[Any]]] = {}
-        self._redis_client = None
         self._disk_path = Path(DEFAULT_CACHE_DIR) / "cache.json"
-        self._init_redis()
         self._load_disk()
-
-    def _init_redis(self):
-        redis_url = os.getenv("REDIS_URL")
-        if redis_url:
-            try:
-                import redis
-
-                self._redis_client = redis.from_url(redis_url, decode_responses=True)
-                logger.info("Connected to Redis cache")
-            except Exception as e:
-                logger.warning(f"Failed to connect to Redis ({e}), using disk/memory fallback")
-                self._redis_client = None
-
-    @property
-    def redis_client(self):
-        return self._redis_client
 
     # ------------------------------------------------------------------ #
     # Disk persistence
@@ -83,16 +65,7 @@ class CacheService:
     def get(self, key: str) -> dict[str, Any] | list[Any] | None:
         normalized_key = key.lower().strip()
 
-        # 1. Redis
-        if self._redis_client:
-            try:
-                val = self._redis_client.get(normalized_key)
-                if val:
-                    return json.loads(val)
-            except Exception as e:
-                logger.error(f"Redis get error: {e}")
-
-        # 2. Memory + disk (expiry-checked)
+        # Memory + disk (expiry-checked)
         entry = self._memory_cache.get(normalized_key)
         if entry:
             expires, value = entry
@@ -106,12 +79,6 @@ class CacheService:
         normalized_key = key.lower().strip()
         expires = time.time() + ttl_seconds
         self._memory_cache[normalized_key] = (expires, value)
-
-        if self._redis_client:
-            try:
-                self._redis_client.setex(normalized_key, ttl_seconds, json.dumps(value))
-            except Exception as e:
-                logger.error(f"Redis set error: {e}")
 
         if ttl_seconds >= DISK_TTL_FLOOR:
             self._persist()

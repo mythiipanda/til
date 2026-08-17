@@ -1,14 +1,14 @@
 import logging
 import os
 from typing import Any
+
 import httpx
 
 logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("NEXT_PUBLIC_SUPABASE_URL", "")).rstrip("/")
 SUPABASE_KEY = os.getenv(
-    "SUPABASE_SERVICE_ROLE_KEY", 
-    os.getenv("SUPABASE_ANON_KEY", os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY", ""))
+    "SUPABASE_SERVICE_ROLE_KEY", os.getenv("SUPABASE_ANON_KEY", os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY", ""))
 )
 
 
@@ -94,12 +94,14 @@ async def upsert_hubs_batch(hubs_data: list[dict[str, Any]]) -> int:
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         for i in range(0, len(hubs_data), CHUNK_SIZE):
-            chunk = hubs_data[i:i + CHUNK_SIZE]
+            chunk = hubs_data[i : i + CHUNK_SIZE]
             try:
                 resp = await client.post(url, headers=headers, json=chunk)
                 if resp.status_code in (200, 201, 204):
                     success_count += len(chunk)
-                    logger.info(f"Upserted chunk {i//CHUNK_SIZE + 1}/{(len(hubs_data)-1)//CHUNK_SIZE + 1} ({len(chunk)} hubs)")
+                    logger.info(
+                        f"Upserted chunk {i // CHUNK_SIZE + 1}/{(len(hubs_data) - 1) // CHUNK_SIZE + 1} ({len(chunk)} hubs)"
+                    )
                 else:
                     logger.error(f"Supabase chunk upsert failed [{resp.status_code}]: {resp.text[:200]}")
             except Exception as e:

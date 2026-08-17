@@ -7,10 +7,12 @@ import json
 import logging
 import os
 import sys
+
 from dotenv import load_dotenv
 
 if sys.platform == "win32":
     import io
+
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
@@ -85,17 +87,19 @@ async def main():
             image_url = root_node.get("imageUrl") if isinstance(root_node, dict) else None
             curiosity_score = root_node.get("curiosity_score") if isinstance(root_node, dict) else 8
 
-            hubs_to_migrate.append({
-                "id": hub_id,
-                "topic": topic,
-                "category": category,
-                "summary": summary[:300] if summary else f"Exploration into {topic}",
-                "image_url": image_url,
-                "root_node": root_node,
-                "children": children,
-                "dossier": matched_dossier or {},
-                "curiosity_score": curiosity_score or 8,
-            })
+            hubs_to_migrate.append(
+                {
+                    "id": hub_id,
+                    "topic": topic,
+                    "category": category,
+                    "summary": summary[:300] if summary else f"Exploration into {topic}",
+                    "image_url": image_url,
+                    "root_node": root_node,
+                    "children": children,
+                    "dossier": matched_dossier or {},
+                    "curiosity_score": curiosity_score or 8,
+                }
+            )
 
     logger.info(f"Extracted {len(hubs_to_migrate)} unique precomputed hubs to migrate to Supabase Postgres!")
 

@@ -69,16 +69,15 @@ def _clean_search_query(node_title: str, user_question: str) -> str:
         q = re.sub(pat, "", q, flags=re.IGNORECASE).strip()
 
     clean_q = q.strip("?.,! ")
-    
+
     # Check if the user question already mentions key tokens from the entity title
     title_tokens = {t.lower() for t in re.findall(r"\w{3,}", node_title) if t.lower() not in {"the", "and", "for"}}
     q_tokens = {t.lower() for t in re.findall(r"\w{3,}", clean_q)}
-    
+
     overlap = title_tokens.intersection(q_tokens)
     if len(overlap) == 0:
         return f"{node_title} {clean_q}".strip()
     return clean_q or node_title
-
 
 
 async def stream_chat(

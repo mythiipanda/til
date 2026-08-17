@@ -1,10 +1,14 @@
 import logging
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
 
-from app.api.middleware.rate_limit import chat_rate_limiter, research_rate_limiter
+from app.api.middleware.rate_limit import (
+    chat_rate_limiter,
+    general_rate_limiter,
+    research_rate_limiter,
+)
 from app.schemas.graph import (
     PrecomputedHubSchema,
     PrecomputedHubSummarySchema,
@@ -16,7 +20,6 @@ from app.services.chat_agent import stream_chat
 from app.services.precompute import get_precomputed_hub, list_precomputed_hubs
 from app.services.random_topic import pick_random_topic
 from app.services.research_agent import get_dossier, stream_deep_research
-
 from app.services.supabase import fetch_hub_by_id_from_supabase, fetch_hubs_from_supabase, is_supabase_configured
 
 logger = logging.getLogger(__name__)
@@ -36,9 +39,11 @@ async def health_check():
     }
 
 
-@router.get("/graph/random-topic", response_model=RandomTopicResponse)
+@router.get("/graph/random-topic", response_model=RandomTopicResponse, dependencies=[Depends(research_rate_limiter)])
 async def random_topic(
-    category: str = Query("History", description="One of: Science, History, Mathematics, Technology, Philosophy"),
+    category: str = Query(
+        "History", max_length=100, description="One of: Science, History, Mathematics, Technology, Philosophy"
+    ),
 ):
     """Pick a curiosity-worthy random topic from a category (AI-powered random Wikipedia)."""
     start_time = time.time()
@@ -50,14 +55,14 @@ async def random_topic(
     return result
 
 
-@router.get("/graph/catalog")
+@router.get("/graph/catalog", dependencies=[Depends(general_rate_limiter)])
 async def list_catalog(limit: int = Query(2000, ge=1, le=3000)):
     """List hundreds of pre-curated real Wikipedia topics for instant browsing."""
     catalog = get_catalog()
     supabase_hubs = await fetch_hubs_from_supabase(limit=limit) if is_supabase_configured() else []
-    
+
     existing_titles = {t["title"].lower().strip() for t in (catalog or [])}
-    
+
     hub_entries = [
         {
             "id": h["id"],
@@ -68,12 +73,14 @@ async def list_catalog(limit: int = Query(2000, ge=1, le=3000)):
         }
         for h in supabase_hubs
     ]
-    
+
     merged = hub_entries + [t for t in (catalog or []) if t.get("title", "").lower().strip() not in existing_titles]
     return {"total": len(merged), "topics": merged[:limit]}
 
 
-@router.get("/graph/precomputed", response_model=list[PrecomputedHubSummarySchema])
+@router.get(
+    "/graph/precomputed", response_model=list[PrecomputedHubSummarySchema], dependencies=[Depends(general_rate_limiter)]
+)
 async def list_precomputed():
     """List fully-researched hubs that render instantly (loaded directly from Supabase)."""
     if is_supabase_configured():
@@ -83,14 +90,16 @@ async def list_precomputed():
     return list_precomputed_hubs()
 
 
-@router.get("/graph/precomputed/{hub_id}", response_model=PrecomputedHubSchema)
-async def get_precomputed(hub_id: str):
+@router.get(
+    "/graph/precomputed/{hub_id}", response_model=PrecomputedHubSchema, dependencies=[Depends(general_rate_limiter)]
+)
+async def get_precomputed(hub_id: str = Path(..., max_length=200)):
     """Fetch a fully-researched hub (root node + child branches) by id from Supabase."""
     if is_supabase_configured():
-        hub = await fetch_hub_by_id_from_supabase(hub_id)
-        if hub is not None:
+        supabase_hub = await fetch_hub_by_id_from_supabase(hub_id)
+        if supabase_hub is not None:
             try:
-                return PrecomputedHubSchema(**hub)
+                return PrecomputedHubSchema(**supabase_hub)
             except Exception as e:
                 logger.warning(f"Failed to parse Supabase hub {hub_id}: {e}")
 
@@ -102,12 +111,12 @@ async def get_precomputed(hub_id: str):
 
 @router.get("/research/stream", dependencies=[Depends(research_rate_limiter)])
 async def research_stream_endpoint(
-    topic: str = Query(..., description="Research inquiry topic"),
-    category: str = Query(None, description="Optional category classification"),
-    parent_id: str = Query(None, description="Optional parent node ID for expansion"),
-    context_chain: str = Query("", description="Comma-separated chain of parent topics"),
-    parent_summary: str = Query(None, description="Summary of parent node"),
-    teaser_context: str = Query(None, description="Teaser or hook of subtopic"),
+    topic: str = Query(..., max_length=300, description="Research inquiry topic"),
+    category: str = Query(None, max_length=100, description="Optional category classification"),
+    parent_id: str = Query(None, max_length=300, description="Optional parent node ID for expansion"),
+    context_chain: str = Query("", max_length=2000, description="Comma-separated chain of parent topics"),
+    parent_summary: str = Query(None, max_length=2000, description="Summary of parent node"),
+    teaser_context: str = Query(None, max_length=2000, description="Teaser or hook of subtopic"),
 ):
     """
     Manus-grade Server-Sent Events (SSE) stream:
@@ -129,8 +138,10 @@ async def research_stream_endpoint(
     )
 
 
-@router.get("/research/dossier/{node_id}", response_model=ResearchDossierSchema)
-async def get_research_dossier(node_id: str):
+@router.get(
+    "/research/dossier/{node_id}", response_model=ResearchDossierSchema, dependencies=[Depends(general_rate_limiter)]
+)
+async def get_research_dossier(node_id: str = Path(..., max_length=200)):
     """Retrieve full website-style research dossier for a node."""
     dossier = get_dossier(node_id)
     if dossier is None:
@@ -140,11 +151,11 @@ async def get_research_dossier(node_id: str):
 
 @router.get("/chat/stream", dependencies=[Depends(chat_rate_limiter)])
 async def chat_stream_endpoint(
-    node_title: str = Query(..., description="Active node concept title"),
-    question: str = Query(..., description="User question"),
-    ancestors: str = Query("", description="Comma-separated ancestor node trail"),
+    node_title: str = Query(..., max_length=300, description="Active node concept title"),
+    question: str = Query(..., max_length=2000, description="User question"),
+    ancestors: str = Query("", max_length=2000, description="Comma-separated ancestor node trail"),
     history: str = Query("", description="JSON-encoded previous conversation turns"),
-    active_summary: str = Query(None, description="Summary of active node"),
+    active_summary: str = Query(None, max_length=2000, description="Summary of active node"),
 ):
     """Server-Sent Events (SSE) streaming endpoint for Cerebras conversational follow-ups."""
     context_list = [a.strip() for a in ancestors.split(",") if a.strip()]
@@ -155,7 +166,7 @@ async def chat_stream_endpoint(
 
             parsed = json.loads(history)
             if isinstance(parsed, list):
-                history_list = parsed
+                history_list = parsed[:20]
         except Exception:
             pass
 

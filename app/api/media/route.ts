@@ -10,9 +10,37 @@ const ALLOWED_HOSTS = [
   'images.unsplash.com',
 ];
 
+const MAX_REQUESTS_PER_WINDOW = 120;
+const WINDOW_MS = 60_000;
+const requestLog = new Map<string, number[]>();
+
+function enforceRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const cutoff = now - WINDOW_MS;
+  const timestamps = (requestLog.get(ip) || []).filter((t) => t > cutoff);
+  timestamps.push(now);
+  requestLog.set(ip, timestamps);
+  return timestamps.length <= MAX_REQUESTS_PER_WINDOW;
+}
+
+function clientIp(request: NextRequest): string {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
+  );
+}
+
 const CUSTOM_USER_AGENT = 'TDILEARNED-Agent/2.0 (educational research platform; contact@tdilearned.app)';
 
 export async function GET(request: NextRequest) {
+  if (!enforceRateLimit(clientIp(request))) {
+    return new NextResponse('Too many requests', {
+      status: 429,
+      headers: { 'Access-Control-Allow-Origin': '*', 'Retry-After': '60' },
+    });
+  }
+
   const { searchParams } = new URL(request.url);
   const targetUrlString = searchParams.get('url');
 

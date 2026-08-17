@@ -9,6 +9,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path
 load_dotenv()
 
 from app.api.endpoints import router as api_router
+from app.api.middleware.request_size import RequestSizeLimitMiddleware
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
@@ -18,11 +19,14 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Guard against oversized URLs/bodies before handlers run
+app.add_middleware(RequestSizeLimitMiddleware)
+
 # Allow all CORS origins for client canvas, Cloudflare worker, and local dev
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

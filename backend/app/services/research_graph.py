@@ -123,7 +123,6 @@ class LLMChildBranchDefinition(BaseModel):
     curiosityReason: str = Field(description="One phrase explaining why it is fascinating")
 
 
-
 class LLMSeedTreeWithBranches(BaseModel):
     root_dossier: LLMDeepDossierOutput
     children: list[LLMChildBranchDefinition] = Field(

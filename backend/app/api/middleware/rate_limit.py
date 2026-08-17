@@ -1,6 +1,5 @@
 """
-Sliding-window token rate limiter for TDILEARNED FastAPI endpoints.
-Backed by Redis when available, with an in-memory fallback.
+Sliding-window in-memory rate limiter for TDILEARNED FastAPI endpoints.
 Protects Cerebras inference tokens and upstream search quotas against scraping/abuse.
 """
 
@@ -9,8 +8,6 @@ import time
 from collections import defaultdict
 
 from fastapi import HTTPException, Request, status
-
-from app.services.cache import cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -38,43 +35,6 @@ class RateLimiter:
         now = time.time()
         key = f"ratelimit:{request.url.path}:{client_ip}"
 
-        # 1. Redis sliding window implementation
-        if cache_service.redis_client is not None:
-            try:
-                pipe = cache_service.redis_client.pipeline()
-                cutoff = now - self.window_seconds
-                # Remove timestamps older than window
-                pipe.zremrangebyscore(key, 0, cutoff)
-                # Add current request timestamp
-                pipe.zadd(key, {str(now): now})
-                # Count requests in window
-                pipe.zcard(key)
-                # Set TTL on the sorted set
-                pipe.expire(key, self.window_seconds + 5)
-                results = pipe.execute()
-
-                request_count = results[2]
-                if request_count > self.max_requests:
-                    retry_after = int(self.window_seconds - (now - cutoff))
-                    logger.warning(
-                        f"Rate limit exceeded for IP {client_ip} on {request.url.path} ({request_count}/{self.max_requests})"
-                    )
-                    raise HTTPException(
-                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        detail={
-                            "error": "Rate limit exceeded",
-                            "message": f"Too many requests. Please wait {max(1, retry_after)} seconds.",
-                            "retry_after": max(1, retry_after),
-                        },
-                        headers={"Retry-After": str(max(1, retry_after))},
-                    )
-                return
-            except HTTPException:
-                raise
-            except Exception as e:
-                logger.warning(f"Redis rate limit check failed, falling back to memory: {e}")
-
-        # 2. In-memory fallback
         cutoff = now - self.window_seconds
         timestamps = _MEMORY_TIMESTAMPS[key]
         # Prune old timestamps
@@ -84,7 +44,7 @@ class RateLimiter:
         if len(_MEMORY_TIMESTAMPS[key]) > self.max_requests:
             retry_after = int(self.window_seconds)
             logger.warning(
-                f"In-memory rate limit exceeded for IP {client_ip} on {request.url.path} ({len(_MEMORY_TIMESTAMPS[key])}/{self.max_requests})"
+                f"Rate limit exceeded for IP {client_ip} on {request.url.path} ({len(_MEMORY_TIMESTAMPS[key])}/{self.max_requests})"
             )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -100,3 +60,4 @@ class RateLimiter:
 # Default endpoint rate limiters
 research_rate_limiter = RateLimiter(max_requests=15, window_seconds=60)
 chat_rate_limiter = RateLimiter(max_requests=30, window_seconds=60)
+general_rate_limiter = RateLimiter(max_requests=60, window_seconds=60)

@@ -1,10 +1,13 @@
 import sys
+
 if sys.platform == "win32":
     import io
+
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-import httpx
 import random
+
+import httpx
 
 BASE = "http://localhost:8000/api/v1"
 
@@ -30,7 +33,9 @@ for h in sample:
     hresp = httpx.get(f"{BASE}/graph/precomputed/{hid}")
     if hresp.status_code == 200:
         data = hresp.json()
-        print(f"  ✔ [200 OK] [{data.get('category', 'General'):12}] {data.get('topic'):40} | Root: {data.get('root', {}).get('title')} | Children: {len(data.get('children', []))}")
+        print(
+            f"  ✔ [200 OK] [{data.get('category', 'General'):12}] {data.get('topic'):40} | Root: {data.get('root', {}).get('title')} | Children: {len(data.get('children', []))}"
+        )
     else:
         print(f"  ❌ [{hresp.status_code}] {hid} -> {hresp.text}")
 
