@@ -57,4 +57,12 @@ export const api = {
     }
     return `${API}/api/v1/chat/stream?${params}`;
   },
+
+  /** Pick a curiosity-ranked random topic */
+  randomTopic: (category: string) =>
+    fetch(`${API}/api/v1/graph/random-topic?category=${encodeURIComponent(category)}`),
+
+  /** Fetch the large catalog of topics */
+  catalog: (limit: number = 2000) =>
+    fetch(`${API}/api/v1/graph/catalog?limit=${limit}`),
 };

@@ -124,6 +124,24 @@ async def precompute_topic(topic: str, category: str) -> PrecomputedHubSchema | 
     if dossier:
         cache_service.set(_dossier_key(root_node["id"]), dossier, ttl_seconds=HUB_TTL_SECONDS)
 
+    # Automatically persist to Supabase cloud database
+    try:
+        from app.services.supabase import is_supabase_configured, upsert_hubs_batch
+        if is_supabase_configured():
+            asyncio.create_task(upsert_hubs_batch([{
+                "id": hub.id,
+                "topic": topic,
+                "category": category,
+                "summary": root_node.get("summary", "")[:300],
+                "image_url": root_node.get("imageUrl"),
+                "root_node": root_node,
+                "children": children,
+                "dossier": dossier or {},
+                "curiosity_score": root_node.get("curiosity_score") or 8,
+            }]))
+    except Exception as e:
+        logger.warning(f"Failed to auto-upsert new hub to Supabase: {e}")
+
     logger.info(f"[precompute] '{topic}' -> hub {hub.id} ({len(children)} branches) in {time.time() - started:.1f}s")
     return hub
 

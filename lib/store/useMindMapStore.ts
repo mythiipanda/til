@@ -419,7 +419,15 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     try {
       get().resetCanvas();
       const res = await api.precomputedHub(hubId);
-      const data = (await res.json()) as PrecomputedHub;
+      if (!res.ok) {
+        console.error(`Failed to fetch hub ${hubId}: HTTP ${res.status}`);
+        return;
+      }
+      const data = (await res.json()) as (PrecomputedHub & { dossier?: any });
+      if (!data || !data.root) {
+        console.error('Invalid hub data returned from backend:', data);
+        return;
+      }
       
       const rootNodeSchema = data.root;
       const childrenSchema = data.children || [];
@@ -477,6 +485,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         contextChain: [rootNodeSchema.category || 'General', rootNodeSchema.title],
         isResearching: false,
         hasNewDossier: false,
+        activeDossier: data.dossier && data.dossier.abstract ? data.dossier : get().activeDossier,
       });
 
       persistActiveSession(get());
@@ -485,7 +494,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         window.history.pushState({}, '', `/?topic=${encodeURIComponent(rootNodeSchema.title)}`);
       }
 
-      // Eagerly pre-populate active dossier for root node
+      // Pre-populate active dossier for root node
       get().openDossier(rootId);
     } catch (e) {
       console.error('Failed to load precomputed hub:', e);

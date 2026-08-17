@@ -17,6 +17,8 @@ from app.services.precompute import get_precomputed_hub, list_precomputed_hubs
 from app.services.random_topic import pick_random_topic
 from app.services.research_agent import get_dossier, stream_deep_research
 
+from app.services.supabase import fetch_hub_by_id_from_supabase, fetch_hubs_from_supabase, is_supabase_configured
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["Research & Graph Discovery"])
@@ -29,7 +31,7 @@ async def health_check():
         "service": "TDILEARNED (Today I Learned) Backend",
         "inference_engine": "Cerebras (map-reduce research graph + ReAct follow-up chat)",
         "multi_agent_framework": "LangGraph (Planner, Parallel Researchers, Aggregator, Extractor, Synthesizer)",
-        "cache_type": "Redis / In-Memory",
+        "cache_type": "Supabase Postgres / Edge CDN",
         "version": "2.1.0",
     }
 
@@ -49,32 +51,49 @@ async def random_topic(
 
 
 @router.get("/graph/catalog")
-async def list_catalog(limit: int = Query(500, ge=1, le=2000)):
+async def list_catalog(limit: int = Query(2000, ge=1, le=3000)):
     """List hundreds of pre-curated real Wikipedia topics for instant browsing."""
     catalog = get_catalog()
-    if not catalog:
-        # Fall back to the precomputed hub index if the catalog is empty.
-        catalog = [
-            {"title": h["topic"], "summary": h.get("summary", ""), "category": h["category"], "precomputed": True}
-            for h in list_precomputed_hubs()
-        ]
-    else:
-        # Surface already-researched topics first; then rank the rest by pageviews.
-        precomputed = [t for t in catalog if t.get("precomputed")]
-        fresh = [t for t in catalog if not t.get("precomputed")]
-        catalog = precomputed + fresh
-    return {"total": len(catalog), "topics": catalog[:limit]}
+    supabase_hubs = await fetch_hubs_from_supabase(limit=limit) if is_supabase_configured() else []
+    
+    existing_titles = {t["title"].lower().strip() for t in (catalog or [])}
+    
+    hub_entries = [
+        {
+            "id": h["id"],
+            "title": h["topic"],
+            "summary": h.get("summary", ""),
+            "category": h.get("category", "General"),
+            "precomputed": True,
+        }
+        for h in supabase_hubs
+    ]
+    
+    merged = hub_entries + [t for t in (catalog or []) if t.get("title", "").lower().strip() not in existing_titles]
+    return {"total": len(merged), "topics": merged[:limit]}
 
 
 @router.get("/graph/precomputed", response_model=list[PrecomputedHubSummarySchema])
 async def list_precomputed():
-    """List fully-researched hubs that render instantly (precomputed offline)."""
+    """List fully-researched hubs that render instantly (loaded directly from Supabase)."""
+    if is_supabase_configured():
+        supabase_hubs = await fetch_hubs_from_supabase(limit=2000)
+        if supabase_hubs:
+            return supabase_hubs
     return list_precomputed_hubs()
 
 
 @router.get("/graph/precomputed/{hub_id}", response_model=PrecomputedHubSchema)
 async def get_precomputed(hub_id: str):
-    """Fetch a fully-researched hub (root node + child branches) by id."""
+    """Fetch a fully-researched hub (root node + child branches) by id from Supabase."""
+    if is_supabase_configured():
+        hub = await fetch_hub_by_id_from_supabase(hub_id)
+        if hub is not None:
+            try:
+                return PrecomputedHubSchema(**hub)
+            except Exception as e:
+                logger.warning(f"Failed to parse Supabase hub {hub_id}: {e}")
+
     hub = get_precomputed_hub(hub_id)
     if hub is None:
         raise HTTPException(status_code=404, detail="Precomputed hub not found")
