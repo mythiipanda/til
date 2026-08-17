@@ -1,0 +1,31 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+app/.cache/
+
+# Local virtual environment
+.venv/
+env/
+venv/
+
+# Environment files with secrets (pass via Azure Container App env-vars)
+.env
+.env.*
+!.env.example
+
+# Logs and local artifacts
+*.log
+data/
+server.log
+server.err.log
+
+# Git & OS
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
