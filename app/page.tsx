@@ -43,6 +43,13 @@ export default function Home() {
     restoreSessionFromLocalStorage();
   }, [fetchPrecomputedHubs, restoreSessionFromLocalStorage]);
 
+  // Browser back/forward: restore the hub for whichever topic URL we land on.
+  useEffect(() => {
+    const onPopState = () => restoreSessionFromLocalStorage();
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [restoreSessionFromLocalStorage]);
+
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customInput.trim()) return;

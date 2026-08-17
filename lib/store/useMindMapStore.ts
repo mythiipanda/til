@@ -102,6 +102,7 @@ interface MindMapState {
   loadMindMapBySlug: (slug: string) => Promise<boolean>;
   generateShareLink: () => Promise<string | null>;
   restoreSessionFromLocalStorage: () => boolean;
+  restoreSessionFromURL: () => boolean;
   resetCanvas: () => void;
   flushCanvasAutosave: () => void;
 }
@@ -174,6 +175,17 @@ function persistActiveSession(state: {
       timestamp: Date.now(),
     };
     localStorage.setItem('tdilearned_active_session', JSON.stringify(payload));
+
+    // Per-topic snapshot so browser back/forward and reload can restore each
+    // hub that was visited in history, without re-running research.
+    const topicKey = state.currentTopic || 'Knowledge Exploration';
+    const topicSessions = JSON.parse(localStorage.getItem('tdilearned_topic_sessions') || '{}');
+    topicSessions[topicKey] = payload;
+    try {
+      localStorage.setItem('tdilearned_topic_sessions', JSON.stringify(topicSessions));
+    } catch {
+      // Quota exceeded: keep the active session only.
+    }
   } catch (e) {
     console.warn('LocalStorage save error:', e);
   }
@@ -1108,42 +1120,54 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
       const params = new URLSearchParams(window.location.search);
       const urlTopic = params.get('topic');
+      return get().restoreSessionFromURL();
+    } catch (e) {
+      console.error('Error restoring session from localStorage:', e);
+      return false;
+    }
+  },
 
-      // 1. Try restoring active session from localStorage
-      const raw = localStorage.getItem('tdilearned_active_session');
-      if (raw) {
-        const session = JSON.parse(raw);
-        if (session && session.nodes && session.nodes.length > 0) {
-          const rootNodeId = session.nodes.find((n: Node) => (n.data as { isRoot?: boolean })?.isRoot)?.id || session.nodes[0]?.id;
-          const restoredDossier = session.dossiersByNodeId?.[rootNodeId] || null;
+  restoreSessionFromURL: () => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlTopic = params.get('topic');
+      if (!urlTopic) return false;
 
-          set({
-            nodes: session.nodes,
-            edges: session.edges || [],
-            currentTopic: session.topic || urlTopic || '',
-            dossiersByNodeId: session.dossiersByNodeId || {},
-            activeDossier: restoredDossier,
-            contextChain: session.contextChain || [session.topic],
-            activeMindMapId: session.id,
-            shareSlug: session.shareSlug,
-            selectedNodeId: rootNodeId || null,
-            isResearching: false,
-            isDossierOpen: false,
-            workstationTab: 'monograph',
-          });
-          return true;
-        }
-      }
+      const topicSessions = JSON.parse(localStorage.getItem('tdilearned_topic_sessions') || '{}');
+      const session = topicSessions[urlTopic];
 
-      // 2. If no saved session exists, but URL has a topic parameter, trigger research
-      if (urlTopic && get().nodes.length === 0) {
-        get().startResearch(urlTopic);
+      if (session && session.nodes && session.nodes.length > 0) {
+        const rootNodeId =
+          session.nodes.find((n: Node) => (n.data as { isRoot?: boolean })?.isRoot)?.id ||
+          session.nodes[0]?.id;
+        const restoredDossier = session.dossiersByNodeId?.[rootNodeId] || null;
+
+        set({
+          nodes: session.nodes,
+          edges: session.edges || [],
+          currentTopic: session.topic,
+          dossiersByNodeId: session.dossiersByNodeId || {},
+          activeDossier: restoredDossier,
+          contextChain: session.contextChain || [session.topic],
+          activeMindMapId: session.id,
+          shareSlug: session.shareSlug,
+          selectedNodeId: rootNodeId || null,
+          isResearching: false,
+          isDossierOpen: false,
+          workstationTab: 'monograph',
+        });
         return true;
       }
 
+      // No saved snapshot for this topic — treat it as a fresh research URL.
+      if (get().nodes.length === 0) {
+        get().startResearch(urlTopic);
+        return true;
+      }
       return false;
     } catch (e) {
-      console.error('Error restoring session from localStorage:', e);
+      console.error('Error restoring session from URL:', e);
       return false;
     }
   },
