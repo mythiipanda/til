@@ -23,6 +23,7 @@ load_dotenv(
 load_dotenv()
 
 from app.schemas.graph import GalleryItemSchema, SourceCitationSchema
+from app.services.cache import cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +195,14 @@ async def search_web_ladder(
     Each non-Wikipedia pool is filtered by lexical relevance to the query to keep
     out off-topic noise. Returns a best-effort list of verified sources; never fabricates.
     """
+    cache_key = f"tool:search:{query.strip().lower()}:{max_results}:{include_wikipedia}"
+    cached = cache_service.get(cache_key)
+    if isinstance(cached, list):
+        try:
+            return [SourceCitationSchema(**s) if isinstance(s, dict) else s for s in cached]
+        except Exception:
+            pass
+
     seen: set[str] = set()
     merged: list[SourceCitationSchema] = []
 
@@ -219,7 +228,10 @@ async def search_web_ladder(
 
     # Prefer authoritative sources (Wikipedia/Tavily) over keyless fallbacks.
     merged.sort(key=lambda s: float(s.reliabilityScore or 0.0), reverse=True)
-    return merged[: max_results + 3]
+    res = merged[: max_results + 3]
+    if res:
+        cache_service.set(cache_key, [s.model_dump() for s in res], ttl_seconds=86400 * 2)
+    return res
 
 
 # ---------------------------------------------------------------------------
@@ -340,9 +352,16 @@ async def wikipedia_page_images(query: str, max_images: int = 3) -> list[Gallery
     """Fetch images actually embedded on the Wikipedia article page for a query.
 
     Resolves the query to its best-matching article title, then pulls the lead
-    image plus page-embedded photographs/illustrations. These are the images
-    editors chose for the article, so they are reliably relevant to the topic.
+    image plus page-embedded photographs/illustrations. Cached with a 7-day TTL.
     """
+    cache_key = f"tool:wiki_img:{query.strip().lower()}:{max_images}"
+    cached = cache_service.get(cache_key)
+    if isinstance(cached, list):
+        try:
+            return [GalleryItemSchema(**g) if isinstance(g, dict) else g for g in cached]
+        except Exception:
+            pass
+
     gallery: list[GalleryItemSchema] = []
     headers = {"User-Agent": USER_AGENT}
     api = "https://en.wikipedia.org/w/api.php"
@@ -425,6 +444,9 @@ async def wikipedia_page_images(query: str, max_images: int = 3) -> list[Gallery
     except Exception as e:
         logger.warning(f"Wikipedia page images error for {query!r} ({e})")
 
+    if gallery:
+        cache_service.set(cache_key, [g.model_dump() for g in gallery], ttl_seconds=86400 * 7)
+
     return gallery
 
 
@@ -435,12 +457,22 @@ async def wikimedia_archive_tool(query: str, max_images: int = 3) -> list[Galler
     (highest relevance — editors chose them), then top up with a Wikimedia
     Commons file-namespace search so we always return up to max_images.
     """
-    gallery = await wikipedia_page_images(query, max_images=max_images)
-    if len(gallery) >= max_images:
-        return gallery
+    cache_key = f"tool:wiki_archive:{query.strip().lower()}:{max_images}"
+    cached = cache_service.get(cache_key)
+    if isinstance(cached, list):
+        try:
+            return [GalleryItemSchema(**g) if isinstance(g, dict) else g for g in cached]
+        except Exception:
+            pass
 
-    gallery.extend(await _commons_search(query, max_images=max_images))
-    return gallery
+    gallery = await wikipedia_page_images(query, max_images=max_images)
+    if len(gallery) < max_images:
+        gallery.extend(await _commons_search(query, max_images=max_images))
+
+    res = gallery[:max_images]
+    if res:
+        cache_service.set(cache_key, [g.model_dump() for g in res], ttl_seconds=86400 * 7)
+    return res
 
 
 async def _commons_search(query: str, max_images: int = 3) -> list[GalleryItemSchema]:
@@ -501,6 +533,12 @@ async def osm_geocoder_tool(location_name: str) -> tuple[float, float, str] | No
     """Geocode historical or modern geographical place names to precise coordinates."""
     if not location_name or location_name.lower() in ["global observatory", "spacetime", "theoretical"]:
         return None
+
+    cache_key = f"tool:osm:{location_name.strip().lower()}"
+    cached = cache_service.get(cache_key)
+    if isinstance(cached, list) and len(cached) == 3:
+        return float(cached[0]), float(cached[1]), str(cached[2])
+
     try:
         url = "https://nominatim.openstreetmap.org/search"
         params = {
@@ -519,6 +557,7 @@ async def osm_geocoder_tool(location_name: str) -> tuple[float, float, str] | No
                 lat = float(item.get("lat"))
                 lng = float(item.get("lon"))
                 display = item.get("display_name", location_name).split(",")[0]
+                cache_service.set(cache_key, [lat, lng, display], ttl_seconds=86400 * 14)
                 return lat, lng, display
     except Exception as e:
         logger.warning(f"OSM Geocoder tool error ({e})")

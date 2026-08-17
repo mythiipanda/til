@@ -134,7 +134,9 @@ async def stream_chat(
             if wow:
                 parts.append(f"PROVEN KEY FACT: {wow}")
             if mechs:
-                mech_str = "\n".join(f"- {m.get('title')}: {m.get('explanation')}" for m in mechs[:3] if isinstance(m, dict))
+                mech_str = "\n".join(
+                    f"- {m.get('title')}: {m.get('explanation')}" for m in mechs[:3] if isinstance(m, dict)
+                )
                 if mech_str:
                     parts.append(f"VERIFIED MECHANISMS:\n{mech_str}")
             if timeline:
