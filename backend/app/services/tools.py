@@ -28,6 +28,42 @@ logger = logging.getLogger(__name__)
 
 USER_AGENT = "TDILEARNED/2.0 (Today I Learned discovery engine; contact@tdilearned.app)"
 
+# ---------------------------------------------------------------------------
+# Shared HTTP client pool
+# ---------------------------------------------------------------------------
+
+_client_lock = asyncio.Lock()
+_shared_client: httpx.AsyncClient | None = None
+
+
+async def get_shared_client() -> httpx.AsyncClient:
+    """Return a process-wide httpx.AsyncClient with connection pooling.
+
+    Reusing one client across requests keeps TCP/TLS connections alive instead
+    of tearing down and re-opening a connection on every tool call — a major
+    win for the multi-hop retrieval ladder. Callers still pass per-request
+    timeouts/headers via the method args.
+    """
+    global _shared_client
+    if _shared_client is None:
+        async with _client_lock:
+            if _shared_client is None:
+                _shared_client = httpx.AsyncClient(
+                    timeout=10.0,
+                    follow_redirects=True,
+                    headers={"User-Agent": USER_AGENT},
+                    limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+                )
+    return _shared_client
+
+
+async def aclose_shared_client() -> None:
+    """Close the pooled client on application shutdown."""
+    global _shared_client
+    if _shared_client is not None:
+        await _shared_client.aclose()
+        _shared_client = None
+
 
 # ---------------------------------------------------------------------------
 # Retrieval ladder: Tavily -> DuckDuckGo -> Wikipedia
@@ -117,11 +153,11 @@ async def wikipedia_search(query: str, max_results: int = 5) -> list[SourceCitat
             "srlimit": max_results,
         }
         headers = {"User-Agent": USER_AGENT}
-        async with httpx.AsyncClient(timeout=6.0) as client:
-            resp = await client.get(wiki_url, params=params, headers=headers)
-            if resp.status_code != 200:
-                return None
-            data = resp.json()
+        client = await get_shared_client()
+        resp = await client.get(wiki_url, params=params, headers=headers, timeout=6.0)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
         sources: list[SourceCitationSchema] = []
         for idx, item in enumerate(data.get("query", {}).get("search", [])):
             clean_snippet = item.get("snippet", "")
@@ -277,15 +313,11 @@ async def fetch_page_content(url: str | list[str], max_chars: int = 4000) -> str
             "User-Agent": USER_AGENT,
             "Accept-Language": "en-US,en;q=0.9",
         }
-        async with httpx.AsyncClient(
-            timeout=8.0,
-            follow_redirects=True,
-            headers=headers,
-        ) as client:
-            resp = await client.get(url)
-            if resp.status_code != 200:
-                return None
-            return _strip_html(resp.text, max_chars=max_chars)
+        client = await get_shared_client()
+        resp = await client.get(url, headers=headers, timeout=8.0)
+        if resp.status_code != 200:
+            return None
+        return _strip_html(resp.text, max_chars=max_chars)
     except Exception as e:
         logger.warning(f"Page content fetch error for {url} ({e})")
         return None
@@ -316,80 +348,80 @@ async def wikipedia_page_images(query: str, max_images: int = 3) -> list[Gallery
     api = "https://en.wikipedia.org/w/api.php"
 
     try:
-        async with httpx.AsyncClient(timeout=8.0, headers=headers) as client:
-            # 1) Resolve the query to the best-matching article title.
-            search_params: dict[str, str | int] = {
-                "action": "query",
-                "list": "search",
-                "srsearch": query,
-                "srlimit": 1,
-                "format": "json",
-            }
-            resp = await client.get(api, params=search_params)
-            if resp.status_code != 200:
-                return []
-            items = resp.json().get("query", {}).get("search", [])
-            if not items:
-                return []
-            title = items[0]["title"]
+        client = await get_shared_client()
+        # 1) Resolve the query to the best-matching article title.
+        search_params: dict[str, str | int] = {
+            "action": "query",
+            "list": "search",
+            "srsearch": query,
+            "srlimit": 1,
+            "format": "json",
+        }
+        resp = await client.get(api, params=search_params, headers=headers, timeout=8.0)
+        if resp.status_code != 200:
+            return []
+        items = resp.json().get("query", {}).get("search", [])
+        if not items:
+            return []
+        title = items[0]["title"]
 
-            # 2) List image file titles embedded in that article.
-            img_params: dict[str, str | int] = {
-                "action": "query",
-                "titles": title,
-                "prop": "images",
-                "imlimit": max_images * 3,
-                "format": "json",
-            }
-            resp = await client.get(api, params=img_params)
-            if resp.status_code != 200:
-                return []
-            pages = resp.json().get("query", {}).get("pages", {})
-            file_titles = []
-            for page in pages.values():
-                for img in page.get("images", []):
-                    name = img.get("title", "")
-                    low = name.lower()
-                    if any(ext in low for ext in (".jpg", ".jpeg", ".png", ".webp", ".svg", ".tif")):
-                        file_titles.append(name)
-                    if len(file_titles) >= max_images:
-                        break
-
-            if not file_titles:
-                return []
-
-            # 3) Resolve those file titles to actual image URLs + metadata.
-            info_params: dict[str, str | int] = {
-                "action": "query",
-                "titles": "|".join(file_titles),
-                "prop": "imageinfo",
-                "iiprop": "url|extmetadata|size",
-                "iiurlwidth": "1280",
-                "format": "json",
-            }
-            resp = await client.get(api, params=info_params)
-            if resp.status_code != 200:
-                return []
-            for page in resp.json().get("query", {}).get("pages", {}).values():
-                image_info = page.get("imageinfo", [{}])[0]
-                thumb_url = image_info.get("thumburl") or image_info.get("url")
-                if not thumb_url:
-                    continue
-                thumb_url = thumb_url.split("?")[0]
-                metadata = image_info.get("extmetadata", {})
-                desc = re.sub(r"<[^>]+>", "", metadata.get("ImageDescription", {}).get("value", ""))[:140]
-                if not desc:
-                    desc = page.get("title", "").replace("File:", "").replace("_", " ").split(".")[0]
-                gallery.append(
-                    GalleryItemSchema(
-                        imageUrl=thumb_url,
-                        caption=desc,
-                        license=metadata.get("LicenseShortName", {}).get("value", "Public Domain / CC-BY-SA"),
-                        originUrl=image_info.get("descriptionurl", thumb_url),
-                    )
-                )
-                if len(gallery) >= max_images:
+        # 2) List image file titles embedded in that article.
+        img_params: dict[str, str | int] = {
+            "action": "query",
+            "titles": title,
+            "prop": "images",
+            "imlimit": max_images * 3,
+            "format": "json",
+        }
+        resp = await client.get(api, params=img_params, timeout=8.0)
+        if resp.status_code != 200:
+            return []
+        pages = resp.json().get("query", {}).get("pages", {})
+        file_titles = []
+        for page in pages.values():
+            for img in page.get("images", []):
+                name = img.get("title", "")
+                low = name.lower()
+                if any(ext in low for ext in (".jpg", ".jpeg", ".png", ".webp", ".svg", ".tif")):
+                    file_titles.append(name)
+                if len(file_titles) >= max_images:
                     break
+
+        if not file_titles:
+            return []
+
+        # 3) Resolve those file titles to actual image URLs + metadata.
+        info_params: dict[str, str | int] = {
+            "action": "query",
+            "titles": "|".join(file_titles),
+            "prop": "imageinfo",
+            "iiprop": "url|extmetadata|size",
+            "iiurlwidth": "1280",
+            "format": "json",
+        }
+        resp = await client.get(api, params=info_params, timeout=8.0)
+        if resp.status_code != 200:
+            return []
+        for page in resp.json().get("query", {}).get("pages", {}).values():
+            image_info = page.get("imageinfo", [{}])[0]
+            thumb_url = image_info.get("thumburl") or image_info.get("url")
+            if not thumb_url:
+                continue
+            thumb_url = thumb_url.split("?")[0]
+            metadata = image_info.get("extmetadata", {})
+            desc = re.sub(r"<[^>]+>", "", metadata.get("ImageDescription", {}).get("value", ""))[:140]
+            if not desc:
+                desc = page.get("title", "").replace("File:", "").replace("_", " ").split(".")[0]
+            gallery.append(
+                GalleryItemSchema(
+                    imageUrl=thumb_url,
+                    caption=desc,
+                    license=metadata.get("LicenseShortName", {}).get("value", "Public Domain / CC-BY-SA"),
+                    originUrl=image_info.get("descriptionurl", thumb_url),
+                )
+            )
+            if len(gallery) >= max_images:
+                break
     except Exception as e:
         logger.warning(f"Wikipedia page images error for {query!r} ({e})")
 
@@ -428,37 +460,37 @@ async def _commons_search(query: str, max_images: int = 3) -> list[GalleryItemSc
             "format": "json",
         }
         headers = {"User-Agent": USER_AGENT}
-        async with httpx.AsyncClient(timeout=6.0) as client:
-            resp = await client.get(search_url, params=params, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                pages = data.get("query", {}).get("pages", {})
-                for page_info in pages.values():
-                    image_info = page_info.get("imageinfo", [{}])[0]
-                    thumb_url = image_info.get("thumburl") or image_info.get("url")
-                    if thumb_url and thumb_url.startswith("http"):
-                        thumb_url = thumb_url.split("?")[0]
-                        metadata = image_info.get("extmetadata", {})
-                        desc = metadata.get("ImageDescription", {}).get("value", "")
-                        desc_clean = re.sub(r"<[^>]+>", "", desc)[:140]
-                        if not desc_clean:
-                            desc_clean = (
-                                page_info.get("title", "").replace("File:", "").replace(".jpg", "").replace("_", " ")
-                            )
-
-                        license_name = metadata.get("LicenseShortName", {}).get("value", "Public Domain / CC-BY-SA")
-                        origin_url = image_info.get("descriptionurl", thumb_url)
-
-                        gallery.append(
-                            GalleryItemSchema(
-                                imageUrl=thumb_url,
-                                caption=desc_clean,
-                                license=license_name,
-                                originUrl=origin_url,
-                            )
+        client = await get_shared_client()
+        resp = await client.get(search_url, params=params, headers=headers, timeout=6.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            pages = data.get("query", {}).get("pages", {})
+            for page_info in pages.values():
+                image_info = page_info.get("imageinfo", [{}])[0]
+                thumb_url = image_info.get("thumburl") or image_info.get("url")
+                if thumb_url and thumb_url.startswith("http"):
+                    thumb_url = thumb_url.split("?")[0]
+                    metadata = image_info.get("extmetadata", {})
+                    desc = metadata.get("ImageDescription", {}).get("value", "")
+                    desc_clean = re.sub(r"<[^>]+>", "", desc)[:140]
+                    if not desc_clean:
+                        desc_clean = (
+                            page_info.get("title", "").replace("File:", "").replace(".jpg", "").replace("_", " ")
                         )
-                        if len(gallery) >= max_images:
-                            break
+
+                    license_name = metadata.get("LicenseShortName", {}).get("value", "Public Domain / CC-BY-SA")
+                    origin_url = image_info.get("descriptionurl", thumb_url)
+
+                    gallery.append(
+                        GalleryItemSchema(
+                            imageUrl=thumb_url,
+                            caption=desc_clean,
+                            license=license_name,
+                            originUrl=origin_url,
+                        )
+                    )
+                    if len(gallery) >= max_images:
+                        break
     except Exception as e:
         logger.warning(f"Wikimedia archive tool error ({e})")
 
@@ -478,16 +510,16 @@ async def osm_geocoder_tool(location_name: str) -> tuple[float, float, str] | No
             "addressdetails": "1",
         }
         headers = {"User-Agent": USER_AGENT}
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            resp = await client.get(url, params=params, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                if data and len(data) > 0:
-                    item = data[0]
-                    lat = float(item.get("lat"))
-                    lng = float(item.get("lon"))
-                    display = item.get("display_name", location_name).split(",")[0]
-                    return lat, lng, display
+        client = await get_shared_client()
+        resp = await client.get(url, params=params, headers=headers, timeout=4.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data and len(data) > 0:
+                item = data[0]
+                lat = float(item.get("lat"))
+                lng = float(item.get("lon"))
+                display = item.get("display_name", location_name).split(",")[0]
+                return lat, lng, display
     except Exception as e:
         logger.warning(f"OSM Geocoder tool error ({e})")
     return None

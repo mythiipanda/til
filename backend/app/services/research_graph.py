@@ -723,14 +723,20 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
     # Child nodes
     child_nodes: list[NodeSchema] = []
     if not parent_id:
-        for i, branch in enumerate(children_data[:3], 1):
-            c_lat, c_lng = lat + (0.8 * (i - 1)), lng - (1.2 * i)
-            c_tx, c_ty = calculate_osm_tiles(c_lat, c_lng)
+        branches = children_data[:3]
+
+        async def _child_image(branch: dict[str, Any]) -> str | None:
             c_query = branch.get("image_search_query") or branch.get("title") or topic
             c_images = await wikimedia_archive_tool(c_query, max_images=1)
             if not c_images:
                 c_images = await wikimedia_archive_tool(branch.get("title") or topic, max_images=1)
-            c_img = proxy_media_url(c_images[0].imageUrl) if c_images else None
+            return proxy_media_url(c_images[0].imageUrl) if c_images else None
+
+        child_images = await asyncio.gather(*(_child_image(b) for b in branches))
+
+        for i, (branch, c_img) in enumerate(zip(branches, child_images), 1):
+            c_lat, c_lng = lat + (0.8 * (i - 1)), lng - (1.2 * i)
+            c_tx, c_ty = calculate_osm_tiles(c_lat, c_lng)
             c_node = NodeSchema(
                 id=str(uuid.uuid4()),
                 title=branch.get("title", topic),

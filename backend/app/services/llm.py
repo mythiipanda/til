@@ -43,7 +43,11 @@ _THIRD_PARTY_VALUE = "tdilearned-agent"
 # Max concurrent in-flight LLM requests across the whole backend. Cerebras
 # throttles above this (429 queue_exceeded), and parallel researchers in the
 # map-reduce graph would otherwise trip it.
-MAX_CONCURRENT_LLM_CALLS = int(os.getenv("MAX_CONCURRENT_LLM_CALLS", "2"))
+MAX_CONCURRENT_LLM_CALLS = int(os.getenv("MAX_CONCURRENT_LLM_CALLS", "4"))
+
+# Per-request timeout in seconds. Cerebras structured JSON can take a while on
+# long generations; give the model room while still bounding worst-case latency.
+LLM_REQUEST_TIMEOUT = float(os.getenv("LLM_REQUEST_TIMEOUT", "60"))
 
 # OpenAI SDK retry policy: retry up to N times with exponential backoff on
 # rate limits (429) and transient 5xx errors.
@@ -120,5 +124,6 @@ def get_llm(
         temperature=temperature,
         max_completion_tokens=max_tokens,
         max_retries=OPENAI_MAX_RETRIES,
+        timeout=LLM_REQUEST_TIMEOUT,
         default_headers={_THIRD_PARTY_HEADER: _THIRD_PARTY_VALUE},
     )
