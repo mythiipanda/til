@@ -979,7 +979,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   },
 
   generateShareLink: async () => {
-    const { currentTopic, shareSlug } = get();
+    const { currentTopic, shareSlug, nodes, edges, activeMindMapId } = get();
     if (!currentTopic) return null;
 
     let slug = shareSlug;
@@ -987,13 +987,40 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       slug = `${currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Math.random().toString(36).substring(2, 7)}`;
     }
 
+    const rootNode = nodes.find(n => !n.parentId);
+    const category = (rootNode?.data?.category as string) || 'General';
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && get().activeMindMapId) {
-        await supabase
+      const payload = {
+        title: currentTopic,
+        root_topic: currentTopic,
+        category,
+        nodes: nodes as any,
+        edges: edges as any,
+        node_count: nodes.length,
+        share_slug: slug,
+        is_public: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (user && activeMindMapId) {
+        await supabase.from('mindmaps').update(payload).eq('id', activeMindMapId);
+      } else if (user) {
+        const { data, error } = await supabase
           .from('mindmaps')
-          .update({ is_public: true, share_slug: slug })
-          .eq('id', get().activeMindMapId);
+          .insert({ ...payload, user_id: user.id })
+          .select()
+          .single();
+        if (!error && data) set({ activeMindMapId: data.id });
+      } else {
+        // Guests: upsert a public row keyed by share_slug so shared links resolve for everyone
+        const { data, error } = await supabase
+          .from('mindmaps')
+          .upsert({ ...payload, user_id: null }, { onConflict: 'share_slug' })
+          .select()
+          .single();
+        if (!error && data) set({ activeMindMapId: data.id });
       }
     } catch (e) {
       console.warn('Supabase share update skipped (guest mode)');

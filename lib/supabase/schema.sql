@@ -105,9 +105,17 @@ create policy "Mindmaps are viewable if public or owned" on public.mindmaps
 create policy "Users can insert own mindmaps" on public.mindmaps
   for insert with check (auth.uid() = user_id);
 
+-- 2b. Guests can insert/upsert public shareable mindmaps
+create policy "Guests can create public mindmaps" on public.mindmaps
+  for insert with check (auth.uid() is null and is_public = true and user_id is null);
+
 -- 3. Update owned
 create policy "Users can update own mindmaps" on public.mindmaps
   for update using (auth.uid() = user_id);
+
+-- 3b. Guests can update their own public shareable mindmaps (re-share/rename)
+create policy "Guests can update public mindmaps" on public.mindmaps
+  for update using (auth.uid() is null and is_public = true and user_id is null);
 
 -- 4. Delete owned
 create policy "Users can delete own mindmaps" on public.mindmaps
