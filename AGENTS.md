@@ -1,105 +1,115 @@
-1. Executive System Summary
-This project is an agentic, infinite-canvas discovery engine that dynamically translates curiosity into spatial mindmaps.
-The system operates on a hybrid cloud architecture combining Next.js 15 (Vercel), FastAPI (Azure Container Apps), Cloudflare Workers (Zero-Cost CDN Proxy), and custom hardware accelerators (Cerebras CS-3 for high-throughput live research and streaming chat).
+# TDILEARNED — Agent Operating Guide
 
-2. Agent Roster & Sub-System Specializations
+## 1. Executive System Summary
+
+This project is an agentic, infinite-canvas discovery engine that dynamically translates curiosity into spatial mindmaps.
+
+The system runs on a hybrid cloud architecture:
+
+| Tier | Stack | Hosting |
+|------|-------|---------|
+| Frontend | Next.js 15 App Router, React Flow (@xyflow/react), Zustand, Tailwind CSS | **Vercel** (GitHub auto-deploy on push to `main`) |
+| Backend | FastAPI (Python 3.11+), Pydantic v2, LangGraph, async httpx | **Azure App Service** (Linux B1, Oryx build via `az webapp up`) |
+| Edge media proxy | Cloudflare Worker (`edge-media-proxy`) | Cloudflare Workers |
+| Database / Auth | Supabase Postgres + Supabase Auth | Supabase |
+| Inference | Cerebras CS-3 (structured JSON, high-throughput) with Mistral fallback | External API |
+
+> Note: The backend is **NOT** on Azure Container Apps and **does NOT use Redis**. Redis was fully removed (code, deps, and requirements) — caching is now two-tier disk JSON + in-memory. Deployment is Oryx Python build (`az webapp up`), not Docker.
+
+## 2. Agent Roster & Sub-System Specializations
+
 When operating as or delegating to sub-agents, strictly adhere to the domain boundaries defined below.
 
-2.1. Frontend Canvas Agent (@agent-frontend)
-Domain: /app (Next.js 15 App Router, React Flow spatial canvas, Zustand store, Tailwind CSS).
+### 2.1. Frontend Canvas Agent (@agent-frontend)
+Domain: `app/`, `components/`, `lib/`, `types/` (Next.js 15 App Router, React Flow spatial canvas, Zustand store, Tailwind CSS).
 
 Core Responsibilities:
+- Manage spatial node graph rendering using `@xyflow/react` (`components/canvas/KnowledgeCanvas.tsx`).
+- Maintain global graph state in `lib/store/useMindMapStore.ts` without duplicating node state in React component state.
+- Enforce DOM drag-handle isolation: header bars MUST use `.dragHandle`, while interactive controls (buttons, chips, drawer toggles) MUST use `.nodrag`.
+- Consume Server-Sent Events (SSE) streams from the backend for typing responses in the chat drawer.
+- Shared mindmap rendering lives at `app/m/[slug]/page.tsx`; auth UI at `components/auth/`; Supabase client at `lib/supabase/client.ts`.
 
-Manage spatial node graph rendering using @xyflow/react.
-
-Maintain global graph state in useMindMapStore.ts without duplicating node state in React component state.
-
-Enforce DOM drag-handle isolation: header bars MUST use .dragHandle, while interactive controls (buttons, chips, drawer toggles) MUST use .nodrag.
-
-Consume Server-Sent Events (SSE) streams from the backend for typing responses in the chat drawer.
-
-2.2. Backend Orchestration Agent (@agent-backend)
-Domain: /backend (FastAPI Python 3.11+, Pydantic v2 schemas, Azure Redis, async httpx).
+### 2.2. Backend Orchestration Agent (@agent-backend)
+Domain: `/backend` (FastAPI Python 3.11+, Pydantic v2 schemas, async httpx).
 
 Core Responsibilities:
+- Expose async REST and SSE endpoints under `/api/v1`: `research/stream`, `chat/stream`, `graph/random-topic`, `graph/catalog`, `graph/precomputed`, `graph/precomputed/{hub_id}`, `research/dossier/{node_id}`.
+- Enforce schema validation on all inputs and outputs using Pydantic v2 models (`backend/app/schemas/`).
+- Manage two-tier caching (disk JSON → memory) via `backend/app/services/cache.py` to serve pre-computed node sub-trees instantly.
+- Query Wikimedia Commons, OpenStreetMap tile APIs, Tavily, DuckDuckGo, and Wikipedia using compliant HTTP headers (`backend/app/services/tools.py`, `media.py`).
+- Store and fetch discovery hubs / mindmaps / dossiers from Supabase Postgres (`backend/app/services/supabase.py`).
 
-Expose async REST and SSE endpoints (/api/v1/research/stream, /api/v1/chat/stream, /api/v1/graph/random-topic).
-
-Enforce schema validation on all inputs and outputs using Pydantic v2 models.
-
-Manage multi-tier caching (Azure Redis) to serve pre-computed node sub-trees instantly.
-
-Query Wikimedia Commons and OpenStreetMap tile APIs using compliant HTTP headers.
-
-2.3. Inference Routing Agent (@agent-inference)
-Domain: /backend/app/services/llm.py & research_graph.py (model-agnostic provider factory).
+### 2.3. Inference Routing Agent (@agent-inference)
+Domain: `/backend/app/services/llm.py` & `research_graph.py` (model-agnostic provider factory).
 
 Core Responsibilities:
+- Dual Hardware Selection:
+  - Route node tree expansions and research to Cerebras CS-3 (`gemma-4-31b`) for ~3,000 tok/s structured generation.
+  - Route conversational Q&A to Cerebras via a lightweight ReAct tool loop with low Time to First Token (TTFT).
+- Enforce structured JSON schemas on model outputs with automatic Pydantic model validation and retry fallbacks.
+- Fall back to Mistral (`ministral-8b-2512`) when a Cerebras key/model is missing.
 
-Dual Hardware Selection:
-
-Route node tree expansions to Cerebras CS-3 (gemma-4-31b) to leverage ~3,000 tok/s structured generation throughput.
-
-Route conversational Q&A to the same Cerebras engine (llama-3.3-70b-class) via a lightweight ReAct tool loop with sub-120ms Time to First Token (TTFT).
-
-Enforce structured JSON schemas on model outputs with automatic Pydantic model validation and retry fallbacks.
-
-2.4. Edge Media Agent (@agent-edge)
-Domain: /cloudflare (Cloudflare Workers TypeScript environment).
+### 2.4. Edge Media Agent (@agent-edge)
+Domain: `/cloudflare` (Cloudflare Workers TypeScript environment, worker name `edge-media-proxy`).
 
 Core Responsibilities:
+- Intercept client requests for external Wikimedia Commons image thumbnails and OpenStreetMap vector/raster tiles.
+- Apply custom `TDILEARNED` User-Agent and `Accept-Encoding: gzip` origin headers.
+- Inject `Cache-Control: public, max-age=31536000, immutable` headers to ensure zero egress bandwidth cost via Cloudflare's edge CDN memory cache.
+- All visual assets in the frontend MUST pass through `https://<NEXT_PUBLIC_CF_PROXY_URL>/media?url=<ENCODED_ORIGIN_MEDIA_URL>`.
 
-Intercept client requests for external Wikimedia Commons image thumbnails and OpenStreetMap vector/raster tiles.
-
-Apply custom application User-Agent and Accept-Encoding: gzip origin headers.
-
-Inject Cache-Control: public, max-age=31536000, immutable headers to ensure zero egress bandwidth cost via Cloudflare's edge CDN memory cache.
-
-2.5. QA & Verification Agent (@agent-qa)
-Domain: Full repository testing suite.
+### 2.5. QA & Verification Agent (@agent-qa)
+Domain: Full repository verification.
 
 Core Responsibilities:
+- Execute static typechecks: `npx tsc --noEmit` (root) and `mypy app/` (in `/backend`).
+- Execute code formatting and linting: `ruff check .` + `ruff format --check .` (in `/backend`).
+- Verify backend endpoints against the deployed Azure app (`https://tdilearned-backend.azurewebsites.net`).
+- Note: No Playwright suite or CI workflows currently exist in the repo.
 
-Execute static typechecks (pnpm tsc --noEmit and mypy backend/app).
+## 3. Inter-Agent Data Protocols & Schemas
 
-Execute code formatting and linting (ruff check backend/ and pnpm lint).
-
-Run Playwright E2E browser tests to verify canvas rendering, node expansions, edge connections, and media proxies.
-
-3. Inter-Agent Data Protocols & Schemas
 Agents communicating across service boundaries MUST strictly adhere to these baseline data contracts.
 
-3.1. Node Expansion Contract (NodeSchema)
-FastAPI models dictate the payload structure generated by @agent-inference and rendered by @agent-frontend:json
-{
-"id": "uuid-v4-string",
-"title": "Short Concept Label",
-"summary": "Two sentence concise summary providing historical or scientific context.",
-"coordinates": {
-"lat": 37.7749,
-"lng": -122.4194
-},
-"image_search_query": "Wikimedia Commons search key",
-"rabbit_holes": [
-"Sub-Topic Direct Vector 1",
-"Sub-Topic Direct Vector 2",
-"Sub-Topic Direct Vector 3"
-]
-}
+### 3.1. Node Expansion Contract (NodeSchema)
+FastAPI models dictate the payload structure generated by @agent-inference and rendered by @agent-frontend:
 
+```json
+{
+  "id": "uuid-v4-string",
+  "title": "Short Concept Label",
+  "summary": "Two sentence concise summary providing historical or scientific context.",
+  "coordinates": { "lat": 37.7749, "lng": -122.4194 },
+  "image_search_query": "Wikimedia Commons search key",
+  "rabbit_holes": [
+    "Sub-Topic Direct Vector 1",
+    "Sub-Topic Direct Vector 2",
+    "Sub-Topic Direct Vector 3"
+  ]
+}
+```
+
+Schemas live in `backend/app/schemas/` (Python/Pydantic) and `types/index.ts` (TypeScript).
 
 ### 3.2. Cloudflare CDN Media Proxy URL Contract
 All visual assets displayed in frontend components MUST pass through the edge proxy using this format:
 `https://<NEXT_PUBLIC_CF_PROXY_URL>/media?url=<ENCODED_ORIGIN_MEDIA_URL>`
 
----
+### 3.3. Supabase Tables (RLS-enabled)
+Schema: `lib/supabase/schema.sql`. Applied manually to the Supabase project.
+- `profiles` — linked to `auth.users` via trigger.
+- `mindmaps` — persisted canvases; anonymous SELECT allowed when `is_public = true`; guests can insert/update public rows (`user_id IS NULL` policies).
+- `saved_notes` — pinned insights, owner-only.
+- `dossier_cache` — globally readable research dossier cache.
+- `discovery_hubs` — precomputed hubs (886+ seeded); created per README, served by `graph/precomputed`.
 
 ## 4. Multi-Phase Autonomous Execution Workflow
 
 AI agents building or refactoring features must proceed through these explicit execution phases without skipping verification checkpoints:
 
 1. Phase 1: Schema First
-   - Define or update Pydantic v2 models in `/backend/app/schemas/` and TypeScript types in `/app/types/`.
+   - Define or update Pydantic v2 models in `/backend/app/schemas/` and TypeScript types in `types/index.ts`.
 2. Phase 2: Core Logic & Edge Routing
    - Build backend service handlers or Cloudflare worker logic.
 3. Phase 3: Spatial UI & State Integration
@@ -107,30 +117,60 @@ AI agents building or refactoring features must proceed through these explicit e
 4. Phase 4: Automated Verification
    - Execute typechecking and linting. Fix any schema discrepancies before finalizing git commits.
 
----
-
 ## 5. Non-Negotiable Safety & Operational Constraints
 
 1. Schema Alignment Rule: NEVER build API routes or frontend UI components without establishing the underlying JSON schema first.
 2. Direct Asset Fetching Ban: Client components MUST NEVER fetch raw images directly from Wikimedia Commons or map tiles from OpenStreetMap origins. All requests must route through the Cloudflare edge proxy.
-3. Single Source of Canvas State: Node positions, connections, and expansion state must reside solely in the global Zustand store (`useMindMapStore.ts`).
-4. Git Safety: NEVER run blanket staging commands like `git add .` or `git commit -A`. Stage specific modified files explicitly per logical change.
-5. Strict Asynchronous Backend: All I/O operations in FastAPI (HTTP fetches, Redis reads, model invocations) MUST use `async`/`await` patterns. Blockers inside event loops are prohibited.
-
----
+3. Single Source of Canvas State: Node positions, connections, and expansion state must reside solely in the global Zustand store (`lib/store/useMindMapStore.ts`).
+4. Git Safety: NEVER run blanket staging commands like `git add .` or `git commit -A`. Stage specific modified files explicitly per logical change. Do NOT commit `.env`, `.env.local`, or `backend/.azure/`.
+5. Strict Asynchronous Backend: All I/O operations in FastAPI (HTTP fetches, Supabase reads, model invocations) MUST use `async`/`await` patterns. Blockers inside event loops are prohibited.
+6. Input & Abuse Guards (already implemented — preserve them):
+   - Every endpoint is rate-limited via `backend/app/api/middleware/rate_limit.py`: `research_rate_limiter` 15/min, `chat_rate_limiter` 30/min, `general_rate_limiter` 60/min (in-memory sliding window, IP-based).
+   - Every query param has a `max_length` cap; URL/bodies > 8 KB are rejected with 413 by `backend/app/api/middleware/request_size.py`.
+   - CORS is `allow_origins=["*"]` with `allow_credentials=False` (credentials must never be re-enabled with wildcard origins).
+   - `app/api/media/route.ts` has its own in-memory rate limiter (120 req/min/IP).
+7. Package management: Python deps via **uv** (run from `/backend`: `uv sync`, `uv lock`, `uv export`). Frontend uses **npm** (`package-lock.json`), NOT pnpm.
+8. No backward-compatibility requirement: prefer the simplest implementation that fully meets current requirements, and prefer established, well-maintained libraries over custom implementations.
 
 ## 6. Verification & Quality Assurance Benchmarks
 
 Before declaring any feature complete, agents must verify compliance against these benchmarks:
-- TypeScript Compilation: `pnpm tsc --noEmit` passes with 0 errors.
-- Python Static Typing: `mypy app/` passes with 0 type errors.
-- Python Code Formatting: `ruff check .` completes cleanly.
+
+- TypeScript Compilation: `npx tsc --noEmit` (repo root) passes with 0 errors.
+- Python Static Typing: `mypy app/` (in `/backend`, using `.venv`) passes with 0 type errors.
+- Python Lint & Format: `ruff check .` and `ruff format --check .` (in `/backend`) complete cleanly.
 - Node Expansion Speed: Cerebras CS-3 structured JSON response validates against `NodeSchema` within 300ms total execution time.
 - Chat Response Latency: Cerebras SSE stream delivers first token in < 120ms TTFT.
-- Zero Broken Assets: Cloudflare edge proxy returns valid image streams with `Cache-Control`
-use this website for ui comngponents styling https://www.beautifului.dev/ (get the contents of this page to copy the code being used or use something similar)
-- Do not preserve backward compatibility.
-- Choose the simplest implementation that fully meets the current requirements.
-- Prefer established, well-maintained libraries over custom implementations.
-Use UV for python packages
-BRANDING: TDILEARNED
+- Zero Broken Assets: Cloudflare edge proxy returns valid image streams with `Cache-Control: public, max-age=31536000, immutable`.
+- Deployed backend health: `GET https://tdilearned-backend.azurewebsites.net/api/v1/health` → 200.
+
+## 7. Deployment Reference (current state)
+
+| Service | How |
+|---------|-----|
+| Frontend (Vercel) | GitHub repo `mythiipanda/til` → push to `main` auto-deploys to `https://til-seven.vercel.app`. Env vars set in Vercel dashboard / `.env` (gitignored). |
+| Backend (Azure) | From `/backend`: `az webapp up --resource-group tdilearned-rg --name tdilearned-backend`. Oryx auto-builds from `requirements.txt` (must NOT contain `-e .`; regenerate with `uv export --no-dev --no-hashes --no-emit-project -o requirements.txt`). Startup command: `uvicorn app.main:app --host 0.0.0.0 --port 8000`. Secrets set as App Service settings (CEREBRAS_API_KEY, MISTRAL_API_KEY, TAVILY_API_KEY, SUPABASE URLs/keys, NEXT_PUBLIC_CF_PROXY_URL). |
+| Edge proxy | From `/cloudflare`: `npx wrangler deploy` (worker `edge-media-proxy`, deployed at `https://tdilearned-edge-media-proxy.tdilearned.workers.dev`). |
+| Supabase | Schema + RLS policies in `lib/supabase/schema.sql`; apply new policies in the Supabase SQL Editor manually. Magic-link redirect is fixed via Supabase dashboard URL Configuration. |
+
+## 8. Branding & Styling
+
+- BRANDING: **TDILEARNED** (user-agent strings, titles, copy must use this consistently).
+- UI component styling reference: https://www.beautifului.dev/ (get the contents of the page to copy the code being used or use something similar).
+- Frontend auth / persistence env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_BACKEND_URL`, `NEXT_PUBLIC_CF_PROXY_URL`.
+# System Automation Protocol
+
+## 1. Initial State Loading
+* **CRITICAL:** Before responding to any prompt or executing any code task, you MUST read `LEARNINGS.md` in full.
+* Explicitly summarize the last 2 recorded insights back to the user to confirm active reading.
+
+## 2. Definition of "Done"
+* Task execution is finished only when the code passes all linters, type-checks, and tests.
+* Run relevant test commands iteratively after editing code. Fix failures on the fly.
+* **GUARDRAIL:** You are STRICTLY forbidden from deleting or editing test assertions to force a test pass.
+WHEN I SAY WRAPUP DO THIS.
+Perform a complete retrospective audit of thishain. 
+Open and update LEARNINGS.md in place by adhering to this strict script:
+1. Extract Failures: Identify exactly what commands, refactors, or syntax issues failed during this session. Add them to "What Has Failed" with dates.
+2. Extract Successes: Document specific patterns or debugging workflows that successfully resolved obstacles.
+3. Deduplicate: Do not add redundant or vague bullets. Keep entries short and specific.
