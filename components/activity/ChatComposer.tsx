@@ -3,31 +3,26 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
-import { 
-  CornerDownLeft, 
-  X, 
-  MessageSquare, 
-  Loader2, 
-  ArrowUpRight, 
-  BookmarkPlus, 
-  Check, 
-  Search, 
-  Globe, 
-  Sparkles, 
-  Minus, 
+import { ThinkingReasoning } from '@/components/agent/ThinkingReasoning';
+import { WebSearch } from '@/components/agent/WebSearch';
+import { InlineCitations } from '@/components/agent/InlineCitations';
+import { StreamingText } from '@/components/agent/StreamingText';
+import {
+  ArrowUp,
+  X,
+  Loader2,
+  BookmarkPlus,
+  Check,
+  Sparkles,
+  Minus,
   Maximize2,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Copy
+  Copy,
 } from 'lucide-react';
 
-function getDomain(url: string): string {
-  try {
-    return new URL(url).hostname.replace('www.', '');
-  } catch {
-    return url;
-  }
+const NOW = () => Date.now();
+
+function elapsedSeconds(t0: number, t1: number): string {
+  return `${Math.max(1, Math.round((t1 - t0) / 1000))}s`;
 }
 
 export function ChatComposer() {
@@ -36,8 +31,7 @@ export function ChatComposer() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [pinnedMsgIndices, setPinnedMsgIndices] = useState<number[]>([]);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
-  const [expandedTraceIdxs, setExpandedTraceIdxs] = useState<number[]>([]);
-  
+
   const currentTopic = useMindMapStore(s => s.currentTopic);
   const chatMessages = useMindMapStore(s => s.chatMessages);
   const isChatStreaming = useMindMapStore(s => s.isChatStreaming);
@@ -48,6 +42,7 @@ export function ChatComposer() {
   const activeDossier = useMindMapStore(s => s.activeDossier);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState(NOW);
 
   useEffect(() => {
     if (chatMessages.length > 0) {
@@ -55,16 +50,23 @@ export function ChatComposer() {
     }
   }, [chatMessages, isChatStreaming]);
 
+  // Tick once per second while streaming so "Thought for Ns" stays fresh.
+  useEffect(() => {
+    if (!isChatStreaming) return;
+    const id = setInterval(() => setNow(NOW()), 1000);
+    return () => clearInterval(id);
+  }, [isChatStreaming]);
+
   if (!currentTopic) return null;
 
-  const activeNode = nodes.find(n => n.id === selectedNodeId) || 
-                     nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) || 
+  const activeNode = nodes.find(n => n.id === selectedNodeId) ||
+                     nodes.find(n => (n.data as { isRoot?: boolean })?.isRoot) ||
                      nodes[0];
 
   const rawLlmQuestions: string[] = [];
   const nodeQuestions = (activeNode?.data?.suggested_questions as string[]) || [];
   const dossierQuestions = activeDossier?.suggestedQuestions || [];
-  
+
   [...nodeQuestions, ...dossierQuestions].forEach((q) => {
     if (q && typeof q === 'string' && !rawLlmQuestions.includes(q.trim())) {
       rawLlmQuestions.push(q.trim());
@@ -126,26 +128,18 @@ export function ChatComposer() {
     }
   };
 
-  const toggleTrace = (idx: number) => {
-    setExpandedTraceIdxs(prev => 
-      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
-    );
-  };
-
-  // Minimized state
+  // Minimized dock state in bottom-right corner
   if (isMinimized) {
     return (
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 bg-black text-white border-2 border-black px-4 py-2.5 font-mono text-xs uppercase font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade select-none">
+      <div className="fixed bottom-6 right-6 z-20 bg-black text-white border-2 border-black px-4 py-2.5 font-mono text-xs font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade select-none">
         <div className="flex items-center gap-2">
           {isChatStreaming ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
-            <MessageSquare className="w-3.5 h-3.5" />
+            <span className="w-2 h-2 bg-white" />
           )}
           <span>
-            {isChatStreaming 
-              ? 'SYNTHESIZING ANSWER...' 
-              : `Q&A THREAD (${chatMessages.length} MESSAGES)`}
+            {isChatStreaming ? 'Thinking…' : `Q&A (${chatMessages.length})`}
           </span>
         </div>
         <div className="flex items-center gap-1.5 border-l border-neutral-700 pl-2">
@@ -166,234 +160,146 @@ export function ChatComposer() {
 
       {/* Conversation Thread Window */}
       {chatMessages.length > 0 && isExpanded && (
-        <div className="bg-white text-black border-2 border-black shadow-none max-h-[460px] flex flex-col overflow-hidden animate-drop">
-          
-          {/* Thread Titlebar (Manus / Perplexity Style) */}
-          <div className="p-3 bg-black text-white flex items-center justify-between border-b-2 border-black shrink-0 font-mono text-xs">
-            <div className="flex items-center gap-2">
-              <span className="bg-white text-black px-2 py-0.5 font-bold text-[10px]">
-                REASONING
-              </span>
-              <span className="font-bold tracking-wider truncate max-w-[400px]">
+        <div className="bg-white border-2 border-black shadow-none max-h-[460px] flex flex-col overflow-hidden animate-drop">
+
+          {/* Thread Titlebar */}
+          <div className="px-3 py-2 bg-black text-white flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 bg-white shrink-0" />
+              <span className="font-mono text-[11px] font-bold tracking-wider truncate max-w-[400px]">
                 Q&amp;A: {currentTopic}
               </span>
             </div>
-
-            <div className="flex items-center gap-2">
-              {isChatStreaming && (
-                <div className="flex items-center gap-1.5 text-[10px] text-neutral-300 font-bold">
-                  <span className="w-2 h-2 bg-white animate-pulse" />
-                  <span>RESEARCHING LIVE</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1 border-l border-neutral-700 pl-2">
-                <button
-                  onClick={() => setIsMinimized(true)}
-                  className="p-1 hover:bg-white hover:text-black transition-colors"
-                  title="Minimize Q&A"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setIsExpanded(false)}
-                  className="p-1 hover:bg-white hover:text-black transition-colors"
-                  title="Close Q&A"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsMinimized(true)}
+                className="p-1 text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                title="Minimize Q&A"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="p-1 text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                title="Close Q&A"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
           {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
             {chatMessages.map((msg, idx) => {
               const prevUserMsg = idx > 0 && chatMessages[idx - 1]?.role === 'user' ? chatMessages[idx - 1].content : currentTopic;
               const isPinned = pinnedMsgIndices.includes(idx);
               const isCopied = copiedMsgIdx === idx;
-              const isTraceOpen = expandedTraceIdxs.includes(idx);
               const isStreamingThis = isChatStreaming && idx === chatMessages.length - 1;
+              const startedAt = msg.timestamp;
 
               return (
                 <div key={idx} className="space-y-2.5">
                   {msg.role === 'user' ? (
-                    <div className="bg-neutral-100 border-2 border-black p-4 text-black">
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-600 block mb-1 font-bold">
-                        USER INQUIRY:
+                    <div className="flex gap-2.5">
+                      <span className="font-mono text-[9px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 pt-1 w-8">
+                        You
                       </span>
-                      <p className="font-serif font-bold text-base text-black">&ldquo;{msg.content}&rdquo;</p>
+                      <p className="font-serif font-semibold text-[15px] text-black leading-snug pt-0.5">
+                        {msg.content}
+                      </p>
                     </div>
                   ) : (
-                    <div className="p-5 bg-white border-2 border-black space-y-4">
-                      
-                      {/* Real-time Agent Reasoning / Tool Steps (Manus & Perplexity style) */}
-                      {(isStreamingThis || (msg.toolCalls && msg.toolCalls.length > 0) || (msg.thoughts && msg.thoughts.length > 0)) && (
-                        <div className="border border-black bg-neutral-50 p-3 space-y-2">
-                          
-                          {/* Live Status Header */}
-                          <div className="flex items-center justify-between font-mono text-[10px] uppercase font-bold text-neutral-700 border-b border-neutral-200 pb-1.5">
-                            <div className="flex items-center gap-2">
-                              {isStreamingThis ? (
-                                <Loader2 className="w-3.5 h-3.5 text-black animate-spin" />
-                              ) : (
-                                <Check className="w-3.5 h-3.5 text-black" />
-                              )}
-                              <span>
-                                {isStreamingThis ? 'AGENT SEARCH & REASONING' : 'VERIFIED REASONING TRACE'}
-                              </span>
-                            </div>
+                    <div className="space-y-2">
+                      <div className="flex gap-2.5">
+                        <span className="font-mono text-[9px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 pt-1 w-8">
+                          Agent
+                        </span>
+                        <div className="space-y-2 flex-1 min-w-0">
+                          {/* Live reasoning / verified trace */}
+                          {((isStreamingThis && (msg.thoughts?.length ?? 0) > 0) || (msg.thoughts && msg.thoughts.length > 0)) && (
+                            <ThinkingReasoning
+                              lines={msg.thoughts || []}
+                              active={isStreamingThis}
+                              doneLabel={`Thought for ${elapsedSeconds(startedAt, isStreamingThis ? now : msg.timestamp || startedAt)}`}
+                            />
+                          )}
 
-                            {(msg.thoughts && msg.thoughts.length > 0) && (
-                              <button
-                                onClick={() => toggleTrace(idx)}
-                                className="flex items-center gap-1 text-[9px] text-neutral-600 hover:text-black"
-                              >
-                                <span>{isTraceOpen ? 'HIDE TRACE' : 'VIEW DETAILS'}</span>
-                                {isTraceOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Live Tool Badges */}
+                          {/* Web search sources */}
                           {msg.toolCalls && msg.toolCalls.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {msg.toolCalls.map((tc, tIdx) => (
-                                <div
-                                  key={tc.id || tIdx}
-                                  className={`flex items-center gap-1.5 px-2.5 py-1 font-mono text-[9px] uppercase font-bold border ${
-                                    tc.status === 'running'
-                                      ? 'border-black bg-black text-white'
-                                      : 'border-neutral-300 bg-white text-black'
-                                  }`}
-                                >
-                                  <Search className="w-3 h-3" />
-                                  <span className="truncate max-w-[200px]">{tc.query || tc.tool}</span>
-                                  <span>{tc.status === 'running' ? '●' : '✓'}</span>
-                                </div>
-                              ))}
+                            <WebSearch
+                              query={msg.toolCalls[0].query || prevUserMsg}
+                              sources={msg.sources || []}
+                              active={isStreamingThis}
+                            />
+                          )}
+
+                          {/* Answer prose */}
+                          {msg.content ? (
+                            <div className="font-body text-sm text-neutral-900 leading-relaxed">
+                              <StreamingText streaming={isStreamingThis}>
+                                <MarkdownContent content={msg.content} />
+                              </StreamingText>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 font-mono text-xs text-neutral-500 py-1">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                              <span className="font-bold tracking-wider animate-pulse text-black">Thinking…</span>
                             </div>
                           )}
 
-                          {/* Collapsible Thoughts */}
-                          {isTraceOpen && msg.thoughts && msg.thoughts.length > 0 && (
-                            <div className="pt-2 space-y-1.5 border-t border-neutral-200 font-mono text-[10px] text-neutral-700">
-                              {msg.thoughts.map((th, thIdx) => (
-                                <div key={thIdx} className="flex items-start gap-1.5">
-                                  <span className="text-neutral-400">↳</span>
-                                  <span>{th}</span>
-                                </div>
-                              ))}
-                            </div>
+                          {/* Inline citations footer */}
+                          {msg.sources && msg.sources.length > 0 && !isStreamingThis && (
+                            <InlineCitations sources={msg.sources} />
                           )}
 
-                        </div>
-                      )}
-
-                      {/* Assistant Text Answer */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-[10px] uppercase tracking-widest text-black font-bold bg-neutral-100 border border-black px-2 py-0.5">
-                            SYNTHESIS
-                          </span>
-
-                          {msg.content && !isChatStreaming && (
-                            <div className="flex items-center gap-2">
+                          {/* Message actions */}
+                          {msg.content && !isStreamingThis && (
+                            <div className="flex items-center gap-1.5 pt-1">
                               <button
                                 onClick={() => handleCopy(idx, msg.content)}
-                                className="px-2 py-1 font-mono text-[10px] uppercase tracking-wider border border-black hover:bg-black hover:text-white transition-colors flex items-center gap-1"
+                                className="p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
                                 title="Copy answer"
                               >
-                                {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                                {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
-
                               <button
                                 onClick={() => handlePin(idx, prevUserMsg, msg.content, msg.sources?.map(s => ({ title: s.title, url: s.url })))}
                                 disabled={isPinned}
-                                className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors flex items-center gap-1.5 border-2 border-black font-bold ${
+                                className={`p-1.5 transition-colors flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
                                   isPinned
-                                    ? 'bg-neutral-200 text-neutral-600 border-neutral-400'
-                                    : 'bg-black text-white hover:bg-white hover:text-black'
+                                    ? 'text-neutral-400 cursor-default'
+                                    : 'text-neutral-500 hover:text-black hover:bg-neutral-100'
                                 }`}
                                 title="Pin this answer as a card on the mindmap canvas"
                               >
-                                {isPinned ? (
-                                  <>
-                                    <Check className="w-3 h-3" />
-                                    <span>Pinned</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <BookmarkPlus className="w-3 h-3" />
-                                    <span>Pin to Canvas</span>
-                                  </>
-                                )}
+                                {isPinned ? <Check className="w-3.5 h-3.5" /> : <BookmarkPlus className="w-3.5 h-3.5" />}
+                                {isPinned ? <span>Pinned</span> : <span>Pin</span>}
                               </button>
                             </div>
                           )}
-                        </div>
 
-                        {msg.content ? (
-                          <div className="text-neutral-900 font-body text-sm md:text-base leading-relaxed">
-                            <MarkdownContent content={msg.content} />
-                            {isStreamingThis && (
-                              <span className="inline-block w-2 h-4 bg-black ml-1 align-middle animate-pulse-block" />
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 font-mono text-xs text-neutral-600 py-3">
-                            <Loader2 className="w-4 h-4 animate-spin text-black" />
-                            <span>Synthesizing grounded answer from citations...</span>
-                          </div>
-                        )}
+                          {/* Follow-up chips */}
+                          {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && !isStreamingThis && (
+                            <div className="pt-1.5 space-y-1.5">
+                              <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 font-bold flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" />
+                                Follow up
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {msg.suggestedFollowUps.slice(0, 3).map((fu, fuIdx) => (
+                                  <button
+                                    key={fuIdx}
+                                    onClick={() => handleSelectSuggestedQuestion(fu)}
+                                    className="px-2.5 py-1.5 bg-white hover:bg-black hover:text-white text-black border-2 border-black font-body text-xs transition-colors duration-100 text-left"
+                                  >
+                                    {fu}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      {/* Discovered Citations Pills */}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div className="pt-3 border-t border-neutral-200 space-y-2">
-                          <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 font-bold block">
-                            GROUNDED SOURCES ({msg.sources.length}):
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {msg.sources.map((src, sIdx) => (
-                              <a
-                                key={src.id || sIdx}
-                                href={src.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-2 py-1 bg-white hover:bg-black text-black hover:text-white border border-neutral-300 hover:border-black font-mono text-[9px] flex items-center gap-1.5 transition-colors"
-                              >
-                                <Globe className="w-2.5 h-2.5" />
-                                <span className="truncate max-w-[140px]">{getDomain(src.url)}</span>
-                                <ExternalLink className="w-2.5 h-2.5 shrink-0" />
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Dynamic Follow-Up Inquiry Chips */}
-                      {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && !isChatStreaming && (
-                        <div className="pt-3 border-t-2 border-black space-y-2 bg-neutral-50 p-3">
-                          <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-600 font-bold flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-black" />
-                            <span>SUGGESTED FOLLOW-UPS:</span>
-                          </span>
-                          <div className="flex flex-col sm:flex-row flex-wrap gap-1.5">
-                            {msg.suggestedFollowUps.map((fu, fuIdx) => (
-                              <button
-                                key={fuIdx}
-                                onClick={() => handleSelectSuggestedQuestion(fu)}
-                                className="p-2 bg-white hover:bg-black text-black hover:text-white border border-black font-body text-xs text-left transition-colors duration-100 flex items-center justify-between gap-2"
-                              >
-                                <span className="font-serif font-bold text-xs">{fu}</span>
-                                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
                     </div>
                   )}
                 </div>
@@ -405,21 +311,20 @@ export function ChatComposer() {
         </div>
       )}
 
-      {/* Suggested Inquiries Pill Row */}
+      {/* Suggested Inquiries Row */}
       {chatMessages.length === 0 && suggestedQuestions.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-white bg-black px-2.5 py-1.5 font-bold shrink-0">
-            PROMPT:
+          <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 shrink-0">
+            Ask:
           </span>
           {suggestedQuestions.map((q, i) => (
             <button
               key={i}
               onClick={() => handleSelectSuggestedQuestion(q.query)}
-              className="bg-white hover:bg-black hover:text-white text-black border-2 border-black px-3 py-1.5 font-body text-xs whitespace-nowrap transition-colors duration-100 flex items-center gap-1.5 shrink-0"
+              className="bg-white hover:bg-black hover:text-white text-black border-2 border-black px-3 py-1.5 font-body text-xs whitespace-nowrap transition-colors duration-100 shrink-0"
               title={q.query}
             >
-              <span>{q.label}</span>
-              <ArrowUpRight className="w-3 h-3 opacity-60 shrink-0" />
+              {q.label}
             </button>
           ))}
         </div>
@@ -428,36 +333,26 @@ export function ChatComposer() {
       {/* Input Bar */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white border-2 border-black flex items-center shadow-none"
+        className="bg-white border-2 border-black flex items-center"
       >
-        <div className="px-4 font-mono text-[11px] uppercase font-bold tracking-widest text-black border-r-2 border-black hidden sm:flex items-center gap-1.5 shrink-0 bg-neutral-50 h-full py-3.5">
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>INQUIRY</span>
-        </div>
-
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={`Ask anything about "${currentTopic}"...`}
-          className="flex-1 bg-transparent outline-none font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic px-4 py-3.5"
+          placeholder={`Ask anything about "${currentTopic}"…`}
+          className="flex-1 bg-transparent outline-none font-body text-sm text-black placeholder:text-neutral-400 px-4 py-3"
         />
 
         <button
           type="submit"
           disabled={!input.trim() || isChatStreaming}
-          className="px-6 py-3.5 bg-black hover:bg-white text-white hover:text-black border-l-2 border-black font-mono text-xs uppercase font-bold tracking-widest disabled:opacity-40 transition-colors duration-100 flex items-center gap-1.5 shrink-0"
+          className="m-1.5 w-9 h-9 flex items-center justify-center bg-black hover:bg-white text-white hover:text-black border border-black disabled:opacity-30 disabled:hover:bg-black disabled:hover:text-white transition-colors duration-100 shrink-0"
+          aria-label="Ask"
         >
           {isChatStreaming ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>THINKING</span>
-            </>
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <>
-              <span>DISPATCH</span>
-              <CornerDownLeft className="w-3.5 h-3.5" />
-            </>
+            <ArrowUp className="w-4 h-4" />
           )}
         </button>
       </form>

@@ -5,32 +5,24 @@ import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 import { AudioTourPlayer } from './AudioTourPlayer';
 import { MapViewer } from './MapViewer';
+import { ThinkingReasoning } from '@/components/agent/ThinkingReasoning';
+import { WebSearch } from '@/components/agent/WebSearch';
+import { TodoList } from '@/components/agent/TodoList';
+import { InlineCitations } from '@/components/agent/InlineCitations';
 import { 
   X, 
   ExternalLink, 
-  Sparkles, 
+  Sparkles,
   Compass, 
   Layers, 
-  Clock, 
   ArrowRight,
   Minus,
   Maximize2,
   Loader2,
   CheckCircle2,
-  Search,
-  Globe,
-  ChevronDown,
-  ChevronUp,
+  Clock,
   BookOpen
 } from 'lucide-react';
-
-function getDomain(url: string): string {
-  try {
-    return new URL(url).hostname.replace('www.', '');
-  } catch {
-    return url;
-  }
-}
 
 export function DossierDrawer() {
   const isDossierOpen = useMindMapStore(s => s.isDossierOpen);
@@ -42,19 +34,15 @@ export function DossierDrawer() {
   const currentTopic = useMindMapStore(s => s.currentTopic);
   const planSteps = useMindMapStore(s => s.planSteps);
   const thoughts = useMindMapStore(s => s.thoughts);
-  const toolCalls = useMindMapStore(s => s.toolCalls);
   const sources = useMindMapStore(s => s.sources);
   const workstationTab = useMindMapStore(s => s.workstationTab);
   const setWorkstationTab = useMindMapStore(s => s.setWorkstationTab);
 
   const [isMinimized, setIsMinimized] = useState(false);
-  const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
 
   if (!isDossierOpen) return null;
 
-  const runningStepIdx = planSteps.findIndex(s => s.status === 'running');
   const completedStepsCount = planSteps.filter(s => s.status === 'done').length;
-  const currentStepNumber = runningStepIdx !== -1 ? runningStepIdx + 1 : completedStepsCount;
 
   // Minimized dock state in bottom-right corner
   if (isMinimized) {
@@ -425,164 +413,65 @@ export function DossierDrawer() {
 
       {/* Tab 2: Agent Activity Stream View */}
       {workstationTab === 'agent' && (
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar">
-          
+        <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-4 custom-scrollbar">
+
           {/* Active Dispatch Header */}
-          <div className="p-4 border-2 border-black bg-neutral-50 flex items-center justify-between">
-            <div>
-              <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 font-bold">
-                {isResearching ? 'LIVE AGENT SWARM' : 'SYNTHESIS COMPLETE'}
-              </div>
-              <div className="font-serif text-base font-bold text-black truncate max-w-sm">
-                {currentTopic || 'Research Topic'}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              {isResearching ? (
+                <span className="w-2 h-2 bg-black animate-pulse shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5 text-black shrink-0" />
+              )}
+              <div className="min-w-0">
+                <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 font-bold">
+                  {isResearching ? 'Researching' : 'Synthesis complete'}
+                </div>
+                <div className="font-serif text-sm font-bold text-black truncate">
+                  {currentTopic || 'Research Topic'}
+                </div>
               </div>
             </div>
             {!isResearching && activeDossier && (
               <button
                 onClick={() => setWorkstationTab('monograph')}
-                className="px-4 py-2 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100 flex items-center gap-1.5 shrink-0"
+                className="px-3 py-1.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-[10px] uppercase font-bold tracking-wider transition-colors duration-100 flex items-center gap-1.5 shrink-0"
               >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>View Story</span>
+                <BookOpen className="w-3 h-3" />
+                <span>Read Story</span>
               </button>
             )}
           </div>
 
-          {/* Plan Steps */}
-          {planSteps.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between font-mono text-xs uppercase tracking-widest font-bold text-black border-b-2 border-black pb-1.5">
-                <span>[ RESEARCH PHASES ]</span>
-                <span>{completedStepsCount}/{planSteps.length} COMPLETE</span>
-              </div>
-              <div className="space-y-2">
-                {planSteps.map((step, idx) => {
-                  const isDone = step.status === 'done';
-                  const isRunning = step.status === 'running';
-
-                  return (
-                    <div 
-                      key={step.id || idx} 
-                      className={`flex items-start gap-3 text-xs font-mono p-3 border-2 transition-colors duration-100 ${
-                        isRunning 
-                          ? 'border-black bg-black text-white font-bold' 
-                          : isDone 
-                          ? 'border-neutral-300 bg-neutral-50 text-neutral-800' 
-                          : 'border-neutral-200 text-neutral-400'
-                      }`}
-                    >
-                      <div className="shrink-0 mt-0.5">
-                        {isDone ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-black" />
-                        ) : isRunning ? (
-                          <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
-                        ) : (
-                          <span className="w-2.5 h-2.5 border border-neutral-400 inline-block" />
-                        )}
-                      </div>
-                      <div className="flex-1 leading-snug">
-                        <div>{step.title}</div>
-                        {isRunning && (
-                          <div className="font-mono text-[9px] text-neutral-300 mt-1 uppercase">
-                            Active: {step.agent || 'Deep Retrieval Agent'}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* Plan Phases (Cursor-style todo) */}
+          {planSteps.length > 0 && <TodoList steps={planSteps} />}
 
           {/* Thinking Trace */}
           {thoughts.length > 0 && (
-            <div className="border-2 border-black bg-white">
-              <button
-                onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
-                className="w-full flex items-center justify-between p-3 bg-neutral-100 border-b-2 border-black font-mono text-[10px] uppercase font-bold tracking-wider text-black hover:bg-neutral-200"
-              >
-                <div className="flex items-center gap-2">
-                  <Compass className="w-3.5 h-3.5 text-black" />
-                  <span>[ AI REASONING &amp; FIELD NOTES ]</span>
-                  <span className="text-neutral-500">({thoughts.length})</span>
-                </div>
-                {isThinkingExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-
-              {isThinkingExpanded && (
-                <div className="p-4 space-y-3 max-h-[260px] overflow-y-auto font-body text-xs text-neutral-800 leading-relaxed custom-scrollbar">
-                  {thoughts.map((t, idx) => (
-                    <div key={idx} className="border-l-2 border-black pl-3 space-y-0.5">
-                      <span className="font-mono text-[9px] text-neutral-500 block uppercase font-bold">
-                        {t.agent || `INSIGHT #${idx + 1}`}
-                      </span>
-                      <MarkdownContent content={t.text} className="text-xs text-black" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ThinkingReasoning
+              lines={thoughts.map(t => t.text)}
+              active={isResearching}
+              doneLabel={`Thought for ${completedStepsCount > 0 ? `${completedStepsCount} phases` : `${thoughts.length} steps`}`}
+            />
           )}
 
-          {/* Tools Used */}
-          {toolCalls.length > 0 && (
-            <div className="space-y-2">
-              <div className="font-mono text-xs uppercase tracking-widest font-bold text-black border-b-2 border-black pb-1.5 flex items-center justify-between">
-                <span>[ AGENT ACTIONS &amp; TOOLS ]</span>
-                <span>{toolCalls.length} EXECUTED</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {toolCalls.map((tc, idx) => (
-                  <div
-                    key={tc.id || idx}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] uppercase font-bold border-2 ${
-                      tc.status === 'running' 
-                        ? 'border-black bg-black text-white' 
-                        : 'border-neutral-300 bg-white text-black'
-                    }`}
-                  >
-                    <Search className="w-3 h-3" />
-                    <span>{tc.name}</span>
-                    <span>{tc.status === 'running' ? '●' : '✓'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {/* Web Search Sources */}
+          {sources.length > 0 && (
+            <WebSearch
+              query={currentTopic || 'topic'}
+              sources={sources}
+              active={isResearching}
+            />
           )}
 
           {/* Discovered Citations */}
-          {sources.length > 0 && (
-            <div className="space-y-3">
-              <div className="font-mono text-xs uppercase tracking-widest font-bold text-black border-b-2 border-black pb-1.5 flex items-center justify-between">
-                <span>[ DISCOVERED CITATIONS ]</span>
-                <span>{sources.length} SOURCES</span>
+          {sources.length > 0 && !isResearching && (
+            <div className="space-y-2">
+              <div className="font-mono text-[10px] uppercase tracking-widest font-bold text-black border-b-2 border-black pb-1 flex items-center justify-between">
+                <span>Sources</span>
+                <span>{sources.length}</span>
               </div>
-              <div className="space-y-2.5">
-                {sources.map((src, idx) => (
-                  <a
-                    key={src.id || idx}
-                    href={src.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-3 bg-white hover:bg-black text-black hover:text-white border-2 border-black transition-colors duration-100 group"
-                  >
-                    <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 group-hover:text-neutral-400 uppercase mb-1">
-                      <span className="flex items-center gap-1">
-                        <Globe className="w-3 h-3" />
-                        {getDomain(src.url)}
-                      </span>
-                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                    <div className="font-serif text-sm font-bold text-black group-hover:text-white line-clamp-1 mb-1">
-                      {src.title}
-                    </div>
-                    <div className="font-body text-xs text-neutral-700 group-hover:text-neutral-300 line-clamp-2 leading-relaxed">
-                      <MarkdownContent content={src.snippet} />
-                    </div>
-                  </a>
-                ))}
-              </div>
+              <InlineCitations sources={sources} />
             </div>
           )}
 

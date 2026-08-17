@@ -104,6 +104,24 @@ html, body {
   50% { opacity: 0.2; }
 }
 
+/* Blinking caret for live streaming text */
+@keyframes caretBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Rotating globe meridian for "searching" states */
+@keyframes globeSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Soft upward fade for streaming reasoning lines */
+@keyframes lineReveal {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .animate-fade {
   animation: fadeIn 100ms ease-out forwards;
 }
@@ -114,6 +132,18 @@ html, body {
 
 .animate-pulse-block {
   animation: pulseBlock 1.2s infinite;
+}
+
+.caret-blink {
+  animation: caretBlink 0.9s steps(1) infinite;
+}
+
+.globe-spin {
+  animation: globeSpin 1.2s linear infinite;
+}
+
+.line-reveal {
+  animation: lineReveal 180ms ease-out forwards;
 }
 
 /* ── React Flow Monochrome Overrides ─────────────────────────── */
