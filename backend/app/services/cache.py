@@ -41,6 +41,10 @@ class CacheService:
                 logger.warning(f"Failed to connect to Redis ({e}), using disk/memory fallback")
                 self._redis_client = None
 
+    @property
+    def redis_client(self):
+        return self._redis_client
+
     # ------------------------------------------------------------------ #
     # Disk persistence
     # ------------------------------------------------------------------ #

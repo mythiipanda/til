@@ -6,15 +6,19 @@ import { ActivityPanel } from '@/components/activity/ActivityPanel';
 import { ChatComposer } from '@/components/activity/ChatComposer';
 import { HubBrowser } from '@/components/browse/HubBrowser';
 import { DossierDrawer } from '@/components/dossier/DossierDrawer';
+import { UserMenu } from '@/components/auth/UserMenu';
+import { MyMindMapsDrawer } from '@/components/library/MyMindMapsDrawer';
+import { ShareModal } from '@/components/share/ShareModal';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
-import { Plus, RotateCcw, BookOpen, Sparkles, X } from 'lucide-react';
+import { Plus, RotateCcw, BookOpen, Sparkles, X, Share2, Bookmark } from 'lucide-react';
 
 const FLAGSHIP_CATEGORIES = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'] as const;
 
 export default function Home() {
   const fetchPrecomputedHubs = useMindMapStore(s => s.fetchPrecomputedHubs);
   const loadRandomHubByCategory = useMindMapStore(s => s.loadRandomHubByCategory);
+  const restoreSessionFromLocalStorage = useMindMapStore(s => s.restoreSessionFromLocalStorage);
   const isResearching = useMindMapStore(s => s.isResearching);
   const resetCanvas = useMindMapStore(s => s.resetCanvas);
   const nodes = useMindMapStore(s => s.nodes);
@@ -29,13 +33,16 @@ export default function Home() {
   const activeDossier = useMindMapStore(s => s.activeDossier);
 
   const [isBrowseOpen, setIsBrowseOpen] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
   const [customInput, setCustomInput] = useState('');
   const startResearch = useMindMapStore(s => s.startResearch);
 
   useEffect(() => { 
-    fetchPrecomputedHubs(); 
-  }, [fetchPrecomputedHubs]);
+    fetchPrecomputedHubs();
+    restoreSessionFromLocalStorage();
+  }, [fetchPrecomputedHubs, restoreSessionFromLocalStorage]);
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,8 +134,28 @@ export default function Home() {
                 : 'bg-black text-white hover:bg-white hover:text-black'
             }`}
           >
-            {isBrowseOpen ? 'CLOSE LIBRARY' : 'BROWSE 800+ TOPICS'}
+            {isBrowseOpen ? 'CLOSE LIBRARY' : 'BROWSE 2000+ TOPICS'}
           </button>
+
+          {/* My Library & History Drawer */}
+          <button
+            onClick={() => setIsLibraryOpen(true)}
+            className="p-1.5 border border-black hover:bg-black hover:text-white transition-colors"
+            title="My Saved Mindmaps & History"
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Share & Export Modal */}
+          {nodes.length > 0 && currentTopic && (
+            <button
+              onClick={() => setIsShareOpen(true)}
+              className="p-1.5 border border-black hover:bg-black hover:text-white transition-colors"
+              title="Share & Export Mindmap"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Canvas Clear */}
           {nodes.length > 0 && (
@@ -140,6 +167,9 @@ export default function Home() {
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
           )}
+
+          {/* Supabase User Profile / Sign in Menu */}
+          <UserMenu onOpenLibrary={() => setIsLibraryOpen(true)} />
         </div>
       </header>
 
@@ -240,6 +270,15 @@ export default function Home() {
       <ActivityPanel />
       <ChatComposer />
       <DossierDrawer />
+      <MyMindMapsDrawer
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onOpenShareModal={() => setIsShareOpen(true)}
+      />
+      <ShareModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+      />
     </main>
   );
 }

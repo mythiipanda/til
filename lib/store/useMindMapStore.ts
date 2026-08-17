@@ -10,6 +10,7 @@ import {
   applyEdgeChanges,
 } from '@xyflow/react';
 import { api, ChatHistoryMessage } from '@/lib/api';
+import { supabase } from '@/lib/supabase/client';
 import type {
   ThoughtStep,
   ToolCallEvent,
@@ -53,9 +54,29 @@ interface MindMapState {
   chatMessages: ChatMessage[];
   isChatStreaming: boolean;
   chatNodeTitle: string | null;
-  
+
   // Sidebar / browse
   precomputedHubs: PrecomputedHubSummary[];
+
+  // Persistence & Sharing
+  activeMindMapId: string | null;
+  shareSlug: string | null;
+  savedMindMaps: Array<{
+    id: string;
+    title: string;
+    root_topic: string;
+    category?: string;
+    node_count?: number;
+    updated_at: string;
+    share_slug?: string;
+  }>;
+  recentSessions: Array<{
+    id: string;
+    topic: string;
+    category?: string;
+    nodeCount: number;
+    timestamp: number;
+  }>;
   
   // Actions
   fetchPrecomputedHubs: () => Promise<PrecomputedHubSummary[]>;
@@ -75,6 +96,11 @@ interface MindMapState {
   sendChat: (question: string) => void;
   pinChatToCanvas: (question: string, answer: string, citations?: Array<{ title?: string; url: string }>) => void;
   deleteNode: (nodeId: string) => void;
+  saveMindMap: () => Promise<{ id?: string; shareSlug?: string; error?: string }>;
+  loadMindMapById: (id: string) => Promise<boolean>;
+  loadMindMapBySlug: (slug: string) => Promise<boolean>;
+  generateShareLink: () => Promise<string | null>;
+  restoreSessionFromLocalStorage: () => boolean;
   resetCanvas: () => void;
 }
 
@@ -113,6 +139,11 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   chatNodeTitle: null,
   
   precomputedHubs: [],
+
+  activeMindMapId: null,
+  shareSlug: null,
+  savedMindMaps: [],
+  recentSessions: [],
 
   fetchPrecomputedHubs: async () => {
     try {
@@ -184,6 +215,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       sources: [],
       planSteps: [],
     });
+
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `/?topic=${encodeURIComponent(topic)}`);
+    }
 
     const url = api.researchStreamUrl(
       topic,
@@ -406,6 +441,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         isResearching: false,
         hasNewDossier: false,
       });
+
+      if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', `/?topic=${encodeURIComponent(rootNodeSchema.title)}`);
+      }
 
       // Eagerly pre-populate active dossier for root node
       get().openDossier(rootId);
@@ -639,10 +678,263 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     });
   },
 
+  saveMindMap: async () => {
+    const { nodes, edges, currentTopic, activeMindMapId, shareSlug } = get();
+    if (nodes.length === 0 || !currentTopic) {
+      return { error: 'Canvas is empty. Explore a topic first.' };
+    }
+
+    const title = currentTopic;
+    const rootNode = nodes.find(n => !n.parentId);
+    const category = rootNode?.data?.category as string || 'General';
+    const slug = shareSlug || `${currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Math.random().toString(36).substring(2, 7)}`;
+
+    try {
+      // 1. Try Supabase cloud persistence if logged in
+      const { data: { user } } = await supabase.auth.getUser();
+      let savedId = activeMindMapId;
+
+      if (user) {
+        if (activeMindMapId) {
+          const { data, error } = await supabase
+            .from('mindmaps')
+            .update({
+              title,
+              root_topic: currentTopic,
+              category,
+              nodes: nodes as any,
+              edges: edges as any,
+              node_count: nodes.length,
+              share_slug: slug,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', activeMindMapId)
+            .select()
+            .single();
+
+          if (!error && data) savedId = data.id;
+        } else {
+          const { data, error } = await supabase
+            .from('mindmaps')
+            .insert({
+              user_id: user.id,
+              title,
+              root_topic: currentTopic,
+              category,
+              nodes: nodes as any,
+              edges: edges as any,
+              node_count: nodes.length,
+              share_slug: slug,
+              is_public: false,
+            })
+            .select()
+            .single();
+
+          if (!error && data) savedId = data.id;
+        }
+      }
+
+      // 2. Always persist locally for instant guest retrieval
+      const localSession = {
+        id: savedId || slug,
+        topic: currentTopic,
+        category,
+        nodeCount: nodes.length,
+        nodes,
+        edges,
+        dossiersByNodeId: get().dossiersByNodeId,
+        contextChain: get().contextChain,
+        shareSlug: slug,
+        timestamp: Date.now()
+      };
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('tdilearned_active_session', JSON.stringify(localSession));
+
+        const existingRaw = localStorage.getItem('tdilearned_recent_sessions');
+        const recentList = existingRaw ? JSON.parse(existingRaw) : [];
+        const filtered = recentList.filter((item: any) => item.topic !== currentTopic);
+        const updatedRecent = [{
+          id: savedId || slug,
+          topic: currentTopic,
+          category,
+          nodeCount: nodes.length,
+          timestamp: Date.now()
+        }, ...filtered].slice(0, 10);
+        
+        localStorage.setItem('tdilearned_recent_sessions', JSON.stringify(updatedRecent));
+        set({ recentSessions: updatedRecent });
+      }
+
+      set({ activeMindMapId: savedId, shareSlug: slug });
+      return { id: savedId || slug, shareSlug: slug };
+    } catch (e: any) {
+      console.error('Error saving mindmap:', e);
+      return { error: e.message || 'Failed to save mindmap.' };
+    }
+  },
+
+  loadMindMapById: async (id: string) => {
+    try {
+      // 1. Check Supabase
+      const { data, error } = await supabase
+        .from('mindmaps')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (!error && data) {
+        set({
+          nodes: data.nodes || [],
+          edges: data.edges || [],
+          currentTopic: data.root_topic || data.title,
+          activeMindMapId: data.id,
+          shareSlug: data.share_slug,
+          isDossierOpen: false,
+        });
+
+        if (typeof window !== 'undefined' && data.root_topic) {
+          window.history.pushState({}, '', `/?topic=${encodeURIComponent(data.root_topic)}`);
+        }
+        return true;
+      }
+
+      // 2. Check Local Storage
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('tdilearned_active_session');
+        if (raw) {
+          const session = JSON.parse(raw);
+          if (session.id === id || session.shareSlug === id) {
+            set({
+              nodes: session.nodes || [],
+              edges: session.edges || [],
+              currentTopic: session.topic,
+              dossiersByNodeId: session.dossiersByNodeId || {},
+              contextChain: session.contextChain || [],
+              activeMindMapId: session.id,
+              shareSlug: session.shareSlug,
+            });
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (e) {
+      console.error('Error loading mindmap by ID:', e);
+      return false;
+    }
+  },
+
+  loadMindMapBySlug: async (slug: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('mindmaps')
+        .select('*')
+        .eq('share_slug', slug)
+        .single();
+
+      if (!error && data) {
+        set({
+          nodes: data.nodes || [],
+          edges: data.edges || [],
+          currentTopic: data.root_topic || data.title,
+          activeMindMapId: data.id,
+          shareSlug: data.share_slug,
+          isDossierOpen: false,
+        });
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Error loading mindmap by slug:', e);
+      return false;
+    }
+  },
+
+  generateShareLink: async () => {
+    const { nodes, currentTopic, shareSlug, saveMindMap } = get();
+    if (nodes.length === 0 || !currentTopic) return null;
+
+    let slug = shareSlug;
+    if (!slug) {
+      const saveRes = await saveMindMap();
+      slug = saveRes.shareSlug || null;
+    }
+
+    if (!slug) {
+      slug = `${currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Math.random().toString(36).substring(2, 7)}`;
+    }
+
+    try {
+      // Mark as public in Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && get().activeMindMapId) {
+        await supabase
+          .from('mindmaps')
+          .update({ is_public: true, share_slug: slug })
+          .eq('id', get().activeMindMapId);
+      }
+    } catch (e) {
+      console.warn('Supabase share update skipped (guest mode)');
+    }
+
+    set({ shareSlug: slug });
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://tdilearned.com';
+    return `${origin}/m/${slug}`;
+  },
+
+  restoreSessionFromLocalStorage: () => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const rawRecent = localStorage.getItem('tdilearned_recent_sessions');
+      if (rawRecent) {
+        set({ recentSessions: JSON.parse(rawRecent) });
+      }
+
+      // Check if URL has a topic parameter
+      const params = new URLSearchParams(window.location.search);
+      const urlTopic = params.get('topic');
+      if (urlTopic && get().nodes.length === 0) {
+        get().startResearch(urlTopic);
+        return true;
+      }
+
+      // If no URL topic, restore previous session if canvas is empty
+      if (get().nodes.length === 0) {
+        const raw = localStorage.getItem('tdilearned_active_session');
+        if (raw) {
+          const session = JSON.parse(raw);
+          if (session && session.nodes && session.nodes.length > 0) {
+            set({
+              nodes: session.nodes,
+              edges: session.edges || [],
+              currentTopic: session.topic,
+              dossiersByNodeId: session.dossiersByNodeId || {},
+              contextChain: session.contextChain || [],
+              activeMindMapId: session.id,
+              shareSlug: session.shareSlug,
+              selectedNodeId: session.nodes[0]?.id || null,
+            });
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (e) {
+      console.error('Error restoring session from localStorage:', e);
+      return false;
+    }
+  },
+
   resetCanvas: () => {
     if (researchES) researchES.close();
     if (chatES) chatES.close();
     
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('tdilearned_active_session');
+      window.history.pushState({}, '', '/');
+    }
+
     set({
       nodes: [],
       edges: [],
@@ -661,7 +953,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       activeDossier: null,
       isDossierOpen: false,
       chatMessages: [],
+      activeMindMapId: null,
+      shareSlug: null,
     });
   }
 }));
+
 

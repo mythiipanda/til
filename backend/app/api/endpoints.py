@@ -1,9 +1,10 @@
 import logging
 import time
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from app.api.middleware.rate_limit import chat_rate_limiter, research_rate_limiter
 from app.schemas.graph import (
     PrecomputedHubSchema,
     PrecomputedHubSummarySchema,
@@ -80,7 +81,7 @@ async def get_precomputed(hub_id: str):
     return hub
 
 
-@router.get("/research/stream")
+@router.get("/research/stream", dependencies=[Depends(research_rate_limiter)])
 async def research_stream_endpoint(
     topic: str = Query(..., description="Research inquiry topic"),
     category: str = Query(None, description="Optional category classification"),
@@ -118,7 +119,7 @@ async def get_research_dossier(node_id: str):
     return dossier
 
 
-@router.get("/chat/stream")
+@router.get("/chat/stream", dependencies=[Depends(chat_rate_limiter)])
 async def chat_stream_endpoint(
     node_title: str = Query(..., description="Active node concept title"),
     question: str = Query(..., description="User question"),
