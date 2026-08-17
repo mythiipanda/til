@@ -73,13 +73,17 @@ class MechanismItem(BaseModel):
 
 
 class RabbitHoleItem(BaseModel):
-    title: str = Field(description="Clear, specific topic or concept title (e.g. 'Delta Hedging', 'The 1987 Market Crash'). No clickbait or metaphorical slang.")
+    title: str = Field(
+        description="Clear, specific topic or concept title (e.g. 'Delta Hedging', 'The 1987 Market Crash'). No clickbait or metaphorical slang."
+    )
     teaser: str = Field(description="Engaging 1-sentence hook explaining why this connected topic is fascinating")
     affinityCategory: str = Field(description="Category")
 
 
 class LLMDeepDossierOutput(BaseModel):
-    title: str = Field(description="Clear, accurate real title naming the specific concept, person, or historical event. Never use metaphorical slang.")
+    title: str = Field(
+        description="Clear, accurate real title naming the specific concept, person, or historical event. Never use metaphorical slang."
+    )
     tagline: str = Field(description="Engaging 1-sentence hook that sparks instant curiosity")
     category: str = Field(description="Category")
     era: str = Field(description="Time period (e.g. 'c. 200 BCE', '1973')")
@@ -97,7 +101,9 @@ class LLMDeepDossierOutput(BaseModel):
 
 
 class LLMChildBranchDefinition(BaseModel):
-    title: str = Field(description="Clear, specific subtopic title naming the actual entity, mechanism, or event. Never use metaphorical slang.")
+    title: str = Field(
+        description="Clear, specific subtopic title naming the actual entity, mechanism, or event. Never use metaphorical slang."
+    )
     summary: str = Field(description="Simple 2-sentence explanation of the core concept and its connection")
     category: str = Field(description="Category")
     era: str = Field(description="Era")
@@ -110,7 +116,9 @@ class LLMChildBranchDefinition(BaseModel):
 
 class LLMSeedTreeWithBranches(BaseModel):
     root_dossier: LLMDeepDossierOutput
-    children: list[LLMChildBranchDefinition] = Field(description="3 exciting child exploration branches naming specific real concepts")
+    children: list[LLMChildBranchDefinition] = Field(
+        description="3 exciting child exploration branches naming specific real concepts"
+    )
 
 
 class LLMResearcherExtraction(BaseModel):
@@ -149,9 +157,17 @@ def _llm(config: RunnableConfig, temperature: float, max_tokens: int) -> Any:
 
 def _build_plan_steps(phase: int, topic: str, count_findings: int = 0, count_sources: int = 0) -> list[PlanStepSchema]:
     """Construct standard 5-phase sequential deep research plan."""
-    step2_title = f"Deep web & encyclopedia retrieval ({count_findings} facts found)" if count_findings > 0 else f"Deep web & encyclopedia retrieval for '{topic}'"
-    step3_title = f"Cross-verifying claims & curating {count_sources} citations" if count_sources > 0 else "Cross-verifying claims & source citations"
-    
+    step2_title = (
+        f"Deep web & encyclopedia retrieval ({count_findings} facts found)"
+        if count_findings > 0
+        else f"Deep web & encyclopedia retrieval for '{topic}'"
+    )
+    step3_title = (
+        f"Cross-verifying claims & curating {count_sources} citations"
+        if count_sources > 0
+        else "Cross-verifying claims & source citations"
+    )
+
     return [
         PlanStepSchema(
             id="step-1",
@@ -229,7 +245,9 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
                             "dictionary definitions or unrelated modern topics. Each angle must target verifiable facts from reliable web sources."
                         )
                     ),
-                    HumanMessage(content=f"Target Inquiry: '{topic}'\nCategory: '{category or 'Unknown'}'{context_str}"),
+                    HumanMessage(
+                        content=f"Target Inquiry: '{topic}'\nCategory: '{category or 'Unknown'}'{context_str}"
+                    ),
                 ]
             )
             angles = res.angles[:5]  # type: ignore[union-attr]
@@ -528,7 +546,9 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
             curiosityScore=7,
         )
 
-    await _emit_plan_phase(sink, 4, state["topic"], count_findings=len(findings), count_sources=len(state.get("sources", [])))
+    await _emit_plan_phase(
+        sink, 4, state["topic"], count_findings=len(findings), count_sources=len(state.get("sources", []))
+    )
 
     await sink.emit(
         "thought",
@@ -671,7 +691,9 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
     await sink.emit("node_stream", root_node.model_dump())
 
     # Emit Phase 5 Complete
-    await _emit_plan_phase(sink, 5, topic, count_findings=len(state.get("findings", [])), count_sources=len(state.get("sources", [])))
+    await _emit_plan_phase(
+        sink, 5, topic, count_findings=len(state.get("findings", [])), count_sources=len(state.get("sources", []))
+    )
 
     # Child nodes
     child_nodes: list[NodeSchema] = []
@@ -743,6 +765,7 @@ research_graph_app = build_research_graph()
 # Public async entrypoint
 # ---------------------------------------------------------------------------
 
+
 async def run_research_graph(
     topic: str,
     category: str | None = None,
@@ -780,6 +803,8 @@ async def run_research_graph(
         "root_node": None,
         "child_nodes": [],
         "execution_time_ms": 0.0,
+        "engine_used": engine,
+        "errors": [],
     }
 
     result = await research_graph_app.ainvoke(

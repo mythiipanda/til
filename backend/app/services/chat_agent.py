@@ -11,7 +11,6 @@ import asyncio
 import json
 import logging
 import re
-import time
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -177,7 +176,7 @@ async def stream_chat(
                     if m.get("content")
                 ]
                 if history_lines:
-                    history_context = f"\n\nCONVERSATION HISTORY:\n" + "\n".join(history_lines)
+                    history_context = "\n\nCONVERSATION HISTORY:\n" + "\n".join(history_lines)
 
             summary_info = f"\nActive Card Overview: {active_summary}" if active_summary else ""
 
@@ -208,9 +207,7 @@ async def stream_chat(
                 "If crucial information is missing, leave answer empty and return a refined keyword follow_up_query."
             )
             if is_final:
-                system_prompt += (
-                    "\n[FINAL ROUND]: You MUST provide your complete educational answer now using the gathered evidence and your broad domain knowledge. Leave follow_up_query empty."
-                )
+                system_prompt += "\n[FINAL ROUND]: You MUST provide your complete educational answer now using the gathered evidence and your broad domain knowledge. Leave follow_up_query empty."
 
             res = await structured.ainvoke(
                 [  # type: ignore[assignment]

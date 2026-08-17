@@ -460,7 +460,7 @@ wheels = [
 ]
 
 [[package]]
-name = "curiosity-engine-backend"
+name = "tdilearned-backend"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -15,14 +15,18 @@ from urllib.parse import quote
 import httpx
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), ".env.local"))
+load_dotenv(
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), ".env.local"
+    )
+)
 load_dotenv()
 
 from app.schemas.graph import GalleryItemSchema, SourceCitationSchema
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "InfiniteCuriosityResearchEngine/2.0 (Manus-style agentic research; contact@curiosity.engine)"
+USER_AGENT = "TDILEARNED/2.0 (Today I Learned discovery engine; contact@tdilearned.app)"
 
 
 # ---------------------------------------------------------------------------

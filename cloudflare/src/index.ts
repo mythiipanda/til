@@ -13,7 +13,7 @@ const ALLOWED_HOSTS = [
   'images.unsplash.com',
 ];
 
-const CUSTOM_USER_AGENT = 'InfiniteCuriosityEngine/1.0 (https://curiosity.platform; contact@curiosity.platform)';
+const CUSTOM_USER_AGENT = 'TDILEARNED/1.0 (https://tdilearned.app; contact@tdilearned.app)';
 
 export default {
   async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
@@ -33,7 +33,7 @@ export default {
     }
 
     if (url.pathname !== '/media') {
-      return new Response('Infinite Curiosity Engine Media Proxy. Use /media?url=<ENCODED_URL>', {
+      return new Response('TDILEARNED Media Proxy. Use /media?url=<ENCODED_URL>', {
         status: 200,
         headers: { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' },
       });

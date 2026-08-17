@@ -55,13 +55,11 @@ interface MindMapState {
   chatNodeTitle: string | null;
   
   // Sidebar / browse
-  selectedCategory: string;
   precomputedHubs: PrecomputedHubSummary[];
   
   // Actions
   fetchPrecomputedHubs: () => Promise<PrecomputedHubSummary[]>;
   loadRandomHubByCategory: (category: string) => Promise<void>;
-  pickRandomTopic: (category: string) => Promise<void>;
   startResearch: (
     topic: string,
     category?: string,
@@ -75,7 +73,6 @@ interface MindMapState {
   closeDossier: () => void;
   dismissNewDossierAlert: () => void;
   sendChat: (question: string) => void;
-  setCategory: (cat: string) => void;
   resetCanvas: () => void;
 }
 
@@ -113,9 +110,8 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   isChatStreaming: false,
   chatNodeTitle: null,
   
-  selectedCategory: 'Science',
   precomputedHubs: [],
-  
+
   fetchPrecomputedHubs: async () => {
     try {
       const res = await api.precomputedList();
@@ -148,18 +144,6 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     }
   },
 
-  pickRandomTopic: async (category: string) => {
-    try {
-      const res = await api.randomTopic(category);
-      if (!res.ok) throw new Error('Failed to pick random topic');
-      const data = await res.json();
-      get().startResearch(data.topic, category);
-    } catch (e) {
-      console.error('Failed random topic picker, falling back:', e);
-      get().startResearch(category, category);
-    }
-  },
-  
   startResearch: (
     topic: string,
     category?: string,
@@ -598,18 +582,6 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       set({ isChatStreaming: false });
       es.close();
     };
-  },
-  
-  setCategory: (cat: string) => {
-    set({ selectedCategory: cat });
-  },
-
-  setSelectedNode: (nodeId: string | null) => {
-    if (nodeId) {
-      get().selectNode(nodeId);
-    } else {
-      set({ selectedNodeId: null });
-    }
   },
   
   resetCanvas: () => {

@@ -6,10 +6,6 @@ export interface ChatHistoryMessage {
 }
 
 export const api = {
-  /** Pick a curiosity-ranked random topic from a category's pool. */
-  randomTopic: (category: string) =>
-    fetch(`${API}/api/v1/graph/random-topic?category=${encodeURIComponent(category)}`),
-
   /** List all pre-researched hub summaries. */
   precomputedList: () =>
     fetch(`${API}/api/v1/graph/precomputed`),
@@ -21,10 +17,6 @@ export const api = {
   /** Fetch the research dossier for a given node. */
   dossier: (nodeId: string) =>
     fetch(`${API}/api/v1/research/dossier/${encodeURIComponent(nodeId)}`),
-
-  /** Catalog of 2000+ real Wikipedia topics. */
-  catalog: (limit = 200) =>
-    fetch(`${API}/api/v1/graph/catalog?limit=${limit}`),
 
   /** Build SSE URL for live deep research with full context inheritance. */
   researchStreamUrl: (

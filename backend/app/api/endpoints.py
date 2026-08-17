@@ -132,6 +132,7 @@ async def chat_stream_endpoint(
     if history:
         try:
             import json
+
             parsed = json.loads(history)
             if isinstance(parsed, list):
                 history_list = parsed

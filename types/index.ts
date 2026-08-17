@@ -26,12 +26,6 @@ export interface NodeSchema extends Record<string, unknown> {
   related_to_today?: string | null;
 }
 
-export interface RandomTopicResponse {
-  node: NodeSchema;
-  reason: string;
-  category: string;
-}
-
 export interface SourceCitation {
   id: string;
   title: string;
@@ -140,14 +134,26 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-export type ViewMode = 'explore' | 'dossier';
-
 export const CATEGORIES = [
   'Science',
   'History',
-  'Technology',
   'Mathematics',
+  'Technology',
   'Philosophy',
+  'Culture',
+  'Geography',
+  'Health',
+  'Nature',
+  'People',
+  'Religion',
+  'Society',
+  'Language',
+  'Law',
+  'Politics',
+  'Education',
+  'Engineering',
+  'Energy',
+  'Food and drink',
+  'Economy',
+  'Time',
 ] as const;
-
-export type Category = (typeof CATEGORIES)[number];

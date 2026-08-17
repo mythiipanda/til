@@ -28,42 +28,17 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env.local"))
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
+
+from app.services.llm import get_llm
 
 logger = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------- #
 # LLM setup (reuses same keys as main generator)
 # --------------------------------------------------------------------------- #
-CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY")
-CEREBRAS_MODEL = os.getenv("CEREBRAS_MODEL", "gemma-4-31b")
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "ministral-8b-2512")
-
-_cerebras_llm = (
-    ChatOpenAI(
-        model=CEREBRAS_API_KEY and CEREBRAS_MODEL,
-        api_key=CEREBRAS_API_KEY,  # type: ignore[arg-type]
-        base_url="https://api.cerebras.ai/v1",
-        temperature=0.3,
-        max_tokens=600,  # type: ignore[call-arg]
-    )
-    if CEREBRAS_API_KEY
-    else None
-)
-
-_mistral_llm = (
-    ChatOpenAI(
-        model=MISTRAL_MODEL,
-        api_key=MISTRAL_API_KEY,  # type: ignore[arg-type]
-        base_url="https://api.mistral.ai/v1",
-        temperature=0.3,
-        max_tokens=600,  # type: ignore[call-arg]
-    )
-    if MISTRAL_API_KEY
-    else None
-)
+_cerebras_llm = get_llm(engine="cerebras", temperature=0.3, max_tokens=600)
+_mistral_llm = get_llm(engine="mistral", temperature=0.3, max_tokens=600)
 
 TOP_DOMAINS = ["Science", "History", "Mathematics", "Technology", "Philosophy"]
 
@@ -137,7 +112,7 @@ async def _fetch_wikipedia_trending(client: httpx.AsyncClient) -> list[str]:
             day_str = day.strftime("%Y/%m/%d")
             resp = await client.get(
                 f"https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/{day_str}",
-                headers={"User-Agent": "TIL-CuriosityEngine/2.0 (educational project; contact@curiosity.engine)"},
+                headers={"User-Agent": "TDILEARNED/2.0 (Today I Learned discovery engine; contact@tdilearned.app)"},
                 timeout=8.0,
             )
             if resp.status_code != 200:
@@ -175,7 +150,7 @@ async def _fetch_on_this_day(client: httpx.AsyncClient) -> list[str]:
         now = datetime.now(UTC)
         resp = await client.get(
             f"https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/{now.month:02d}/{now.day:02d}",
-            headers={"User-Agent": "TIL-CuriosityEngine/2.0 (educational project; contact@curiosity.engine)"},
+            headers={"User-Agent": "TDILEARNED/2.0 (Today I Learned discovery engine; contact@tdilearned.app)"},
             timeout=8.0,
         )
         events = resp.json().get("events", [])
@@ -200,18 +175,14 @@ async def _fetch_reddit(client: httpx.AsyncClient, subreddit: str) -> list[str]:
         url = f"https://www.reddit.com/r/{subreddit}/top/.rss?limit=10"
         resp = await client.get(
             url,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
-            },
+            headers={"User-Agent": "TDILEARNED/2.0 (Today I Learned discovery engine; contact@tdilearned.app)"},
             timeout=8.0,
         )
         if resp.status_code == 429:
             await asyncio.sleep(2.0)
             resp = await client.get(
                 f"https://www.reddit.com/r/{subreddit}/hot/.rss?limit=10",
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
-                },
+                headers={"User-Agent": "TDILEARNED/2.0 (Today I Learned discovery engine; contact@tdilearned.app)"},
                 timeout=8.0,
             )
         feed = feedparser.parse(resp.text)

@@ -9,7 +9,6 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path
 load_dotenv()
 
 from app.api.endpoints import router as api_router
-from app.api.viewer import router as viewer_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
@@ -29,7 +28,6 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
-app.include_router(viewer_router)
 
 
 @app.get("/")
@@ -40,4 +38,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

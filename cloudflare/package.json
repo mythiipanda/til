@@ -1,5 +1,5 @@
 {
-  "name": "infinite-curiosity-media-proxy",
+  "name": "tdilearned-media-proxy",
   "version": "1.0.0",
   "description": "Zero-cost edge media proxy for Wikimedia Commons and OpenStreetMap tiles with immutable caching",
   "main": "src/index.ts",

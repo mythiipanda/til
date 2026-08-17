@@ -66,7 +66,7 @@ def _dossier_from_events(events: list[dict[str, Any]]) -> dict | None:
 
 def _node_streams(events: list[dict[str, Any]]) -> list[tuple[dict, bool]]:
     """Return (node dict, is_root) pairs in emission order."""
-    out = []
+    out: list[tuple[dict, bool]] = []
     for ev in events:
         if ev.get("event") == "node_stream":
             data = ev.get("data", {})

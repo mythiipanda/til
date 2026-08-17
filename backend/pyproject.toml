@@ -1,7 +1,7 @@
 [project]
-name = "curiosity-engine-backend"
+name = "tdilearned-backend"
 version = "0.1.0"
-description = "FastAPI backend for Infinite Curiosity Engine with Cerebras inference, Mistral batch warming, and edge media caching"
+description = "TDILEARNED FastAPI backend with Cerebras inference, Mistral batch warming, and edge media caching"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",

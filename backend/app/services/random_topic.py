@@ -34,7 +34,7 @@ from app.services.llm import get_llm
 
 logger = logging.getLogger(__name__)
 
-WIKIPEDIA_UA = "TIL-CuriosityEngine/2.0 (educational project; contact@curiosity.engine)"
+WIKIPEDIA_UA = "TDILEARNED/2.0 (Today I Learned discovery engine; contact@tdilearned.app)"
 MEDIAWIKI_API = "https://en.wikipedia.org/w/api.php"
 RANDOM_SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/random/summary"
 
@@ -110,7 +110,9 @@ _NAMESPACE_PREFIXES = ("Wikipedia:", "Portal:", "Category:", "Template:", "Help:
 
 
 class _TopicPick(BaseModel):
-    title: str = Field(description="The real, accurate subject or article title (e.g. 'Fast Fourier Transform', 'Black-Scholes Model', 'The Library of Alexandria'). Do NOT invent metaphorical nicknames.")
+    title: str = Field(
+        description="The real, accurate subject or article title (e.g. 'Fast Fourier Transform', 'Black-Scholes Model', 'The Library of Alexandria'). Do NOT invent metaphorical nicknames."
+    )
     summary: str = Field(description="One punchy sentence: why this is fascinating, with historical/scientific context")
     reason: str = Field(description="One sentence: why the user should dive into this right now")
     image_search_query: str = Field(description="Wikimedia Commons search key")
