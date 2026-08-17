@@ -49,6 +49,7 @@ interface MindMapState {
   activeDossier: ResearchDossier | null;
   isDossierOpen: boolean;
   isDossierLoading: boolean;
+  workstationTab: 'monograph' | 'agent';
   
   // Chat
   chatMessages: ChatMessage[];
@@ -92,6 +93,7 @@ interface MindMapState {
   selectNode: (nodeId: string) => void;
   openDossier: (nodeId: string) => Promise<void>;
   closeDossier: () => void;
+  setWorkstationTab: (tab: 'monograph' | 'agent') => void;
   dismissNewDossierAlert: () => void;
   sendChat: (question: string) => void;
   pinChatToCanvas: (question: string, answer: string, citations?: Array<{ title?: string; url: string }>) => void;
@@ -107,6 +109,33 @@ interface MindMapState {
 let researchES: EventSource | null = null;
 let chatES: EventSource | null = null;
 
+function persistActiveSession(state: {
+  nodes: Node[];
+  edges: Edge[];
+  currentTopic: string | null;
+  dossiersByNodeId: Record<string, ResearchDossier>;
+  contextChain: string[];
+  activeMindMapId: string | null;
+  shareSlug: string | null;
+}) {
+  if (typeof window === 'undefined' || !state.nodes || state.nodes.length === 0) return;
+  try {
+    const payload = {
+      id: state.activeMindMapId || `local-${Date.now()}`,
+      topic: state.currentTopic || 'Knowledge Exploration',
+      nodes: state.nodes,
+      edges: state.edges,
+      dossiersByNodeId: state.dossiersByNodeId,
+      contextChain: state.contextChain,
+      shareSlug: state.shareSlug,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem('tdilearned_active_session', JSON.stringify(payload));
+  } catch (e) {
+    console.warn('LocalStorage save error:', e);
+  }
+}
+
 export const useMindMapStore = create<MindMapState>((set, get) => ({
   nodes: [],
   edges: [],
@@ -114,14 +143,18 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   lastResearchedNodeId: null,
   contextChain: [],
   onNodesChange: (changes) => {
-    set({ nodes: applyNodeChanges(changes, get().nodes) });
+    set({
+      nodes: applyNodeChanges(changes, get().nodes),
+    });
   },
   onEdgesChange: (changes) => {
-    set({ edges: applyEdgeChanges(changes, get().edges) });
+    set({
+      edges: applyEdgeChanges(changes, get().edges),
+    });
   },
   
+  currentTopic: '',
   isResearching: false,
-  currentTopic: null,
   hasNewDossier: false,
   
   thoughts: [],
@@ -133,6 +166,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   activeDossier: null,
   isDossierOpen: false,
   isDossierLoading: false,
+  workstationTab: 'monograph',
   
   chatMessages: [],
   isChatStreaming: false,
@@ -203,9 +237,11 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       currentChain = category ? [category, topic] : [topic];
     }
     
-    // Set research in progress
+    // Set research in progress and switch workstation to live agent tab
     set({
       isResearching: true,
+      isDossierOpen: true,
+      workstationTab: 'agent',
       currentTopic: topic,
       chatNodeTitle: topic,
       hasNewDossier: false,
@@ -362,6 +398,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             hasNewDossier: true,
             planSteps: state.planSteps.map((s) => ({ ...s, status: 'done' as const })),
           }));
+          persistActiveSession(get());
           es.close();
         } else if (event === 'error') {
           set({ isResearching: false });
@@ -442,6 +479,8 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         hasNewDossier: false,
       });
 
+      persistActiveSession(get());
+
       if (typeof window !== 'undefined') {
         window.history.pushState({}, '', `/?topic=${encodeURIComponent(rootNodeSchema.title)}`);
       }
@@ -479,12 +518,14 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   
   openDossier: async (nodeId: string) => {
     get().selectNode(nodeId);
-    set({ isDossierOpen: true });
+    set({ isDossierOpen: true, workstationTab: 'monograph' });
     
     // 1. Check if we already have the full monograph cached
-    const cachedDossier = get().dossiersByNodeId[nodeId];
-    if (cachedDossier && cachedDossier.coreThesis) {
-      set({ activeDossier: cachedDossier, isDossierLoading: false });
+    if (get().dossiersByNodeId[nodeId]) {
+      set({ 
+        activeDossier: get().dossiersByNodeId[nodeId],
+        isDossierLoading: false,
+      });
       return;
     }
 
@@ -548,6 +589,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     set({ isDossierOpen: false });
   },
 
+  setWorkstationTab: (tab: 'monograph' | 'agent') => {
+    set({ workstationTab: tab });
+  },
+
   dismissNewDossierAlert: () => {
     set({ hasNewDossier: false });
   },
@@ -589,7 +634,69 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         const event = parsed.event;
         const data = parsed.data;
         
-        if (event === 'answer_start') {
+        if (event === 'thought') {
+          set((state) => {
+            const msgs = [...state.chatMessages];
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant') {
+              const currentThoughts = last.thoughts || [];
+              last.thoughts = [...currentThoughts, data.text || data.agent || 'Thinking...'];
+            }
+            return { chatMessages: msgs };
+          });
+        } else if (event === 'tool_call') {
+          set((state) => {
+            const msgs = [...state.chatMessages];
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant') {
+              const currentTools = last.toolCalls || [];
+              last.toolCalls = [
+                ...currentTools,
+                { id: data.call_id || String(Date.now()), tool: data.tool || 'Search', query: data.query, status: 'running' }
+              ];
+            }
+            return { chatMessages: msgs };
+          });
+        } else if (event === 'tool_result') {
+          set((state) => {
+            const msgs = [...state.chatMessages];
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant' && last.toolCalls) {
+              last.toolCalls = last.toolCalls.map(tc => 
+                tc.id === data.call_id || tc.tool === data.tool
+                  ? { ...tc, status: 'success' as const }
+                  : tc
+              );
+            }
+            return { chatMessages: msgs };
+          });
+        } else if (event === 'source') {
+          set((state) => {
+            const msgs = [...state.chatMessages];
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant') {
+              const currentSources = last.sources || [];
+              if (!currentSources.some(s => s.url === data.url)) {
+                last.sources = [...currentSources, {
+                  id: data.id || String(Date.now()),
+                  title: data.title || data.url,
+                  url: data.url,
+                  snippet: data.snippet
+                }];
+              }
+            }
+            return { chatMessages: msgs };
+          });
+        } else if (event === 'suggested_questions') {
+          set((state) => {
+            const msgs = [...state.chatMessages];
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant') {
+              last.suggestedFollowUps = Array.isArray(data) ? data : data.questions || [];
+            }
+            return { chatMessages: msgs };
+          });
+        } else if (event === 'answer_start') {
           set((state) => {
             const msgs = [...state.chatMessages];
             const last = msgs[msgs.length - 1];
@@ -788,14 +895,16 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           nodes: data.nodes || [],
           edges: data.edges || [],
           currentTopic: data.root_topic || data.title,
+          dossiersByNodeId: data.dossiers || {},
+          contextChain: data.context_chain || [],
           activeMindMapId: data.id,
           shareSlug: data.share_slug,
+          selectedNodeId: data.nodes?.[0]?.id || null,
+          isResearching: false,
           isDossierOpen: false,
         });
 
-        if (typeof window !== 'undefined' && data.root_topic) {
-          window.history.pushState({}, '', `/?topic=${encodeURIComponent(data.root_topic)}`);
-        }
+        persistActiveSession(get());
         return true;
       }
 
@@ -813,11 +922,15 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
               contextChain: session.contextChain || [],
               activeMindMapId: session.id,
               shareSlug: session.shareSlug,
+              selectedNodeId: session.nodes?.[0]?.id || null,
+              isResearching: false,
+              isDossierOpen: false,
             });
             return true;
           }
         }
       }
+
       return false;
     } catch (e) {
       console.error('Error loading mindmap by ID:', e);
@@ -833,40 +946,39 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         .eq('share_slug', slug)
         .single();
 
-      if (!error && data) {
-        set({
-          nodes: data.nodes || [],
-          edges: data.edges || [],
-          currentTopic: data.root_topic || data.title,
-          activeMindMapId: data.id,
-          shareSlug: data.share_slug,
-          isDossierOpen: false,
-        });
-        return true;
-      }
-      return false;
+      if (error || !data) return false;
+
+      set({
+        nodes: data.nodes || [],
+        edges: data.edges || [],
+        currentTopic: data.title,
+        dossiersByNodeId: data.dossiers || {},
+        contextChain: data.context_chain || [],
+        activeMindMapId: data.id,
+        shareSlug: data.share_slug,
+        selectedNodeId: data.nodes?.[0]?.id || null,
+        isResearching: false,
+        isDossierOpen: false,
+      });
+
+      persistActiveSession(get());
+      return true;
     } catch (e) {
-      console.error('Error loading mindmap by slug:', e);
+      console.error('Error loading shared mindmap:', e);
       return false;
     }
   },
 
   generateShareLink: async () => {
-    const { nodes, currentTopic, shareSlug, saveMindMap } = get();
-    if (nodes.length === 0 || !currentTopic) return null;
+    const { currentTopic, shareSlug } = get();
+    if (!currentTopic) return null;
 
     let slug = shareSlug;
-    if (!slug) {
-      const saveRes = await saveMindMap();
-      slug = saveRes.shareSlug || null;
-    }
-
     if (!slug) {
       slug = `${currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Math.random().toString(36).substring(2, 7)}`;
     }
 
     try {
-      // Mark as public in Supabase
       const { data: { user } } = await supabase.auth.getUser();
       if (user && get().activeMindMapId) {
         await supabase
@@ -879,6 +991,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     }
 
     set({ shareSlug: slug });
+    persistActiveSession(get());
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://tdilearned.com';
     return `${origin}/m/${slug}`;
   },
@@ -891,34 +1004,41 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         set({ recentSessions: JSON.parse(rawRecent) });
       }
 
-      // Check if URL has a topic parameter
       const params = new URLSearchParams(window.location.search);
       const urlTopic = params.get('topic');
+
+      // 1. Try restoring active session from localStorage
+      const raw = localStorage.getItem('tdilearned_active_session');
+      if (raw) {
+        const session = JSON.parse(raw);
+        if (session && session.nodes && session.nodes.length > 0) {
+          const rootNodeId = session.nodes.find((n: Node) => (n.data as { isRoot?: boolean })?.isRoot)?.id || session.nodes[0]?.id;
+          const restoredDossier = session.dossiersByNodeId?.[rootNodeId] || null;
+
+          set({
+            nodes: session.nodes,
+            edges: session.edges || [],
+            currentTopic: session.topic || urlTopic || '',
+            dossiersByNodeId: session.dossiersByNodeId || {},
+            activeDossier: restoredDossier,
+            contextChain: session.contextChain || [session.topic],
+            activeMindMapId: session.id,
+            shareSlug: session.shareSlug,
+            selectedNodeId: rootNodeId || null,
+            isResearching: false,
+            isDossierOpen: false,
+            workstationTab: 'monograph',
+          });
+          return true;
+        }
+      }
+
+      // 2. If no saved session exists, but URL has a topic parameter, trigger research
       if (urlTopic && get().nodes.length === 0) {
         get().startResearch(urlTopic);
         return true;
       }
 
-      // If no URL topic, restore previous session if canvas is empty
-      if (get().nodes.length === 0) {
-        const raw = localStorage.getItem('tdilearned_active_session');
-        if (raw) {
-          const session = JSON.parse(raw);
-          if (session && session.nodes && session.nodes.length > 0) {
-            set({
-              nodes: session.nodes,
-              edges: session.edges || [],
-              currentTopic: session.topic,
-              dossiersByNodeId: session.dossiersByNodeId || {},
-              contextChain: session.contextChain || [],
-              activeMindMapId: session.id,
-              shareSlug: session.shareSlug,
-              selectedNodeId: session.nodes[0]?.id || null,
-            });
-            return true;
-          }
-        }
-      }
       return false;
     } catch (e) {
       console.error('Error restoring session from localStorage:', e);

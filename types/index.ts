@@ -134,6 +134,10 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  thoughts?: string[];
+  toolCalls?: Array<{ id: string; tool: string; query?: string; status: 'running' | 'success' }>;
+  sources?: Array<{ id: string; title: string; url: string; snippet?: string }>;
+  suggestedFollowUps?: string[];
 }
 
 export interface PinnedNoteData extends Record<string, unknown> {
