@@ -150,6 +150,7 @@ async def get_research_dossier(node_id: str = Path(..., max_length=200)):
 async def chat_stream_endpoint(
     node_title: str = Query(..., max_length=300, description="Active node concept title"),
     question: str = Query(..., max_length=2000, description="User question"),
+    node_id: str | None = Query(None, max_length=200, description="Optional active node ID for monograph retrieval"),
     ancestors: str = Query("", max_length=2000, description="Comma-separated ancestor node trail"),
     history: str = Query("", description="JSON-encoded previous conversation turns"),
     active_summary: str = Query(None, max_length=2000, description="Summary of active node"),
@@ -171,6 +172,7 @@ async def chat_stream_endpoint(
         stream_chat(
             node_title=node_title,
             user_question=question,
+            node_id=node_id,
             ancestor_context=context_list,
             history=history_list,
             active_summary=active_summary,

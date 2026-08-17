@@ -54,19 +54,23 @@ export const api = {
     return `${API}/api/v1/research/stream?${params}`;
   },
 
-  /** Build SSE URL for follow-up chat with multi-turn history. */
+  /** Build SSE URL for follow-up chat with multi-turn history and monograph grounding. */
   chatStreamUrl: (
     nodeTitle: string,
     question: string,
     ancestors: string[] = [],
     history: ChatHistoryMessage[] = [],
     activeSummary?: string,
+    nodeId?: string,
   ) => {
     const params = new URLSearchParams({
       node_title: nodeTitle,
       question,
       ancestors: ancestors.join(','),
     });
+    if (nodeId) {
+      params.set('node_id', nodeId);
+    }
     const trimmed = trimHistory(history);
     if (trimmed.length > 0) {
       params.set('history', JSON.stringify(trimmed));

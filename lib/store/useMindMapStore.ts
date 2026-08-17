@@ -702,7 +702,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       ]
     }));
     
-    const url = api.chatStreamUrl(nodeTitle, question, ancestors, history, activeSummary);
+    const url = api.chatStreamUrl(nodeTitle, question, ancestors, history, activeSummary, activeNode?.id);
     const es = new EventSource(url);
     chatES = es;
 

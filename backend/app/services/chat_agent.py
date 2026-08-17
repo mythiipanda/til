@@ -18,6 +18,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from app.services.cache import cache_service
 from app.services.llm import get_llm_with_fallback
 from app.services.tools import fetch_page_content, search_web_ladder
 
@@ -38,6 +39,14 @@ class DecideTurn(BaseModel):
     answer: str = Field(description="Final grounded educational answer if ready; else an empty string")
     follow_up_query: str = Field(description="A refined keyword search query if more evidence is needed; else empty")
     cites_used: list[str] = Field(default_factory=list, description="The source URLs actually used for the answer")
+
+
+class SuggestedFollowUps(BaseModel):
+    """3 provocative curiosity follow-up questions for the user to explore next."""
+
+    questions: list[str] = Field(
+        description="Exactly 3 concise, high-curiosity questions under 10 words that lead deeper into the subject"
+    )
 
 
 def _emit_sse(event_type: str, data: Any) -> str:
@@ -87,11 +96,12 @@ def _clean_search_query(node_title: str, user_question: str) -> str:
 async def stream_chat(
     node_title: str,
     user_question: str,
+    node_id: str | None = None,
     ancestor_context: list[str] | None = None,
     history: list[dict] | None = None,
     active_summary: str | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Answer a follow-up question with grounded sources, streaming over SSE."""
+    """Answer a follow-up question with grounded sources and cached monograph context, streaming over SSE."""
     ancestors = ancestor_context or []
     context_trail = " -> ".join(ancestors) if ancestors else node_title
     clean_query = _clean_search_query(node_title, user_question)
@@ -103,6 +113,48 @@ async def stream_chat(
             "text": f"Researching verified sources for '{clean_query}'.",
         },
     )
+
+    # Pull cached canonical monograph if node_id is available
+    monograph_canon = ""
+    if node_id:
+        dossier = cache_service.get(f"dossier:{node_id}")
+        if isinstance(dossier, dict):
+            thesis = dossier.get("coreThesis") or ""
+            abstract = dossier.get("abstract") or ""
+            wow = dossier.get("wowFact") or ""
+            mechs = dossier.get("mechanisms", [])
+            timeline = dossier.get("timeline", [])
+            sources_dossier = dossier.get("sources", [])
+
+            parts = [f"CANONICAL TOPIC: {dossier.get('title', node_title)}"]
+            if thesis:
+                parts.append(f"CORE THESIS: {thesis}")
+            if abstract:
+                parts.append(f"CANONICAL SUMMARY: {abstract}")
+            if wow:
+                parts.append(f"PROVEN KEY FACT: {wow}")
+            if mechs:
+                mech_str = "\n".join(f"- {m.get('title')}: {m.get('explanation')}" for m in mechs[:3] if isinstance(m, dict))
+                if mech_str:
+                    parts.append(f"VERIFIED MECHANISMS:\n{mech_str}")
+            if timeline:
+                time_str = "\n".join(
+                    f"- [{t.get('date')}]: {t.get('headline')} — {t.get('description')}"
+                    for t in timeline[:4]
+                    if isinstance(t, dict)
+                )
+                if time_str:
+                    parts.append(f"VERIFIED TIMELINE:\n{time_str}")
+            if sources_dossier:
+                src_str = "\n".join(
+                    f"- [{s.get('title')}]({s.get('url')}): {s.get('snippet', '')[:100]}"
+                    for s in sources_dossier[:3]
+                    if isinstance(s, dict)
+                )
+                if src_str:
+                    parts.append(f"ANCHOR SOURCES:\n{src_str}")
+
+            monograph_canon = "\n\n" + "\n\n".join(parts)
 
     evidence_blocks: list[str] = []
     cited: list[dict] = []
@@ -199,14 +251,14 @@ async def stream_chat(
         if evidence_blocks:
             user_prompt = (
                 f"Active Concept: {node_title}\n"
-                f"Exploration Trail: {context_trail}{summary_info}{history_context}\n\n"
+                f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
                 f"User Question: {user_question}\n\n"
                 f"VERIFIED EVIDENCE BLOCKS:\n" + "\n\n".join(evidence_blocks)
             )
         else:
             user_prompt = (
                 f"Active Concept: {node_title}\n"
-                f"Exploration Trail: {context_trail}{summary_info}{history_context}\n\n"
+                f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
                 f"User Question: {user_question}\n(no external search evidence retrieved)"
             )
 
@@ -215,7 +267,7 @@ async def stream_chat(
             "The reader is exploring an interactive knowledge map and has asked a follow-up question. "
             "Your job is to provide a captivating, clear, and thoroughly grounded 2-3 paragraph answer.\n"
             "GUIDELINES:\n"
-            "1. Ground your response in the provided SOURCE evidence with factual citations, synthesizing key facts with underlying scientific or historical context.\n"
+            "1. Ground your response in the provided CANON and SOURCE evidence with factual citations, synthesizing key facts with underlying scientific or historical context.\n"
             "2. NEVER use robotic meta-commentary like 'Based on the provided text' or 'The sources do not mention'. "
             "If an exact phrase is metaphorical or cross-disciplinary, explain the core concepts and bridge the connection naturally.\n"
             "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for maximum legibility.\n"
@@ -269,8 +321,7 @@ async def stream_chat(
             logger.warning(f"Follow-up decide error ({e})")
             break
 
-    # Fallback answer only when no live stream produced one (e.g. all rounds
-    # were structured follows-up or the model stream came back empty).
+    # Fallback answer only when no live stream produced one
     if not answer_text:
         answer_text = (
             f"**{node_title}** relates to several key historical and scientific developments. "
@@ -284,4 +335,39 @@ async def stream_chat(
             chunk = w + (" " if idx < len(answer_text.split(" ")) - 1 else "")
             yield _emit_sse("token", {"token": chunk})
 
+    # Proactively synthesize 3 dynamic follow-up questions to keep user exploring
+    follow_ups: list[str] = []
+    if llm and llm.is_available:
+        try:
+            structured_fu = llm.with_structured_output(SuggestedFollowUps)
+            fu_res = await structured_fu.ainvoke(
+                [  # type: ignore[assignment]
+                    SystemMessage(
+                        content=(
+                            "You are a curiosity editor. Based on the topic and the answer just provided, "
+                            "write exactly 3 short, intriguing, natural follow-up questions that a curious user would want to click next. "
+                            "Questions must be under 10 words, provocative, and lead to deeper insights or connected phenomena."
+                        )
+                    ),
+                    HumanMessage(
+                        content=f"Topic: {node_title}\nUser Question: {user_question}\nAnswer: {answer_text[:1200]}"
+                    ),
+                ]
+            )
+            follow_ups = (
+                fu_res.questions  # type: ignore[union-attr]
+                if isinstance(fu_res, SuggestedFollowUps)
+                else SuggestedFollowUps(**fu_res.model_dump()).questions  # type: ignore[union-attr]
+            )
+        except Exception as e:
+            logger.warning(f"Failed to generate dynamic follow-up questions: {e}")
+
+    if not follow_ups:
+        follow_ups = [
+            f"How does {node_title} work in practice?",
+            f"What are the biggest misconceptions about {node_title}?",
+            f"What historical events trace back to {node_title}?",
+        ]
+
+    yield _emit_sse("suggested_questions", follow_ups[:3])
     yield _emit_sse("done", {"cited": cited})
