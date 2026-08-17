@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import { ReactFlow, Background, Controls, BackgroundVariant, Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
@@ -29,6 +29,28 @@ export function KnowledgeCanvas() {
     }
   }, [selectNode, openDossier]);
 
+  const handleNodeDragStop = useCallback(() => {
+    // A drag just ended — flush the debounced autosave so positions are durable
+    // even if the tab closes before the debounce fires.
+    useMindMapStore.getState().flushCanvasAutosave?.();
+  }, []);
+
+  // Flush the debounced autosave when the tab is hidden/closed, so the very
+  // latest canvas state survives a background-tab eviction or crash.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        useMindMapStore.getState().flushCanvasAutosave?.();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', onVisibilityChange);
+    };
+  }, []);
+
   const showLanding = nodes.length === 0 && !isResearching;
 
   return (
@@ -41,6 +63,7 @@ export function KnowledgeCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.12, maxZoom: 1.05, minZoom: 0.7 }}

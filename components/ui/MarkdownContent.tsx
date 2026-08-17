@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 interface MarkdownContentProps {
@@ -8,7 +8,7 @@ interface MarkdownContentProps {
   className?: string;
 }
 
-export function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
+function MarkdownContentImpl({ content, className = '' }: MarkdownContentProps) {
   if (!content) return null;
 
   const textContent = typeof content === 'string' 
@@ -105,3 +105,5 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
     return <div className={`font-body text-inherit leading-relaxed ${className}`}>{textContent}</div>;
   }
 }
+
+export const MarkdownContent = memo(MarkdownContentImpl);

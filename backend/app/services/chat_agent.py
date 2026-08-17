@@ -7,7 +7,6 @@ sources via the retrieval ladder, then streams a concise cited answer. A bounded
 loop lets the agent issue a follow-up search when the first round is thin.
 """
 
-import asyncio
 import json
 import logging
 import re
@@ -105,6 +104,7 @@ async def stream_chat(
     answer_text = ""
     follow_up = ""
     query = clean_query
+    _streamed_live = False
 
     llm = get_llm("cerebras", temperature=0.5, max_tokens=1000)
 
@@ -173,50 +173,75 @@ async def stream_chat(
         if not llm:
             break
 
+        history_context = ""
+        if history and len(history) > 0:
+            history_lines = [
+                f"{'User' if m.get('role') == 'user' else 'Assistant'}: {m.get('content', '')}"
+                for m in history[-4:]
+                if m.get("content")
+            ]
+            if history_lines:
+                history_context = "\n\nCONVERSATION HISTORY:\n" + "\n".join(history_lines)
+
+        summary_info = f"\nActive Card Overview: {active_summary}" if active_summary else ""
+
+        if evidence_blocks:
+            user_prompt = (
+                f"Active Concept: {node_title}\n"
+                f"Exploration Trail: {context_trail}{summary_info}{history_context}\n\n"
+                f"User Question: {user_question}\n\n"
+                f"VERIFIED EVIDENCE BLOCKS:\n" + "\n\n".join(evidence_blocks)
+            )
+        else:
+            user_prompt = (
+                f"Active Concept: {node_title}\n"
+                f"Exploration Trail: {context_trail}{summary_info}{history_context}\n\n"
+                f"User Question: {user_question}\n(no external search evidence retrieved)"
+            )
+
+        system_prompt = (
+            "You are an inspiring, authoritative educator and storyteller for TDILEARNED (Today I Learned). "
+            "The reader is exploring an interactive knowledge map and has asked a follow-up question. "
+            "Your job is to provide a captivating, clear, and thoroughly grounded 2-3 paragraph answer.\n"
+            "GUIDELINES:\n"
+            "1. Ground your response in the provided SOURCE evidence with factual citations, synthesizing key facts with underlying scientific or historical context.\n"
+            "2. NEVER use robotic meta-commentary like 'Based on the provided text' or 'The sources do not mention'. "
+            "If an exact phrase is metaphorical or cross-disciplinary, explain the core concepts and bridge the connection naturally.\n"
+            "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for maximum legibility.\n"
+            "4. If the evidence is sufficient, return your full answer and leave follow_up_query empty. "
+            "If crucial information is missing, leave answer empty and return a refined keyword follow_up_query."
+        )
+
+        if is_final:
+            # Final round: stream the answer token-by-token straight from the
+            # model for a true live-chat feel (no post-hoc word chunking).
+            system_prompt += (
+                "\n[FINAL ROUND]: You MUST provide your complete educational answer now using the gathered evidence "
+                "and your broad domain knowledge. Write the answer directly — no JSON envelope, no meta-commentary."
+            )
+            yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
+            streamed_chunks: list[str] = []
+            _streamed_live = True
+            try:
+                async for chunk_msg in llm.astream(
+                    [  # type: ignore[arg-type]
+                        SystemMessage(content=system_prompt),
+                        HumanMessage(content=user_prompt),
+                    ]
+                ):
+                    token = getattr(chunk_msg, "content", "") or ""
+                    if token:
+                        streamed_chunks.append(token)
+                        yield _emit_sse("token", {"token": token})
+            except Exception as e:
+                logger.warning(f"Final answer stream error ({e})")
+            answer_text = "".join(streamed_chunks)
+            cited = [{"url": s.url, "used": True} for s in sources[:5]]
+            follow_up = ""
+            break
+
         try:
             structured = llm.with_structured_output(DecideTurn)
-
-            history_context = ""
-            if history and len(history) > 0:
-                history_lines = [
-                    f"{'User' if m.get('role') == 'user' else 'Assistant'}: {m.get('content', '')}"
-                    for m in history[-4:]
-                    if m.get("content")
-                ]
-                if history_lines:
-                    history_context = "\n\nCONVERSATION HISTORY:\n" + "\n".join(history_lines)
-
-            summary_info = f"\nActive Card Overview: {active_summary}" if active_summary else ""
-
-            if evidence_blocks:
-                user_prompt = (
-                    f"Active Concept: {node_title}\n"
-                    f"Exploration Trail: {context_trail}{summary_info}{history_context}\n\n"
-                    f"User Question: {user_question}\n\n"
-                    f"VERIFIED EVIDENCE BLOCKS:\n" + "\n\n".join(evidence_blocks)
-                )
-            else:
-                user_prompt = (
-                    f"Active Concept: {node_title}\n"
-                    f"Exploration Trail: {context_trail}{summary_info}{history_context}\n\n"
-                    f"User Question: {user_question}\n(no external search evidence retrieved)"
-                )
-
-            system_prompt = (
-                "You are an inspiring, authoritative educator and storyteller for TDILEARNED (Today I Learned). "
-                "The reader is exploring an interactive knowledge map and has asked a follow-up question. "
-                "Your job is to provide a captivating, clear, and thoroughly grounded 2-3 paragraph answer.\n"
-                "GUIDELINES:\n"
-                "1. Ground your response in the provided SOURCE evidence with factual citations, synthesizing key facts with underlying scientific or historical context.\n"
-                "2. NEVER use robotic meta-commentary like 'Based on the provided text' or 'The sources do not mention'. "
-                "If an exact phrase is metaphorical or cross-disciplinary, explain the core concepts and bridge the connection naturally.\n"
-                "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for maximum legibility.\n"
-                "4. If the evidence is sufficient, return your full answer and leave follow_up_query empty. "
-                "If crucial information is missing, leave answer empty and return a refined keyword follow_up_query."
-            )
-            if is_final:
-                system_prompt += "\n[FINAL ROUND]: You MUST provide your complete educational answer now using the gathered evidence and your broad domain knowledge. Leave follow_up_query empty."
-
             res = await structured.ainvoke(
                 [  # type: ignore[assignment]
                     SystemMessage(content=system_prompt),
@@ -233,7 +258,8 @@ async def stream_chat(
             logger.warning(f"Follow-up decide error ({e})")
             break
 
-    # Stream the final answer token-by-token for a lively chat feel.
+    # Fallback answer only when no live stream produced one (e.g. all rounds
+    # were structured follows-up or the model stream came back empty).
     if not answer_text:
         answer_text = (
             f"**{node_title}** relates to several key historical and scientific developments. "
@@ -241,12 +267,10 @@ async def stream_chat(
             f"You can explore the surrounding connected cards on the canvas to dive into specific branches."
         )
 
-    yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
-    # Stream in word chunks
-    words = answer_text.split(" ")
-    for idx, w in enumerate(words):
-        chunk = w + (" " if idx < len(words) - 1 else "")
-        yield _emit_sse("token", {"token": chunk})
-        await asyncio.sleep(0.015)
+    if not _streamed_live:
+        yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
+        for idx, w in enumerate(answer_text.split(" ")):
+            chunk = w + (" " if idx < len(answer_text.split(" ")) - 1 else "")
+            yield _emit_sse("token", {"token": chunk})
 
     yield _emit_sse("done", {"cited": cited})

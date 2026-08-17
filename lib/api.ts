@@ -5,18 +5,36 @@ export interface ChatHistoryMessage {
   content: string;
 }
 
+const DEFAULT_TIMEOUT_MS = 15000;
+
+async function withTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs: number = DEFAULT_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const MAX_HISTORY_TURNS = 6;
+
+function trimHistory(history: ChatHistoryMessage[]): ChatHistoryMessage[] {
+  return history.slice(-MAX_HISTORY_TURNS);
+}
+
 export const api = {
   /** List all pre-researched hub summaries. */
   precomputedList: () =>
-    fetch(`${API}/api/v1/graph/precomputed`),
+    withTimeout(`${API}/api/v1/graph/precomputed`),
 
   /** Fetch a full pre-researched hub (root + children). */
   precomputedHub: (hubId: string) =>
-    fetch(`${API}/api/v1/graph/precomputed/${encodeURIComponent(hubId)}`),
+    withTimeout(`${API}/api/v1/graph/precomputed/${encodeURIComponent(hubId)}`),
 
   /** Fetch the research dossier for a given node. */
   dossier: (nodeId: string) =>
-    fetch(`${API}/api/v1/research/dossier/${encodeURIComponent(nodeId)}`),
+    withTimeout(`${API}/api/v1/research/dossier/${encodeURIComponent(nodeId)}`),
 
   /** Build SSE URL for live deep research with full context inheritance. */
   researchStreamUrl: (
@@ -49,8 +67,9 @@ export const api = {
       question,
       ancestors: ancestors.join(','),
     });
-    if (history.length > 0) {
-      params.set('history', JSON.stringify(history));
+    const trimmed = trimHistory(history);
+    if (trimmed.length > 0) {
+      params.set('history', JSON.stringify(trimmed));
     }
     if (activeSummary) {
       params.set('active_summary', activeSummary);
@@ -60,9 +79,9 @@ export const api = {
 
   /** Pick a curiosity-ranked random topic */
   randomTopic: (category: string) =>
-    fetch(`${API}/api/v1/graph/random-topic?category=${encodeURIComponent(category)}`),
+    withTimeout(`${API}/api/v1/graph/random-topic?category=${encodeURIComponent(category)}`),
 
   /** Fetch the large catalog of topics */
   catalog: (limit: number = 2000) =>
-    fetch(`${API}/api/v1/graph/catalog?limit=${limit}`),
+    withTimeout(`${API}/api/v1/graph/catalog?limit=${limit}`),
 };

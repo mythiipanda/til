@@ -103,10 +103,54 @@ interface MindMapState {
   generateShareLink: () => Promise<string | null>;
   restoreSessionFromLocalStorage: () => boolean;
   resetCanvas: () => void;
+  flushCanvasAutosave: () => void;
 }
 
 let researchES: EventSource | null = null;
 let chatES: EventSource | null = null;
+
+// Watchdog: if a stream goes silent for this long, the connection is stale —
+// close it so an orphaned EventSource can't pin the tab or leak connections.
+const SSE_IDLE_TIMEOUT_MS = 60000;
+let researchIdleTimer: ReturnType<typeof setTimeout> | null = null;
+let chatIdleTimer: ReturnType<typeof setTimeout> | null = null;
+
+function armIdleTimer(es: EventSource, timerRef: { current: ReturnType<typeof setTimeout> | null }, onStale: () => void) {
+  if (timerRef.current) clearTimeout(timerRef.current);
+  timerRef.current = setTimeout(() => {
+    es.close();
+    if (timerRef.current) timerRef.current = null;
+    onStale();
+  }, SSE_IDLE_TIMEOUT_MS);
+}
+
+function kickIdleTimer(es: EventSource, timerRef: { current: ReturnType<typeof setTimeout> | null }, onStale: () => void) {
+  if (timerRef.current) clearTimeout(timerRef.current);
+  armIdleTimer(es, timerRef, onStale);
+}
+
+// Debounced canvas autosave: coalesce rapid drag/edge edits into one write.
+const AUTOSAVE_DEBOUNCE_MS = 800;
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleAutosave() {
+  if (autosaveTimer) clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null;
+    persistActiveSession(useMindMapStore.getState());
+  }, AUTOSAVE_DEBOUNCE_MS);
+}
+
+function flushAutosave() {
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+  }
+  const state = useMindMapStore.getState();
+  if (state.nodes && state.nodes.length > 0) {
+    persistActiveSession(state);
+  }
+}
 
 function persistActiveSession(state: {
   nodes: Node[];
@@ -145,11 +189,13 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     set({
       nodes: applyNodeChanges(changes, get().nodes),
     });
+    scheduleAutosave();
   },
   onEdgesChange: (changes) => {
     set({
       edges: applyEdgeChanges(changes, get().edges),
     });
+    scheduleAutosave();
   },
   
   currentTopic: '',
@@ -266,9 +312,18 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     const es = new EventSource(url);
     researchES = es;
 
+    const timerRef = { current: researchIdleTimer };
+    const staleHandler = () => {
+      if (researchES === es) researchES = null;
+      if (researchIdleTimer) researchIdleTimer = null;
+      set({ isResearching: false });
+    };
+    armIdleTimer(es, timerRef, staleHandler);
+
     let childIndex = 0;
 
     es.onmessage = (e) => {
+      kickIdleTimer(es, timerRef, staleHandler);
       try {
         const parsed = JSON.parse(e.data);
         const event = parsed.event;
@@ -392,6 +447,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             }
           }));
         } else if (event === 'done') {
+          if (timerRef.current) clearTimeout(timerRef.current);
           set((state) => ({
             isResearching: false,
             hasNewDossier: true,
@@ -400,6 +456,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           persistActiveSession(get());
           es.close();
         } else if (event === 'error') {
+          if (timerRef.current) clearTimeout(timerRef.current);
           set({ isResearching: false });
           es.close();
         }
@@ -409,6 +466,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     };
 
     es.onerror = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
       set({ isResearching: false });
       es.close();
     };
@@ -635,8 +693,17 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     const url = api.chatStreamUrl(nodeTitle, question, ancestors, history, activeSummary);
     const es = new EventSource(url);
     chatES = es;
+
+    const timerRef = { current: chatIdleTimer };
+    const staleHandler = () => {
+      if (chatES === es) chatES = null;
+      if (chatIdleTimer) chatIdleTimer = null;
+      set({ isChatStreaming: false });
+    };
+    armIdleTimer(es, timerRef, staleHandler);
     
     es.onmessage = (e) => {
+      kickIdleTimer(es, timerRef, staleHandler);
       try {
         const parsed = JSON.parse(e.data);
         const event = parsed.event;
@@ -723,9 +790,11 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             return { chatMessages: msgs };
           });
         } else if (event === 'done') {
+          if (timerRef.current) clearTimeout(timerRef.current);
           set({ isChatStreaming: false });
           es.close();
         } else if (event === 'error') {
+          if (timerRef.current) clearTimeout(timerRef.current);
           set({ isChatStreaming: false });
           es.close();
         }
@@ -735,6 +804,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     };
     
     es.onerror = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
       set({ isChatStreaming: false });
       es.close();
     };
@@ -1108,6 +1178,9 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       activeMindMapId: null,
       shareSlug: null,
     });
+  },
+  flushCanvasAutosave: () => {
+    flushAutosave();
   }
 }));
 
