@@ -521,18 +521,17 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
                 [  # type: ignore[assignment]
                     SystemMessage(
                         content=(
-                            "You are the master storyteller and educator for TDILEARNED (Today I Learned). "
-                            "Transform the research findings into an unforgettable, captivating knowledge monograph.\n"
-                            "NARRATIVE GUIDELINES:\n"
-                            "1. Structure like a world-class documentary: open with the central paradox or discovery hook in plain, vivid English.\n"
-                            "2. Core Mechanisms: Explain exactly how it works or happened using clear visual analogies and concrete facts.\n"
-                            "3. Audio Tour Script: Write a spoken podcast script designed for oral narration (using conversational cadence, rhetorical pauses, and engaging transitions).\n"
-                            "4. Child Branches: Formulate 3 distinct, high-curiosity vectors (one historical precursor/parallel, one technical/philosophical mechanism, one downstream modern consequence)."
+                            "You are the knowledge synthesis engine for TDILEARNED (Today I Learned). "
+                            "Transform the research findings into a clear, informative, and engaging story.\n"
+                            "GUIDELINES:\n"
+                            "1. Clarity First: Open with the core premise, mystery, or breakthrough in clear, direct English.\n"
+                            "2. Explain How It Works: Provide concrete, factual explanations of the underlying mechanisms, key principles, or timeline events.\n"
+                            "3. Child Branches: Formulate 3 distinct, high-interest related topics to explore next (e.g. historical precursor, technical principle, downstream consequence)."
                         )
                     ),
                     HumanMessage(
                         content=(
-                            f"Target Subject: '{topic}'\nCategory: '{category or 'Fascinating History'}'{context_str}\n"
+                            f"Target Subject: '{topic}'\nCategory: '{category or 'General'}'{context_str}\n"
                             f"VERIFIED EVIDENCE BLOCKS:\n{evidence}"
                         )
                     ),
@@ -545,9 +544,9 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
 
     if not dossier_data:
         dossier_data = LLMDeepDossierOutput(
-            title=f"The {topic} Story",
-            tagline="What really happened, why it started, and the wild twists you never learned in school.",
-            category=category or "Fascinating History",
+            title=topic,
+            tagline=f"Key insights and context behind {topic}.",
+            category=category or "General",
             era="Unknown Era",
             abstract=f"The story of {topic} is one of the most remarkable chapters in history. This dossier gathers the key facts and sources uncovered by the research agents.",
             coreThesis=f"Why {topic} remains fascinating today.",

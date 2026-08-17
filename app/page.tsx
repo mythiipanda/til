@@ -183,18 +183,18 @@ export default function Home() {
           {/* Researching Live Indicator */}
           {isResearching && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-black text-white font-mono text-[10px] uppercase tracking-wider font-bold">
-              <span className="w-2 h-2 bg-white animate-pulse" />
-              <span>DISPATCHING...</span>
+              <span className="w-1.5 h-1.5 bg-white animate-pulse" />
+              <span>Searching...</span>
             </div>
           )}
 
-          {/* New Topic Custom Query */}
+          {/* New Topic Search */}
           <button
             onClick={() => setIsCustomModalOpen(true)}
             className="px-3 py-1 bg-white border border-black font-mono text-[10px] uppercase tracking-wider font-bold hover:bg-black hover:text-white transition-colors duration-100 flex items-center gap-1"
           >
             <Plus className="w-3 h-3" />
-            <span className="hidden sm:inline">RESEARCH TOPIC</span>
+            <span className="hidden sm:inline">Search</span>
           </button>
 
           {/* Browse Catalog Button */}
@@ -206,7 +206,7 @@ export default function Home() {
                 : 'bg-black text-white hover:bg-white hover:text-black'
             }`}
           >
-            {isBrowseOpen ? 'CLOSE LIBRARY' : 'BROWSE 2000+ TOPICS'}
+            {isBrowseOpen ? 'Close' : 'Topics'}
           </button>
 
           {/* My Library & History Drawer */}
@@ -215,8 +215,8 @@ export default function Home() {
             className={`p-1.5 border border-black transition-colors ${
               isLibraryOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
             }`}
-            title="My Saved Mindmaps & History"
-            aria-label="My saved mindmaps and history"
+            title="Saved Mindmaps"
+            aria-label="Saved mindmaps"
           >
             <Bookmark className="w-3.5 h-3.5" />
           </button>
@@ -228,21 +228,21 @@ export default function Home() {
               className={`p-1.5 border border-black transition-colors ${
                 isShareOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
               }`}
-              title="Share & Export Mindmap"
-              aria-label="Share and export mindmap"
+              title="Share Mindmap"
+              aria-label="Share mindmap"
             >
               <Share2 className="w-3.5 h-3.5" />
             </button>
           )}
 
-          {/* Keyboard Shortcuts Cheat Sheet */}
+          {/* Keyboard Shortcuts */}
           <button
             onClick={() => setIsShortcutsOpen(prev => !prev)}
             className={`p-1.5 border border-black transition-colors ${
               isShortcutsOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
             }`}
-            title="Keyboard Shortcuts (?)"
-            aria-label="Keyboard shortcuts cheat sheet"
+            title="Shortcuts (?)"
+            aria-label="Keyboard shortcuts"
           >
             <Keyboard className="w-3.5 h-3.5" />
           </button>
@@ -252,8 +252,8 @@ export default function Home() {
             <button
               onClick={resetCanvas}
               className="p-1.5 border border-black hover:bg-black hover:text-white transition-colors"
-              title="Reset to Cover"
-              aria-label="Reset canvas to home cover"
+              title="Clear Canvas"
+              aria-label="Clear canvas"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -264,22 +264,13 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Floating Active Topic Ribbon */}
-      {currentTopic && nodes.length > 0 && (
-        <div className="fixed top-18 left-6 z-10 pointer-events-none hidden sm:block">
-          <div className="bg-black text-white px-3 py-1 font-mono text-[10px] uppercase tracking-widest border border-black">
-            CURRENT TOPIC: <span className="font-serif font-bold text-xs capitalize ml-1">{currentTopic}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Research Output Ready Notification Toast */}
+      {/* Story Ready Notification Toast */}
       {hasNewDossier && !isDossierOpen && targetNodeId && (
         <div className="fixed top-18 right-6 z-30 bg-black text-white border-2 border-black p-3.5 shadow-none flex items-center gap-3 animate-drop">
           <Sparkles className="w-4 h-4 shrink-0 text-white" />
           <div>
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">
-              RESEARCH READY
+              Story Ready
             </div>
             <div className="font-serif text-sm font-bold truncate max-w-xs">
               {currentTopic}
@@ -293,7 +284,7 @@ export default function Home() {
             className="px-3 py-1.5 bg-white text-black font-mono text-xs uppercase font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1 shrink-0"
           >
             <BookOpen className="w-3 h-3" />
-            <span>Read Story</span>
+            <span>Read</span>
           </button>
           <button
             onClick={dismissNewDossierAlert}
@@ -306,19 +297,14 @@ export default function Home() {
         </div>
       )}
       
-      {/* Custom Inquiry Modal */}
+      {/* Custom Topic Search Modal */}
       {isCustomModalOpen && (
         <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white border-2 border-black p-6 md:p-8 space-y-5 shadow-none animate-fade">
+          <div className="w-full max-w-lg bg-white border-2 border-black p-6 md:p-8 space-y-4 shadow-none animate-fade">
             <div className="flex items-center justify-between border-b-2 border-black pb-3">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs uppercase font-bold bg-black text-white px-2 py-0.5">
-                  TDI
-                </span>
-                <h3 className="font-serif text-lg font-bold tracking-tight text-black">
-                  Propose Custom Inquiry
-                </h3>
-              </div>
+              <h3 className="font-serif text-lg font-bold tracking-tight text-black">
+                Search any topic
+              </h3>
               <button
                 onClick={() => setIsCustomModalOpen(false)}
                 className="p-1 border border-black hover:bg-black hover:text-white transition-colors duration-100"
@@ -328,8 +314,8 @@ export default function Home() {
               </button>
             </div>
 
-            <p className="font-body text-xs text-neutral-700 leading-relaxed">
-              Dispatch autonomous research agents to discover verified citations, extract chronological events, and synthesize an interactive spatial mindmap.
+            <p className="font-body text-xs text-neutral-600 leading-relaxed">
+              Explore scientific breakthroughs, historical turning points, mysteries, and ideas.
             </p>
 
             <form onSubmit={handleCustomSubmit} className="space-y-4 pt-1">
@@ -346,7 +332,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setIsCustomModalOpen(false)}
-                  className="font-mono text-xs uppercase font-bold text-neutral-600 hover:text-black tracking-wider underline underline-offset-2"
+                  className="font-mono text-xs uppercase font-bold text-neutral-600 hover:text-black tracking-wider"
                 >
                   Cancel
                 </button>
@@ -355,7 +341,7 @@ export default function Home() {
                   disabled={!customInput.trim()}
                   className="px-6 py-3 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase tracking-widest font-bold transition-colors duration-100 disabled:opacity-40"
                 >
-                  Dispatch Agents →
+                  Explore →
                 </button>
               </div>
             </form>

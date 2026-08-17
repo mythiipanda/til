@@ -101,9 +101,9 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
       {/* Header */}
       <div className="p-4 border-b-2 border-black flex items-center justify-between bg-black text-white">
         <div>
-          <h2 className="font-serif text-base font-bold uppercase tracking-wider">TOPIC LIBRARY</h2>
+          <h2 className="font-serif text-base font-bold uppercase tracking-wider">Topics</h2>
           <p className="font-mono text-[9px] text-neutral-400 mt-0.5">
-            {filteredTopics.length} TOPICS ({hubs.length} INSTANT PRECOMPUTED HUBS)
+            {filteredTopics.length} topics available
           </p>
         </div>
         <button 
@@ -122,7 +122,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
           <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search 800+ topics, paradoxes, phenomena..."
+            placeholder="Search topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white border border-black pl-9 pr-3 py-2 font-body text-xs text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:border-2 focus:border-black"
@@ -138,7 +138,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
                 : 'bg-white border border-neutral-300 text-neutral-600 hover:border-black'
             }`}
           >
-            ALL ({mergedTopics.length})
+            All ({mergedTopics.length})
           </button>
           {CATEGORIES.map(cat => {
             const count = mergedTopics.filter(i => i.category.toLowerCase() === cat.toLowerCase()).length;
@@ -163,7 +163,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
       <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
         {filteredTopics.length === 0 ? (
           <div className="text-center py-16 font-mono text-xs text-neutral-500">
-            [ NO TOPICS MATCH SEARCH ]
+            No topics match search
           </div>
         ) : (
           filteredTopics.map((item, idx) => (
@@ -180,11 +180,11 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
                 {item.precomputed ? (
                   <span className="bg-black group-hover:bg-white text-white group-hover:text-black px-1.5 py-0.5 font-bold flex items-center gap-1">
                     <Zap className="w-2.5 h-2.5" />
-                    <span>INSTANT</span>
+                    <span>Ready</span>
                   </span>
                 ) : (
                   <span className="text-neutral-500 group-hover:text-neutral-300">
-                    RESEARCH →
+                    Explore →
                   </span>
                 )}
               </div>

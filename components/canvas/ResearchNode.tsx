@@ -77,18 +77,16 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
             {data.category || 'TOPIC'}
           </span>
           {data.isRoot ? (
-            <span className="font-mono text-[10px] bg-white text-black px-2 py-0.5 uppercase font-bold tracking-tight">
-              ROOT MONOGRAPH
+            <span className="font-mono text-[10px] bg-white text-black px-1.5 py-0.2 uppercase font-bold tracking-tight">
+              ORIGIN
             </span>
-          ) : (
-            <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-tight">
-              SUB-BRANCH
-            </span>
-          )}
+          ) : null}
         </div>
-        <span className="font-mono text-[10px] text-neutral-300">
-          {data.curiosity_score ? `RATING ${data.curiosity_score}/10` : 'VERIFIED'}
-        </span>
+        {data.curiosity_score ? (
+          <span className="font-mono text-[10px] text-neutral-300">
+            {data.curiosity_score}/10
+          </span>
+        ) : null}
       </div>
 
       {/* Grayscale-to-Color Image */}
@@ -134,11 +132,11 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
           </div>
         )}
 
-        {/* Rabbit Holes */}
+        {/* Related Topics / Next Inquiries */}
         {data.rabbit_holes && data.rabbit_holes.length > 0 && (
           <div className="pt-2 border-t-2 border-black space-y-2">
             <div className="font-mono text-[10px] uppercase tracking-widest font-bold text-neutral-600">
-              EXPLORE RABBIT HOLES:
+              Related topics:
             </div>
             <div className="space-y-1.5">
               {data.rabbit_holes.slice(0, 3).map((rh, i) => (
@@ -162,7 +160,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
             className="nodrag nopan flex items-center gap-1.5 font-bold text-black uppercase tracking-wider hover:underline underline-offset-4"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>{data.isRoot ? 'Open Dossier' : 'View Concept'}</span>
+            <span>Read story</span>
           </button>
 
           {!data.isRoot && (
@@ -171,7 +169,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
               className="nodrag nopan text-black hover:text-white uppercase tracking-wider font-bold flex items-center gap-1 border-2 border-black px-2.5 py-1 bg-white hover:bg-black transition-colors duration-100"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Expand</span>
+              <span>Explore</span>
             </button>
           )}
         </div>

@@ -147,27 +147,27 @@ function CanvasInner() {
           <button
             onClick={() => fitView({ padding: 0.15, duration: 400 })}
             className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
-            title="Fit Entire Map to Screen"
-            aria-label="Fit entire map"
+            title="Fit Map to Screen"
+            aria-label="Fit map"
           >
-            [FIT]
+            Fit
           </button>
           <button
             onClick={handleRecenterRoot}
             className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
-            title="Center on Origin Subject"
-            aria-label="Center on origin subject"
+            title="Center Origin"
+            aria-label="Center origin"
           >
-            ● ROOT
+            Root
           </button>
           <div className="w-px h-4 bg-neutral-300 mx-0.5" />
           <button
             onClick={handleSurpriseMe}
             className="px-2.5 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold bg-black text-white hover:bg-neutral-800 transition-colors"
-            title="Jump to Another Random Curiosity Hub"
-            aria-label="Jump to another random curiosity hub"
+            title="Random topic"
+            aria-label="Random topic"
           >
-            ✦ NEXT
+            Next
           </button>
         </div>
       )}
