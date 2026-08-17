@@ -13,6 +13,7 @@ asyncio.Queue supplied through LangGraph config, which the SSE adapter drains.
 
 import asyncio
 import logging
+import re
 import time
 import uuid
 from typing import Any, TypedDict
@@ -42,7 +43,7 @@ from app.schemas.research import (
     ResearchPlan,
 )
 from app.services.cache import cache_service
-from app.services.llm import get_llm
+from app.services.llm import get_llm, get_llm_with_fallback
 from app.services.media import calculate_osm_tiles
 from app.services.tools import (
     fetch_page_content,
@@ -154,8 +155,15 @@ def _sink(config: RunnableConfig) -> EventSink:
 
 
 def _llm(config: RunnableConfig, temperature: float, max_tokens: int) -> Any:
-    """Resolve the per-run LLM engine (cerebras for live, mistral for batch)."""
+    """Resolve the per-run LLM engine (cerebras with fast failover for live, mistral for batch)."""
     engine = config["configurable"].get("llm_engine", "cerebras")
+    if engine == "cerebras":
+        return get_llm_with_fallback(
+            engine="cerebras",
+            fallback_engine="mistral",
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
     return get_llm(engine, temperature=temperature, max_tokens=max_tokens)
 
 
@@ -248,10 +256,11 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
                     SystemMessage(
                         content=(
                             "You are the master research planner for TDILEARNED (Today I Learned). "
-                            "Break the inquiry into 3 targeted, specific research angles/questions. "
-                            "CRITICAL: When parent discovery context or teaser context is provided, your angles MUST "
-                            "target the specific historical event, scientific breakthrough, or phenomenon in question—not generic "
-                            "dictionary definitions or unrelated modern topics. Each angle must target verifiable facts from reliable web sources."
+                            "Formulate 3 distinct, high-impact research angles exploring the topic:\n"
+                            "1. Vector 1 (Genesis & Paradox): The origin story, historical catalyst, and core contradiction.\n"
+                            "2. Vector 2 (Mechanisms & Principles): The internal architecture, technical/mathematical gears, or step-by-step process.\n"
+                            "3. Vector 3 (Twists & Modern Echoes): Surprising misconceptions, turning points, and lasting real-world significance.\n"
+                            "CRITICAL: Explicitly name the subject entity in every question. Avoid vague pronouns or generic definitions."
                         )
                     ),
                     HumanMessage(
@@ -259,7 +268,7 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
                     ),
                 ]
             )
-            angles = res.angles[:5]  # type: ignore[union-attr]
+            angles = res.angles[:3]  # type: ignore[union-attr]
         except Exception as e:
             logger.warning(f"Planner LLM error ({e}); using fallback angles")
 
@@ -267,18 +276,18 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
         angles = [
             ResearchAngle(
                 id="angle-1",
-                question=f"What is the core story and origin of {topic}?",
-                rationale="Establish the foundational facts.",
+                question=f"What is the origin story, discovery catalyst, and core paradox of {topic}?",
+                rationale="Establish the foundational facts and central mystery.",
             ),
             ResearchAngle(
                 id="angle-2",
-                question=f"Who were the key people, events, and turning points in {topic}?",
-                rationale="Understand the human drama and timeline.",
+                question=f"What are the precise operational mechanisms and internal principles of {topic}?",
+                rationale="Explain how the core phenomenon works step-by-step.",
             ),
             ResearchAngle(
                 id="angle-3",
-                question=f"What surprising, lesser-known details or mechanisms explain {topic}?",
-                rationale="Surface the mind-blowing specifics.",
+                question=f"What are the most surprising twists, common misconceptions, and modern legacies of {topic}?",
+                rationale="Surface counterintuitive facts and lasting impact.",
             ),
         ]
 
@@ -286,7 +295,7 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
         "thought",
         {
             "agent": "Planner Agent",
-            "text": f"Formulated {len(angles)} research angles exploring '{topic}'.",
+            "text": f"Formulated {len(angles)} research vectors exploring '{topic}'.",
         },
     )
     await _emit_plan_phase(sink, 1, topic)
@@ -317,19 +326,30 @@ class ResearcherWorkerState(TypedDict):
 
 async def researcher_node(state: ResearcherWorkerState, config: RunnableConfig) -> dict:
     angle = ResearchAngle(**state["angle"])
+    topic = state["topic"]
     sink = _sink(config)
+
+    # Ensure search queries are entity-anchored so sub-angle questions don't drift
+    clean_q = angle.question.strip()
+    topic_tokens = set(re.findall(r"\w{3,}", topic.lower()))
+    q_tokens = set(re.findall(r"\w{3,}", clean_q.lower()))
+    if not topic_tokens.intersection(q_tokens):
+        search_query = f"{topic} {clean_q}"
+    else:
+        search_query = clean_q
 
     await sink.emit(
         "tool_call",
         {
             "call_id": str(uuid.uuid4())[:8],
             "tool": "WebSearch",
-            "query": angle.question,
+            "query": search_query,
+            "angle_id": angle.id,
             "status": "running",
         },
     )
 
-    sources = await search_web_ladder(angle.question, max_results=5)
+    sources = await search_web_ladder(search_query, max_results=5)
 
     # Emit discovered sources immediately to the live stream
     for s in sources:
@@ -344,6 +364,7 @@ async def researcher_node(state: ResearcherWorkerState, config: RunnableConfig) 
                 "reliabilityScore": s.reliabilityScore,
             },
         )
+        await asyncio.sleep(0.04)
 
     await sink.emit(
         "tool_result",
@@ -477,27 +498,42 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
         or "(no findings)"
     )
 
+    context_details = []
+    if state.get("context_chain"):
+        context_details.append(f"Origin Context Trail: {' -> '.join(state['context_chain'])}")
+    if state.get("parent_summary"):
+        context_details.append(f"Parent Concept Summary: {state['parent_summary']}")
+    if state.get("teaser_context"):
+        context_details.append(f"Inquiry Hook: {state['teaser_context']}")
+
+    context_str = "\n".join(context_details)
+    if context_str:
+        context_str = f"\n\nDISCOVERY CONTEXT:\n{context_str}\n"
+
     llm = _llm(config, temperature=0.7, max_tokens=2500)
     dossier_data: LLMDeepDossierOutput | None = None
     children_data: list[LLMChildBranchDefinition] = []
 
-    if llm:
+    if llm and llm.is_available:
         try:
             structured = llm.with_structured_output(LLMSeedTreeWithBranches)
             res = await structured.ainvoke(
                 [  # type: ignore[assignment]
                     SystemMessage(
                         content=(
-                            "You are an inspiring storyteller explaining complex topics to the general public. "
-                            "CRITICAL RULES: write only from the provided grounded evidence; never invent facts, "
-                            "numbers, or URLs; use simple plain English, short punchy paragraphs, zero academic jargon. "
-                            "Write like a captivating YouTube mini-documentary."
+                            "You are the master storyteller and educator for TDILEARNED (Today I Learned). "
+                            "Transform the research findings into an unforgettable, captivating knowledge monograph.\n"
+                            "NARRATIVE GUIDELINES:\n"
+                            "1. Structure like a world-class documentary: open with the central paradox or discovery hook in plain, vivid English.\n"
+                            "2. Core Mechanisms: Explain exactly how it works or happened using clear visual analogies and concrete facts.\n"
+                            "3. Audio Tour Script: Write a spoken podcast script designed for oral narration (using conversational cadence, rhetorical pauses, and engaging transitions).\n"
+                            "4. Child Branches: Formulate 3 distinct, high-curiosity vectors (one historical precursor/parallel, one technical/philosophical mechanism, one downstream modern consequence)."
                         )
                     ),
                     HumanMessage(
                         content=(
-                            f"Topic: '{topic}'\nCategory: '{category or 'Fascinating History'}'\n"
-                            f"Grounded Evidence:\n{evidence}"
+                            f"Target Subject: '{topic}'\nCategory: '{category or 'Fascinating History'}'{context_str}\n"
+                            f"VERIFIED EVIDENCE BLOCKS:\n{evidence}"
                         )
                     ),
                 ]
@@ -505,7 +541,7 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
             dossier_data = res.root_dossier  # type: ignore[union-attr]
             children_data = res.children  # type: ignore[union-attr]
         except Exception as e:
-            logger.warning(f"Synthesizer LLM error ({e})")
+            logger.warning(f"Synthesizer LLM error ({e}); using fallback monograph synthesis")
 
     if not dossier_data:
         dossier_data = LLMDeepDossierOutput(
