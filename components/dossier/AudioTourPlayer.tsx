@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square, Volume2, VolumeX, Sparkles, RefreshCw } from 'lucide-react';
+import { Play, Pause, Square, Volume2, Sparkles, FastForward } from 'lucide-react';
 
 interface AudioTourPlayerProps {
   script: string;
@@ -13,12 +13,15 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
   const [progress, setProgress] = useState(0);
-  const [currentSentence, setCurrentSentence] = useState('');
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [showFullTranscript, setShowFullTranscript] = useState(false);
   
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const sentencesRef = useRef<string[]>([]);
   const currentSentenceIdxRef = useRef<number>(0);
+  const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -36,22 +39,20 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
   }, []);
 
   useEffect(() => {
-    // Reset player state when topic or script changes
     if (synthRef.current) {
       synthRef.current.cancel();
     }
     setIsPlaying(false);
     setIsPaused(false);
     setProgress(0);
-    setCurrentSentence('');
+    setCurrentIdx(0);
 
     if (script) {
-      // Split script into clean sentences
       const rawSentences = script
         .replace(/\n+/g, ' ')
         .split(/(?<=[.?!])\s+/)
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
       sentencesRef.current = rawSentences;
       currentSentenceIdxRef.current = 0;
     }
@@ -59,7 +60,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
 
   if (!script || !isSupported) return null;
 
-  const playSentenceAtIndex = (idx: number) => {
+  const playSentenceAtIndex = (idx: number, rate = playbackRate) => {
     if (!synthRef.current || idx >= sentencesRef.current.length) {
       setIsPlaying(false);
       setIsPaused(false);
@@ -68,27 +69,36 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
     }
 
     currentSentenceIdxRef.current = idx;
+    setCurrentIdx(idx);
     const text = sentencesRef.current[idx];
-    setCurrentSentence(text);
-    setProgress(Math.round(((idx) / sentencesRef.current.length) * 100));
+    setProgress(Math.round((idx / sentencesRef.current.length) * 100));
 
     const utterance = new SpeechSynthesisUtterance(text);
     utteranceRef.current = utterance;
 
-    // Pick a natural sounding voice
     const voices = synthRef.current.getVoices();
-    const englishVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Neural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Daniel'))) ||
-                         voices.find(v => v.lang.startsWith('en'));
+    const englishVoice =
+      voices.find(
+        (v) =>
+          v.lang.startsWith('en') &&
+          (v.name.includes('Natural') ||
+            v.name.includes('Neural') ||
+            v.name.includes('Google') ||
+            v.name.includes('Samantha') ||
+            v.name.includes('Daniel') ||
+            v.name.includes('Alex'))
+      ) || voices.find((v) => v.lang.startsWith('en'));
+
     if (englishVoice) {
       utterance.voice = englishVoice;
     }
 
-    utterance.rate = 1.0;
+    utterance.rate = rate;
     utterance.pitch = 1.0;
 
     utterance.onend = () => {
       if (currentSentenceIdxRef.current + 1 < sentencesRef.current.length) {
-        playSentenceAtIndex(currentSentenceIdxRef.current + 1);
+        playSentenceAtIndex(currentSentenceIdxRef.current + 1, rate);
       } else {
         setIsPlaying(false);
         setIsPaused(false);
@@ -120,7 +130,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
     synthRef.current.cancel();
     setIsPlaying(true);
     setIsPaused(false);
-    playSentenceAtIndex(0);
+    playSentenceAtIndex(currentIdx || 0);
   };
 
   const handlePause = () => {
@@ -136,13 +146,31 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
     setIsPlaying(false);
     setIsPaused(false);
     setProgress(0);
-    setCurrentSentence('');
+    setCurrentIdx(0);
     currentSentenceIdxRef.current = 0;
   };
 
+  const handleJumpToSentence = (idx: number) => {
+    if (!synthRef.current) return;
+    synthRef.current.cancel();
+    setIsPlaying(true);
+    setIsPaused(false);
+    playSentenceAtIndex(idx, playbackRate);
+  };
+
+  const toggleRate = () => {
+    const nextRate = playbackRate === 1.0 ? 1.25 : playbackRate === 1.25 ? 1.5 : 1.0;
+    setPlaybackRate(nextRate);
+    if (isPlaying && synthRef.current) {
+      synthRef.current.cancel();
+      playSentenceAtIndex(currentSentenceIdxRef.current, nextRate);
+    }
+  };
+
+  const activeSentenceText = sentencesRef.current[currentIdx] || '';
+
   return (
     <div className="border-2 border-black bg-neutral-900 text-white p-4 space-y-3 select-none animate-drop">
-      
       {/* Player Header */}
       <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-2">
         <div className="flex items-center gap-1.5 font-bold text-white">
@@ -162,20 +190,63 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
         </div>
       </div>
 
-      {/* Spoken sentence display */}
-      {currentSentence ? (
-        <div className="font-serif italic text-xs text-neutral-200 line-clamp-2 bg-black/40 p-2 border border-neutral-800">
-          "{currentSentence}"
+      {/* Karaoke Active Sentence Box */}
+      <div className="bg-black/50 p-3 border border-neutral-800 rounded-none space-y-2">
+        {activeSentenceText ? (
+          <div className="font-serif italic text-sm text-neutral-100 leading-relaxed border-l-2 border-white pl-2.5 transition-all">
+            "{activeSentenceText}"
+          </div>
+        ) : (
+          <div className="font-serif text-xs text-neutral-400">
+            Listen to an immersive podcast-style narrative breakdown of {topicTitle}.
+          </div>
+        )}
+
+        {/* Toggle Transcript View */}
+        <div className="flex items-center justify-between pt-1 border-t border-neutral-800/80">
+          <button
+            onClick={() => setShowFullTranscript(!showFullTranscript)}
+            className="font-mono text-[9px] text-neutral-400 hover:text-white uppercase tracking-wider transition-colors"
+          >
+            {showFullTranscript ? 'Hide Interactive Script [-]' : 'Read & Click Interactive Script [+]'}
+          </button>
+          <span className="font-mono text-[9px] text-neutral-500">
+            Sentence {Math.min(currentIdx + 1, sentencesRef.current.length)} of {sentencesRef.current.length}
+          </span>
         </div>
-      ) : (
-        <div className="font-serif text-xs text-neutral-400 line-clamp-2">
-          Listen to an immersive podcast-style narrative breakdown of {topicTitle}.
-        </div>
-      )}
+
+        {/* Full Karaoke Script Container */}
+        {showFullTranscript && (
+          <div
+            ref={transcriptContainerRef}
+            className="max-h-44 overflow-y-auto space-y-1.5 pt-2 pr-1 border-t border-neutral-800 scrollbar-thin scrollbar-thumb-neutral-700"
+          >
+            {sentencesRef.current.map((sentence, idx) => {
+              const isActive = idx === currentIdx && (isPlaying || isPaused);
+              const isPast = idx < currentIdx;
+              return (
+                <p
+                  key={idx}
+                  onClick={() => handleJumpToSentence(idx)}
+                  className={`font-serif text-xs leading-relaxed cursor-pointer p-1.5 transition-colors ${
+                    isActive
+                      ? 'bg-white/10 text-white font-semibold border-l-2 border-white pl-2'
+                      : isPast
+                      ? 'text-neutral-500 hover:text-neutral-300'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {sentence}
+                </p>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Progress Bar */}
       <div className="w-full bg-neutral-800 h-1.5 overflow-hidden">
-        <div 
+        <div
           className="bg-white h-full transition-[width] duration-300 ease-out"
           style={{ width: `${progress}%` }}
         />
@@ -212,14 +283,23 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
               <Square className="w-3.5 h-3.5" />
             </button>
           )}
+
+          {/* Speed Toggle */}
+          <button
+            onClick={toggleRate}
+            className="px-2 py-1 border border-neutral-700 text-neutral-300 font-mono text-[10px] font-bold hover:border-white hover:text-white transition-colors flex items-center gap-1"
+            title="Playback Speed"
+          >
+            <FastForward className="w-3 h-3" />
+            <span>{playbackRate}x</span>
+          </button>
         </div>
 
         <div className="font-mono text-[9px] text-neutral-400 flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-neutral-400" />
-          <span>SYNTHESIZED PODCAST SCRIPT</span>
+          <span>SYNTHESIZED NARRATION</span>
         </div>
       </div>
-
     </div>
   );
 }
