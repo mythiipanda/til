@@ -28,6 +28,9 @@ backend/app/.cache/
 # Cloudflare Wrangler
 .wrangler/
 
+# Azure CLI local deploy config
+backend/.azure/
+
 # Generated demo trace outputs
 backend/data/
 
@@ -37,3 +40,4 @@ backend/data/
 # Operating System
 .DS_Store
 Thumbs.db
+.vercel

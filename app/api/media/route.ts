@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'edge';
-
 const ALLOWED_HOSTS = [
   'upload.wikimedia.org',
   'commons.wikimedia.org',

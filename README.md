@@ -1,135 +1,88 @@
-# TILEARNED — Agentic Infinite-Canvas Discovery Engine
+﻿# TDILEARNED — Agentic Infinite-Canvas Discovery Engine
 
-An agentic discovery engine that turns curiosity into spatial mindmaps. Pick one of five
-pillar topics, get a curiosity-ranked random topic, and watch a swarm of AI sub-agents
-research it live — streaming grounded sources, an interactive dossier, maps, and imagery
-onto an infinite canvas in real time. Then keep asking questions.
+> Turn curiosity into spatial mindmaps — powered by Cerebras CS-3 live inference, a LangGraph map-reduce research swarm, and an infinite React Flow canvas.
 
-The research pipeline is **real, not scripted**: a LangGraph map-reduce swarm performs
-actual web retrieval (Tavily → DuckDuckGo → Wikipedia), extracts verbatim evidence from
-real pages, and synthesizes every fact strictly from what it found. No fabricated URLs,
-no hard-coded topics, no canned narratives.
+Pick a topic, watch a multi-agent pipeline research it live across the web, and explore the results as an interactive node graph. Then keep asking questions.
+
+**Live:** [tdilearned.vercel.app](https://tdilearned.vercel.app)
 
 ---
 
-## Architecture at a Glance
+## Architecture
 
 ```
-┌────────────────────────────────────────────────────────────────────────────┐
-│                        Browser / Next.js Canvas (React Flow)                │
-│      Zustand store consumes SSE and paints nodes/edges onto the canvas      │
-└──────────────┬──────────────────────────────────┬──────────────────────────┘
-               │ GET /research/stream (SSE)        │ GET /chat/stream (SSE)
-               ▼                                    ▼
-┌────────────────────────────────────────────────────────────────────────────┐
-│                          FastAPI Backend (/api/v1)                         │
-│                                                                             │
-│  ┌─────────────────┐   ┌──────────────────────────────────────────────┐     │
-│  │  random-topic   │   │        Deep Research Graph (LangGraph)        │     │
-│  │   picker        │   │                                              │     │
-│  │  (Wikipedia     │   │  Planner → Send()×N Researchers → Aggregator │     │
-│  │   category +    │   │  → Reference Extractor → Synthesizer         │     │
-│  │   live signals) │   │  → Spatial Enricher                          │     │
-│  └─────────────────┘   └──────────────┬───────────────────────────────┘     │
-│                                       │ events via asyncio.Queue → SSE      │
-│  ┌─────────────────┐   ┌──────────────▼───────────────────────────────┐     │
-│  │  Follow-up Chat  │   │            Retrieval Ladder (tools)          │     │
-│  │  (ReAct loop)    │──▶│  Tavily → DuckDuckGo → Wikipedia (keyless)   │     │
-│  └─────────────────┘   │  + page-content extraction + relevance filter │     │
-│                        │  + Wikimedia page images + OSM geocoder       │     │
-│                        └───────────────────────────────────────────────┘     │
-│                                                                             │
-│   LLM factory (get_llm): Cerebras CS-3 live inference, Mistral available    │
-│   Multi-tier cache: Azure Redis → in-memory fallback                        │
-└──────────────┬──────────────────────────────────────────────────────────────┘
-               │ media?url=<encoded>  (via Cloudflare or /api/media fallback)
-               ▼
-┌────────────────────────────────────────────────────────────────────────────┐
-│        Cloudflare Worker — Zero-Cost Edge Media Proxy                      │
-│   Whitelisted Wikimedia Commons / OpenStreetMap hosts, compliant UA,       │
-│   Cache-Control: public, max-age=31536000, immutable                       │
-└────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│            Next.js 15 Frontend  (Vercel)                        │
+│     React Flow infinite canvas · Zustand store · Tailwind       │
+└────────┬───────────────────────────────────────┬────────────────┘
+         │ SSE /research/stream                  │ SSE /chat/stream
+         ▼                                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              FastAPI Backend  (Azure App Service B1)            │
+│                                                                 │
+│  ┌─────────────┐   ┌───────────────────────────────────────┐   │
+│  │ random-topic│   │   LangGraph Deep Research (map-reduce) │   │
+│  │   picker    │   │  Planner → Researchers×N → Aggregator │   │
+│  └─────────────┘   │  → Verifier → Synthesizer → Enricher  │   │
+│                    └─────────────────┬─────────────────────┘   │
+│  ┌─────────────┐                     │ asyncio.Queue → SSE      │
+│  │  Chat Agent │   ┌─────────────────▼─────────────────────┐   │
+│  │ (ReAct loop)│──▶│    Retrieval Ladder (tools.py)         │   │
+│  └─────────────┘   │  Tavily → DuckDuckGo → Wikipedia       │   │
+│                    │  + page fetch + Wikimedia images + OSM  │   │
+│                    └───────────────────────────────────────┘   │
+│                                                                 │
+│  LLM factory: Cerebras CS-3 (gemma-4-31b) · Mistral fallback   │
+│  Database: Supabase Postgres  (886 precomputed discovery hubs)  │
+└────────┬────────────────────────────────────────────────────────┘
+         │ media?url=<encoded>
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│    Cloudflare Workers — Zero-Cost Edge Media Proxy              │
+│    <your-worker>.workers.dev                                    │
+│    Cache-Control: public, max-age=31536000, immutable           │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## The Research Pipeline (start-to-finish)
+## Production URLs
 
-A single request to `/api/v1/research/stream?topic=...` runs this graph:
+| Service | URL |
+|---------|-----|
+| Frontend | `https://tdilearned.vercel.app` |
 
-| # | Stage | Agent | What it does |
-|---|-------|-------|--------------|
-| 1 | **Plan** | Planner | Breaks the topic into 3–5 targeted, non-overlapping research angles (structured Cerebras call). Emits a `plan` SSE event with the DAG steps. |
-| 2 | **Research** | Deep Retrieval ×N (parallel) | `Send()` fans each angle out to its own researcher. Each searches the retrieval ladder, fetches real page content, and extracts 2–4 grounded findings with **verbatim quotes + real URLs**. |
-| 3 | **Aggregate** | Aggregator | Waits for all parallel researchers; collects findings and validates every angle is covered. |
-| 4 | **Verify** | Reference Extractor | Deduplicates by URL into a curated source list. **No fabricated URLs** — every source came from an actual retrieval. |
-| 5 | **Synthesize** | Storyteller | Writes the dossier (title, abstract, timeline, mechanisms, rabbit holes, wow-fact, audio script) **strictly from the grounded evidence**. |
-| 6 | **Enrich** | Spatial Architect | Geocodes the location via OSM, fetches images embedded on the topic's Wikipedia article, builds root + 3 child React Flow nodes with coordinates. |
+Your backend, media proxy, and database URLs are deployment-specific — set them via the environment variables in the sections below.
 
-Everything streams over **Server-Sent Events** in real time.
+---
 
-### SSE event contract
+## Research Pipeline
 
-The backend emits one `data: {json}` line per event:
+A single `GET /api/v1/research/stream?topic=...` runs this LangGraph:
 
-| Event | Purpose |
+| # | Stage | What it does |
+|---|-------|-------------|
+| 1 | **Plan** | Breaks the topic into 3–5 targeted research angles via Cerebras structured generation |
+| 2 | **Research ×N** | `Send()` fans each angle to its own researcher in parallel — Tavily → DDG → Wikipedia with verbatim quotes |
+| 3 | **Aggregate** | Waits for all parallel researchers, validates coverage |
+| 4 | **Verify** | Deduplicates by URL — zero fabricated sources |
+| 5 | **Synthesize** | Writes dossier strictly from retrieved evidence |
+| 6 | **Enrich** | OSM geocoding, Wikipedia embedded images, builds React Flow nodes with coordinates |
+
+All events stream over **Server-Sent Events** in real time.
+
+### SSE Event Contract
+
+| Event | Payload |
 |-------|---------|
-| `plan` | Research DAG steps (from the planner) |
-| `thought` | An agent's reasoning/status text |
-| `tool_call` / `tool_result` | Live tool activity (WebSearch, WikimediaArchive, OpenStreetMapGeocoder) |
-| `source` | A discovered, verifiable source |
-| `node_stream` | A React Flow node to render (`is_root` flags the center node) |
-| `dossier` | The full interactive dossier (`ResearchDossierSchema`) |
-| `answer_start` / `token` | Follow-up chat streaming answer (token-by-token) |
-| `done` | Execution summary (timing, source/finding counts, root id) |
-
-### Follow-up chat (ReAct-style tool loop)
-
-`/api/v1/chat/stream` runs a deliberately **simple** agent (the deep map-reduce graph is
-overkill for Q&A): a bounded 2-round loop that searches the retrieval ladder, fetches page
-content, decides whether more evidence is needed, then streams a grounded, cited answer
-token-by-token. It never answers from imagination — only from the evidence blocks fetched.
-
----
-
-## Model-Agnostic LLM Factory
-
-All agents obtain their LLM through `backend/app/services/llm.py::get_llm()`. Swapping
-hardware providers is a config change, not a code change:
-
-```python
-llm = get_llm("cerebras")   # live research + chat  → Cerebras CS-3 (gemma-4-31b)
-llm = get_llm("mistral")    # batch / alternate      → Mistral (ministral-8b-2512)
-```
-
-Both providers expose OpenAI-compatible APIs and are wrapped in `ChatOpenAI`. If no API
-key is configured for a provider, `get_llm()` returns `None` and callers degrade to their
-keyless paths (e.g. Wikipedia-only retrieval, snippet-based findings).
-
----
-
-## The Retrieval Ladder
-
-Every web search goes through `search_web_ladder()` in `backend/app/services/tools.py`:
-
-1. **Tavily** (if `TAVILY_API_KEY` set) — highest-quality results.
-2. **DuckDuckGo** (`ddgs`) — keyless fallback, always available.
-3. **Wikipedia** — guaranteed keyless floor, reliability-weighted highest.
-
-Results are:
-- **Deduplicated by URL**
-- **Filtered by lexical relevance** to the query (keeps out DDG noise like "MD vs DO" hits)
-- **Sorted by reliability score** (Wikipedia 0.96 > Tavily 0.85 > DDG 0.75)
-
-Supporting tools:
-
-| Tool | Purpose |
-|------|---------|
-| `fetch_page_content()` | Fetches and strips a page to readable text for evidence extraction |
-| `wikipedia_page_images()` | Resolves a topic to its Wikipedia article and pulls the images editors embedded on that page (highest relevance) |
-| `_commons_search()` | Wikimedia Commons file-namespace search — top-up when a page has few images |
-| `osm_geocoder_tool()` | Nominatim geocoding for coordinates + location names |
-| `proxy_media_url()` | Routes media through the Cloudflare edge proxy (or `/api/media` fallback) |
+| `plan` | Research DAG steps |
+| `thought` | Agent reasoning / status |
+| `tool_call` / `tool_result` | Live tool activity |
+| `source` | A verified retrieved source |
+| `node_stream` | React Flow node (`is_root` = center node) |
+| `dossier` | Full `ResearchDossierSchema` |
+| `answer_start` / `token` | Chat stream token-by-token |
+| `done` | Summary (timing, counts, root id) |
 
 ---
 
@@ -137,11 +90,12 @@ Supporting tools:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Service health + engine info |
-| GET | `/graph/random-topic?category=History` | Curiosity-ranked random topic (one of Science, History, Mathematics, Technology, Philosophy) |
-| GET | `/research/stream?topic=&category=` | **SSE** — runs the full map-reduce research graph |
-| GET | `/research/dossier/{node_id}` | Fetch a stored dossier by node id |
-| GET | `/chat/stream?node_title=&question=&ancestors=` | **SSE** — ReAct follow-up chat |
+| GET | `/health` | Health check + engine info |
+| GET | `/graph/random-topic?category=History` | Curiosity-ranked random topic |
+| GET | `/graph/precomputed` | All 886 precomputed discovery hubs from Supabase |
+| GET | `/research/stream?topic=&category=` | SSE — full map-reduce research |
+| GET | `/research/dossier/{node_id}` | Fetch stored dossier by node id |
+| GET | `/chat/stream?node_title=&question=&ancestors=` | SSE — ReAct follow-up chat |
 
 ---
 
@@ -149,103 +103,291 @@ Supporting tools:
 
 ```
 .
-├── app/                        # Next.js frontend (React Flow canvas, dossier modal, chat drawer)
-│   └── api/media/route.ts      # Local media proxy fallback (when no Cloudflare worker)
-├── components/                 # Canvas, chat, dossier, inspector, timeline/map views
-├── lib/                        # Zustand mindmap store, mock data, utils
-├── types/                      # Shared TypeScript graph types
-├── cloudflare/                 # Edge media proxy worker (wrangler.toml + src/index.ts)
+├── app/                          # Next.js 15 App Router (frontend)
+│   ├── api/media/route.ts        # Local media proxy fallback
+│   ├── page.tsx                  # Root canvas page
+│   └── layout.tsx
+├── components/                   # React components
+│   ├── Canvas.tsx                # React Flow infinite canvas
+│   ├── NodeCard.tsx              # Discovery hub node
+│   ├── ChatDrawer.tsx            # SSE chat sidebar
+│   └── DossierModal.tsx          # Full research dossier modal
+├── lib/
+│   └── useMindMapStore.ts        # Zustand global canvas state (single source of truth)
+├── types/                        # Shared TypeScript types (graph.ts)
+├── cloudflare/                   # Cloudflare Workers edge media proxy
+│   ├── src/index.ts
+│   └── wrangler.toml
+├── .env.example                  # Environment variable template
 └── backend/
     ├── app/
-    │   ├── api/endpoints.py    # All /api/v1 routes
-    │   ├── schemas/            # Pydantic v2 contracts (graph.py, research.py)
+    │   ├── main.py               # FastAPI app + CORS
+    │   ├── api/endpoints.py      # All /api/v1 routes
+    │   ├── schemas/              # Pydantic v2 contracts
+    │   │   ├── graph.py          # NodeSchema, CoordinatesSchema
+    │   │   └── research.py       # ResearchDossierSchema
     │   └── services/
-    │       ├── llm.py          # Model-agnostic get_llm() provider factory
-    │       ├── research_graph.py # LangGraph map-reduce deep research graph
-    │       ├── research_agent.py # SSE adapter draining the graph's event queue
-    │       ├── chat_agent.py   # Lightweight ReAct follow-up chat loop
-    │       ├── random_topic.py # Curiosity-ranked topic picker (live Wikipedia + signals)
-    │       ├── tools.py        # Retrieval ladder + media + geocoding tools
-    │       ├── media.py        # OSM tile math
-    │       ├── cache.py        # Redis + in-memory multi-tier cache
+    │       ├── llm.py            # Model-agnostic get_llm() factory
+    │       ├── research_graph.py # LangGraph map-reduce research
+    │       ├── research_agent.py # SSE adapter for the graph queue
+    │       ├── chat_agent.py     # ReAct follow-up chat loop
+    │       ├── random_topic.py   # Curiosity-ranked topic picker
+    │       ├── tools.py          # Retrieval ladder + media + geocoding
+    │       ├── supabase_client.py# Supabase Postgres client
+    │       ├── cache.py          # Redis + in-memory fallback
     │       └── scripts/
-    │           ├── capture_journey.py  # Writes backend/data/full_journey.md demo trace
-    │           └── signal_collector.py # Live trending/on-this-day curiosity signals
-    ├── pyproject.toml          # uv-managed dependencies (ruff + mypy dev group)
-    └── data/                   # Generated demo trace outputs (gitignored)
+    │           ├── migrate_to_supabase.py  # Seed hubs into Supabase
+    │           ├── capture_journey.py      # Demo trace writer
+    │           └── signal_collector.py     # Live curiosity signals
+    ├── pyproject.toml            # uv-managed Python deps
+    └── requirements.txt          # Pinned flat deps for Azure deployment
 ```
 
 ---
 
-## Environment Variables
+## Local Setup
 
-Create `.env.local` at the repo root (or export in your shell). See `.env.example`.
+### Prerequisites
 
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `CEREBRAS_API_KEY` | Yes | Live inference for the research graph + chat |
-| `CEREBRAS_MODEL` | No | Default `gemma-4-31b` |
-| `MISTRAL_API_KEY` | Optional | Alternate batch provider |
-| `MISTRAL_MODEL` | No | Default `ministral-8b-2512` |
-| `TAVILY_API_KEY` | Optional | Enables the Tavily tier of the retrieval ladder |
-| `REDIS_URL` | Optional | Enables Redis caching (falls back to in-memory) |
-| `NEXT_PUBLIC_BACKEND_URL` | Frontend | e.g. `http://localhost:8000` |
-| `NEXT_PUBLIC_CF_PROXY_URL` | Optional | Cloudflare worker URL; media falls back to `/api/media` when empty |
+- Node.js 20+ and npm
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) — `pip install uv` or `winget install astral-sh.uv`
+- (Optional) A Cloudflare account + `wrangler` for the edge media proxy
+- (Optional) Azure CLI for deploying the backend yourself
 
----
-
-## Getting Started
+### 1. Clone and configure
 
 ```bash
-# 1. Backend (uv-managed, Python 3.11+)
+git clone https://github.com/YOUR_USERNAME/tdilearned.git
+cd tdilearned
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+
+```env
+# Required
+CEREBRAS_API_KEY=csk-...
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
+
+# Strongly recommended
+TAVILY_API_KEY=tvly-...
+
+# Optional
+MISTRAL_API_KEY=...
+
+# Frontend config (use localhost for local dev)
+NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_CF_PROXY_URL=   # blank = falls back to local /api/media route
+```
+
+### 2. Start the backend
+
+```bash
 cd backend
-uv sync                       # installs deps incl. ruff + mypy dev group
-copy ..\.env.local .env.local # (or export the env vars)
+uv sync                          # installs all Python deps including dev tools
+cp ../.env.local .env.local      # share env with the backend process
 uv run uvicorn app.main:app --reload --port 8000
+```
 
-# 2. Frontend (repo root, in another terminal)
+Verify it's up:
+
+```bash
+curl http://localhost:8000/health
+# → {"status": "ok", ...}
+```
+
+### 3. Start the frontend
+
+From the repo root in a new terminal:
+
+```bash
 npm install
-npm run dev                   # Next.js dev server
+npm run dev                      # http://localhost:3000
+```
 
-# 3. Edge proxy (optional, for zero-cost media caching)
+### 4. (Optional) Local Cloudflare edge proxy
+
+```bash
 cd cloudflare
 npm install
-npx wrangler deploy           # set NEXT_PUBLIC_CF_PROXY_URL to the deployed URL
+npx wrangler dev                 # runs proxy locally on localhost:8787
+# Set NEXT_PUBLIC_CF_PROXY_URL=http://localhost:8787 in .env.local
 ```
 
-**Run a full end-to-end demo trace** (5 pillars → random topic → research → chat):
+### 5. Seed discovery hubs into Supabase
+
+If you are setting up a fresh Supabase project, create the table first:
+
+```sql
+CREATE TABLE discovery_hubs (
+  id                 TEXT PRIMARY KEY,
+  title              TEXT NOT NULL,
+  summary            TEXT NOT NULL DEFAULT '',
+  category           TEXT NOT NULL DEFAULT 'General',
+  coordinates        JSONB NOT NULL DEFAULT '{"lat": 0, "lng": 0}',
+  image_search_query TEXT NOT NULL DEFAULT '',
+  rabbit_holes       JSONB NOT NULL DEFAULT '[]',
+  created_at         TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+Then seed 886 precomputed hubs:
 
 ```bash
 cd backend
-.venv/Scripts/python.exe app/scripts/capture_journey.py History "Your follow-up question"
-# → writes backend/data/full_journey.md
+uv run python app/scripts/migrate_to_supabase.py
 ```
 
 ---
 
-## Verification & Quality Gates
+## Deploying to Production
+
+### Backend → Azure App Service
+
+```bash
+# One-time login
+az login
+
+# Create resource group
+az group create --name <your-rg> --location eastus
+
+# Deploy (Oryx auto-builds Python from requirements.txt)
+az webapp up \
+  --resource-group <your-rg> \
+  --name <your-app> \
+  --runtime "PYTHON:3.11" \
+  --sku B1 \
+  --location eastus
+
+# Set startup command (uvicorn on port 8000)
+az webapp config set \
+  --resource-group <your-rg> \
+  --name <your-app> \
+  --startup-file "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+# Inject production secrets
+az webapp config appsettings set \
+  --resource-group <your-rg> \
+  --name <your-app> \
+  --settings \
+    CEREBRAS_API_KEY="csk-..." \
+    CEREBRAS_MODEL="gemma-4-31b" \
+    MISTRAL_API_KEY="..." \
+    TAVILY_API_KEY="tvly-..." \
+    NEXT_PUBLIC_SUPABASE_URL="https://<your-project>.supabase.co" \
+    NEXT_PUBLIC_SUPABASE_ANON_KEY="sb_publishable_..." \
+    NEXT_PUBLIC_CF_PROXY_URL="https://<your-worker>.workers.dev" \
+    SCM_DO_BUILD_DURING_DEPLOYMENT="true"
+```
+
+Verify:
+
+```bash
+curl https://<your-app>.azurewebsites.net/api/v1/graph/precomputed | python -m json.tool | head -5
+```
+
+To redeploy after code changes:
 
 ```bash
 cd backend
-uv run ruff format app            # formatting
-uv run ruff check app             # lint
-uv run mypy app                   # static typing (0 errors)
+az webapp up --resource-group <your-rg> --name <your-app>
 ```
 
-### Operational benchmarks
+### Frontend → Vercel
 
-- **TypeScript**: `npx tsc --noEmit` — 0 errors (frontend)
-- **Python**: `ruff check` + `mypy app` — clean
-- **Retrieval integrity**: every `source`/`dossier` URL is real (from actual retrieval, never synthesized)
-- **Streaming**: research stream emits incremental `node_stream` events; chat streams token-by-token with `<120 ms` first-token target
-- **Media**: all imagery routes through the edge proxy with immutable CDN caching
+```bash
+# From repo root
+npx vercel --prod --yes \
+  --env NEXT_PUBLIC_BACKEND_URL="https://<your-app>.azurewebsites.net" \
+  --env NEXT_PUBLIC_CF_PROXY_URL="https://<your-worker>.workers.dev" \
+  --env NEXT_PUBLIC_SUPABASE_URL="https://<your-project>.supabase.co" \
+  --env NEXT_PUBLIC_SUPABASE_ANON_KEY="sb_publishable_..."
+```
+
+Or connect your GitHub repo in the [Vercel dashboard](https://vercel.com) — pushes to `main` auto-deploy. Set the same env vars under **Project → Settings → Environment Variables**.
+
+To redeploy after code changes:
+
+```bash
+npx vercel --prod
+```
+
+### Cloudflare Edge Media Proxy
+
+```bash
+cd cloudflare
+npm install
+npx wrangler deploy
+# → Deployed to: https://<your-worker>.tdilearned.workers.dev
+```
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CEREBRAS_API_KEY` | ✅ | Cerebras CS-3 inference key ([cloud.cerebras.ai](https://cloud.cerebras.ai)) |
+| `CEREBRAS_MODEL` | No | Default: `gemma-4-31b` |
+| `MISTRAL_API_KEY` | No | Alternate LLM provider ([mistral.ai](https://mistral.ai)) |
+| `MISTRAL_MODEL` | No | Default: `ministral-8b-2512` |
+| `TAVILY_API_KEY` | Recommended | Enables highest-quality search tier ([tavily.com](https://tavily.com)) |
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Supabase publishable key |
+| `NEXT_PUBLIC_BACKEND_URL` | ✅ | FastAPI URL (`http://localhost:8000` locally, Azure URL in prod) |
+| `NEXT_PUBLIC_CF_PROXY_URL` | Recommended | Cloudflare Worker URL for edge-cached media |
+| `REDIS_URL` | No | Azure Redis URL; falls back to in-memory cache if absent |
+
+---
+
+## Quality Gates
+
+```bash
+# Backend (run from /backend)
+uv run ruff format app       # auto-format
+uv run ruff check app        # lint (must be clean)
+uv run mypy app              # static typing (0 errors target)
+
+# Frontend (run from repo root)
+npx tsc --noEmit             # TypeScript (0 errors)
+npm run lint                 # ESLint
+```
+
+### Performance Targets
+
+| Metric | Target |
+|--------|--------|
+| Cerebras structured JSON (node expansion) | < 300ms |
+| Chat first token latency (TTFT) | < 120ms |
+| Precomputed hub load (`/graph/precomputed`) | < 200ms (886 hubs from Supabase) |
+| Media assets (Cloudflare edge) | `Cache-Control: public, max-age=31536000, immutable` |
+
+---
+
+## LLM Factory
+
+All agents share a single factory in `backend/app/services/llm.py`:
+
+```python
+llm = get_llm("cerebras")   # Cerebras CS-3 — primary (gemma-4-31b, ~3000 tok/s)
+llm = get_llm("mistral")    # Mistral — alternate/fallback (ministral-8b-2512)
+```
+
+Both providers are OpenAI-API-compatible and wrapped in `ChatOpenAI`. If a key is missing, `get_llm()` returns `None` and callers degrade to keyless retrieval paths.
 
 ---
 
 ## Design Principles
 
-- **No fake content**: every claim is grounded in fetched sources with verbatim quotes.
-- **Model-agnostic**: swap Cerebras ↔ Mistral via one factory, no per-agent wiring.
-- **Community-standard agent pattern**: map-reduce (Planner → parallel Researchers → Aggregator → Synthesizer) over bespoke one-shot prompts.
-- **Established libraries**: LangGraph, LangChain, Tavily, FastAPI, Pydantic v2, httpx — no hand-rolled frameworks.
-- **Keyless-friendly**: the whole stack degrades gracefully when optional API keys are absent.
+- **No fake content** — every claim is grounded in fetched sources with verbatim quotes and real URLs.
+- **Model-agnostic** — swap providers via `get_llm()`, no per-agent rewiring.
+- **Keyless-friendly** — DuckDuckGo + Wikipedia always available as fallbacks.
+- **Single state source** — all canvas state lives in `useMindMapStore.ts`; no local React state duplication.
+- **Edge-cached media** — all Wikimedia / OSM assets flow through the Cloudflare Worker for zero-egress immutable caching. Direct fetches from client components are forbidden.
+- **Async-only backend** — every I/O operation uses `async`/`await`; no blocking calls in the FastAPI event loop.
+
+---
+
+## TDILEARNED
