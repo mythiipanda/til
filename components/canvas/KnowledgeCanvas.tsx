@@ -5,6 +5,7 @@ import { ReactFlow, Background, Controls, BackgroundVariant, Node } from '@xyflo
 import '@xyflow/react/dist/style.css';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import ResearchNode from './ResearchNode';
+import PinnedNoteNode from './PinnedNoteNode';
 import LandingState from './LandingState';
 
 export function KnowledgeCanvas() {
@@ -18,6 +19,7 @@ export function KnowledgeCanvas() {
 
   const nodeTypes = useMemo(() => ({
     research: ResearchNode,
+    note: PinnedNoteNode,
   }), []);
 
   const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {

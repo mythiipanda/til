@@ -2,6 +2,8 @@
 
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
+import { AudioTourPlayer } from './AudioTourPlayer';
+import { MapViewer } from './MapViewer';
 import { X, ExternalLink, Sparkles, Compass, Layers, Clock, ArrowRight } from 'lucide-react';
 
 export function DossierDrawer() {
@@ -62,6 +64,15 @@ export function DossierDrawer() {
             </p>
           )}
         </div>
+
+        {/* Audio Tour Player */}
+        {activeDossier.audioTourScript && (
+          <AudioTourPlayer
+            script={activeDossier.audioTourScript}
+            topicTitle={activeDossier.title}
+          />
+        )}
+
 
         {/* Action Banner for Vector Inquiries */}
         <div className="p-4 border-2 border-black bg-neutral-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -179,6 +190,11 @@ export function DossierDrawer() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Geographic & Historical Epicenter Map */}
+        {activeDossier.geography && (
+          <MapViewer geography={activeDossier.geography} />
         )}
 
         {/* Downstream Rabbit Holes */}

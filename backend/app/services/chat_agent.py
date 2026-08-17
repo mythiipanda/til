@@ -42,16 +42,19 @@ def _emit_sse(event_type: str, data: Any) -> str:
 
 
 def _clean_search_query(node_title: str, user_question: str) -> str:
-    """Extract clean keywords from the user question without prompt noise."""
+    """Extract clean keywords from the user question while preserving the topic entity."""
     q = user_question.strip()
     # Strip conversational filler prefixes
     filler_prefixes = [
         r"^tell\s+me\s+(more\s+)?about\s+",
-        r"^can\s+you\s+explain\s+",
+        r"^can\s+you\s+(please\s+)?explain\s+",
         r"^explain\s+(to\s+me\s+)?",
-        r"^what\s+is\s+(the\s+)?",
+        r"^what\s+(is|was|were|are)\s+(the\s+)?",
         r"^how\s+(does|do|did)\s+",
-        r"^why\s+(is|are|did|does)\s+",
+        r"^why\s+(is|are|did|does|was)\s+",
+        r"^could\s+(you\s+)?",
+        r"^what\s+role\s+did\s+",
+        r"^is\s+there\s+any\s+",
     ]
     for pat in filler_prefixes:
         q = re.sub(pat, "", q, flags=re.IGNORECASE).strip()
@@ -65,11 +68,17 @@ def _clean_search_query(node_title: str, user_question: str) -> str:
     for pat in filler_suffixes:
         q = re.sub(pat, "", q, flags=re.IGNORECASE).strip()
 
-    # If the cleaned question already mentions the topic or is self-contained, use it directly
-    if node_title.lower() in q.lower() or len(q.split()) >= 3:
-        return q.strip("?.,! ")
+    clean_q = q.strip("?.,! ")
+    
+    # Check if the user question already mentions key tokens from the entity title
+    title_tokens = {t.lower() for t in re.findall(r"\w{3,}", node_title) if t.lower() not in {"the", "and", "for"}}
+    q_tokens = {t.lower() for t in re.findall(r"\w{3,}", clean_q)}
+    
+    overlap = title_tokens.intersection(q_tokens)
+    if len(overlap) == 0:
+        return f"{node_title} {clean_q}".strip()
+    return clean_q or node_title
 
-    return f"{node_title} {q}".strip("?.,! ")
 
 
 async def stream_chat(

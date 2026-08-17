@@ -73,6 +73,8 @@ interface MindMapState {
   closeDossier: () => void;
   dismissNewDossierAlert: () => void;
   sendChat: (question: string) => void;
+  pinChatToCanvas: (question: string, answer: string, citations?: Array<{ title?: string; url: string }>) => void;
+  deleteNode: (nodeId: string) => void;
   resetCanvas: () => void;
 }
 
@@ -584,6 +586,59 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     };
   },
   
+  pinChatToCanvas: (question: string, answer: string, citations?: Array<{ title?: string; url: string }>) => {
+    const activeNodeId = get().selectedNodeId || get().lastResearchedNodeId || get().nodes[0]?.id;
+    const activeNode = get().nodes.find(n => n.id === activeNodeId);
+    const activeTitle = (activeNode?.data?.title as string) || get().currentTopic || 'Research Topic';
+    
+    const noteId = `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    
+    const existingNotesCount = get().nodes.filter(n => n.type === 'note').length;
+    const offsetAngle = existingNotesCount * 0.785;
+    const baseX = activeNode ? activeNode.position.x + 460 * Math.cos(offsetAngle) : 100;
+    const baseY = activeNode ? activeNode.position.y + 460 * Math.sin(offsetAngle) : 100;
+
+    const newNoteNode: Node = {
+      id: noteId,
+      type: 'note',
+      position: { x: baseX, y: baseY },
+      data: {
+        id: noteId,
+        sourceNodeId: activeNodeId || '',
+        sourceNodeTitle: activeTitle,
+        question,
+        answer,
+        citations: citations || [],
+        timestamp: Date.now(),
+      }
+    };
+
+    const newEdges = [...get().edges];
+    if (activeNodeId) {
+      newEdges.push({
+        id: `e-note-${activeNodeId}-${noteId}`,
+        source: activeNodeId,
+        target: noteId,
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: '#000000', strokeDasharray: '4,4', strokeWidth: 1.5 },
+      });
+    }
+
+    set({
+      nodes: [...get().nodes, newNoteNode],
+      edges: newEdges,
+    });
+  },
+
+  deleteNode: (nodeId: string) => {
+    set({
+      nodes: get().nodes.filter(n => n.id !== nodeId),
+      edges: get().edges.filter(e => e.source !== nodeId && e.target !== nodeId),
+      selectedNodeId: get().selectedNodeId === nodeId ? null : get().selectedNodeId,
+    });
+  },
+
   resetCanvas: () => {
     if (researchES) researchES.close();
     if (chatES) chatES.close();
@@ -609,3 +664,4 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     });
   }
 }));
+

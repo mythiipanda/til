@@ -106,3 +106,4 @@ uv run --project C:\Users\15980\Downloads\til\backend python -m app.scripts.bulk
 - [ ] Backend Code Quality: `ruff check backend/` completes cleanly.
 - [ ] Live Research Flow: Expand a subtopic on canvas and verify continuous, fluid event delivery in the Activity Panel.
 - [ ] Dossier View: Verify full story, timeline, mechanisms, and sources open smoothly for both root and child nodes.
+Q&A very unoptimal needs fixing, alot of "not backed by context and the pre built questions are bad and this q&a should be very general purpose do some looking

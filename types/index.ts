@@ -134,6 +134,16 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface PinnedNoteData extends Record<string, unknown> {
+  id: string;
+  sourceNodeId: string;
+  sourceNodeTitle: string;
+  question: string;
+  answer: string;
+  citations: Array<{ title?: string; url: string }>;
+  timestamp: number;
+}
+
 export const CATEGORIES = [
   'Science',
   'History',
@@ -157,3 +167,4 @@ export const CATEGORIES = [
   'Economy',
   'Time',
 ] as const;
+
