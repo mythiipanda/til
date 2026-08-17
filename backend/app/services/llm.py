@@ -127,3 +127,107 @@ def get_llm(
         timeout=LLM_REQUEST_TIMEOUT,
         default_headers={_THIRD_PARTY_HEADER: _THIRD_PARTY_VALUE},
     )
+
+
+class _StructuredWithFallback:
+    """Structured-output call that fails over from primary to fallback provider."""
+
+    def __init__(self, primary: ChatOpenAI | None, fallback: ChatOpenAI | None, schema: type[Any]) -> None:
+        self._primary = primary
+        self._fallback = fallback
+        self._schema = schema
+
+    async def ainvoke(self, messages: list[Any], **kwargs: Any) -> Any:
+        if self._primary is not None:
+            try:
+                return await self._primary.with_structured_output(self._schema).ainvoke(messages, **kwargs)
+            except Exception as e:
+                logger.warning(f"Structured call failed on primary provider ({e}); falling back")
+        if self._fallback is not None:
+            return await self._fallback.with_structured_output(self._schema).ainvoke(messages, **kwargs)
+        raise RuntimeError("No LLM provider available for structured output")
+
+
+class FallbackLLM:
+    """Provider that tries a primary engine and fails over to a fallback engine.
+
+    The primary is created with ``max_retries=0`` so the first error hands off
+    to the fallback provider immediately — no time wasted on backoff. Precompute
+    callers keep using ``get_llm`` directly so their original model is never
+    swapped.
+    """
+
+    def __init__(self, primary: ChatOpenAI | None, fallback: ChatOpenAI | None) -> None:
+        self._primary = primary
+        self._fallback = fallback
+
+    @property
+    def is_available(self) -> bool:
+        return self._primary is not None or self._fallback is not None
+
+    def with_structured_output(self, schema: type[Any]) -> _StructuredWithFallback:
+        return _StructuredWithFallback(self._primary, self._fallback, schema)
+
+    async def astream(self, messages: list[Any], **kwargs: Any):
+        if self._primary is not None:
+            try:
+                async for chunk in self._primary.astream(messages, **kwargs):
+                    yield chunk
+                return
+            except Exception as e:
+                logger.warning(f"Stream failed on primary provider ({e}); falling back")
+        if self._fallback is not None:
+            async for chunk in self._fallback.astream(messages, **kwargs):
+                yield chunk
+            return
+        raise RuntimeError("No LLM provider available for streaming")
+
+
+def get_llm_with_fallback(
+    engine: str = "cerebras",
+    fallback_engine: str = "mistral",
+    fallback_model: str | None = None,
+    temperature: float = 0.7,
+    max_tokens: int = 2000,
+) -> FallbackLLM:
+    """Return a primary LLM with fail-over to the fallback provider.
+
+    The primary is configured with ``max_retries=0`` so the *first* error
+    (429/5xx/network) immediately hands off to the fallback provider rather
+    than burning time on backoff. ``fallback_model`` overrides the fallback
+    engine's default model (used for live chat where a fast small model is
+    preferable under load).
+    """
+    primary_config = _resolve(engine)
+    primary = None
+    if primary_config.api_key and primary_config.model:
+        primary = GuardedChatOpenAI(
+            model=primary_config.model,
+            api_key=SecretStr(primary_config.api_key),
+            base_url=primary_config.base_url,
+            temperature=temperature,
+            max_completion_tokens=max_tokens,
+            max_retries=0,
+            timeout=LLM_REQUEST_TIMEOUT,
+            default_headers={_THIRD_PARTY_HEADER: _THIRD_PARTY_VALUE},
+        )
+    else:
+        logger.warning(f"No API key configured for engine '{engine}'; no primary available")
+
+    fallback_config = _resolve(fallback_engine)
+    fallback = None
+    if fallback_config.api_key and fallback_config.model:
+        model = fallback_model or fallback_config.model
+        fallback = GuardedChatOpenAI(
+            model=model,
+            api_key=SecretStr(fallback_config.api_key),
+            base_url=fallback_config.base_url,
+            temperature=temperature,
+            max_completion_tokens=max_tokens,
+            max_retries=OPENAI_MAX_RETRIES,
+            timeout=LLM_REQUEST_TIMEOUT,
+            default_headers={_THIRD_PARTY_HEADER: _THIRD_PARTY_VALUE},
+        )
+    else:
+        logger.warning(f"No API key configured for fallback engine '{fallback_engine}'; no fail-over available")
+    return FallbackLLM(primary, fallback)

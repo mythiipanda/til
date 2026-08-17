@@ -9,6 +9,7 @@ loop lets the agent issue a follow-up search when the first round is thin.
 
 import json
 import logging
+import os
 import re
 import uuid
 from collections.abc import AsyncGenerator
@@ -17,7 +18,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-from app.services.llm import get_llm
+from app.services.llm import get_llm_with_fallback
 from app.services.tools import fetch_page_content, search_web_ladder
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,10 @@ logger = logging.getLogger(__name__)
 MAX_ROUNDS = 2
 MAX_SOURCES_PER_ROUND = 5
 MAX_CONTENT_CHARS = 3500
+
+# Live chat fail-over: if the primary Cerebras call exhausts its retries, fall
+# back to this small fast Mistral model so Q&A keeps streaming under load.
+LIVE_FALLBACK_MODEL = os.getenv("LIVE_FALLBACK_MODEL", "ministral-3b-2512")
 
 
 class DecideTurn(BaseModel):
@@ -106,7 +111,13 @@ async def stream_chat(
     query = clean_query
     _streamed_live = False
 
-    llm = get_llm("cerebras", temperature=0.5, max_tokens=1000)
+    llm = get_llm_with_fallback(
+        engine="cerebras",
+        fallback_engine="mistral",
+        fallback_model=LIVE_FALLBACK_MODEL,
+        temperature=0.5,
+        max_tokens=1000,
+    )
 
     for round_idx in range(MAX_ROUNDS):
         is_final = round_idx == MAX_ROUNDS - 1
@@ -170,7 +181,7 @@ async def stream_chat(
             elif src.snippet:
                 evidence_blocks.append(f"SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}")
 
-        if not llm:
+        if not llm or not llm.is_available:
             break
 
         history_context = ""
