@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
@@ -25,6 +25,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
   const selectNode = useMindMapStore(s => s.selectNode);
   const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
   const closeDossier = useMindMapStore(s => s.closeDossier);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   const targetNodeId = String(data.id || data.nodeId || '');
   const isSelected = selectedNodeId === targetNodeId;
@@ -93,11 +94,16 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
       {/* Grayscale-to-Color Image */}
       {data.imageUrl && (
         <div className="dragHandle cursor-grab active:cursor-grabbing relative h-[160px] w-full border-b-2 border-black overflow-hidden bg-neutral-100">
+          {!imgLoaded && (
+            <div className="absolute inset-0 animate-pulse-block bg-neutral-200" />
+          )}
           <img
             src={data.imageUrl}
             alt=""
             className="w-full h-full object-cover grayscale contrast-125 transition-all duration-300 group-hover:grayscale-0 pointer-events-none"
             loading="lazy"
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgLoaded(true)}
           />
         </div>
       )}

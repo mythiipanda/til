@@ -391,17 +391,34 @@ export function DossierDrawer() {
               )}
             </>
           ) : (
-            <div className="text-center py-20 font-mono text-xs text-neutral-500 space-y-3">
-              <p>[ SELECT ANY NODE ON THE CANVAS TO READ MONOGRAPH ]</p>
-              {isResearching && (
-                <button
-                  onClick={() => setWorkstationTab('agent')}
-                  className="px-4 py-2 bg-black text-white font-mono text-xs uppercase font-bold hover:bg-neutral-800"
-                >
-                  View Live Agent Stream →
-                </button>
-              )}
-            </div>
+            isDossierLoading ? (
+              <div className="space-y-5 animate-pulse-block" aria-busy="true">
+                <div className="space-y-3">
+                  <div className="w-40 h-5 bg-neutral-200 border border-black" />
+                  <div className="w-3/4 h-9 bg-neutral-200 border border-black" />
+                  <div className="w-1/2 h-4 bg-neutral-200 border border-black" />
+                </div>
+                <div className="w-full h-24 bg-neutral-100 border-2 border-black" />
+                <div className="w-full h-3.5 bg-neutral-200 border border-black" />
+                <div className="w-11/12 h-3.5 bg-neutral-200 border border-black" />
+                <div className="w-4/5 h-3.5 bg-neutral-200 border border-black" />
+                <div className="w-full h-2.5 bg-neutral-200 border border-black" />
+                <div className="w-3/4 h-2.5 bg-neutral-200 border border-black" />
+                <div className="w-2/3 h-2.5 bg-neutral-200 border border-black" />
+              </div>
+            ) : (
+              <div className="text-center py-20 font-mono text-xs text-neutral-500 space-y-3">
+                <p>[ SELECT ANY NODE ON THE CANVAS TO READ MONOGRAPH ]</p>
+                {isResearching && (
+                  <button
+                    onClick={() => setWorkstationTab('agent')}
+                    className="px-4 py-2 bg-black text-white font-mono text-xs uppercase font-bold hover:bg-neutral-800"
+                  >
+                    View Live Agent Stream →
+                  </button>
+                )}
+              </div>
+            )
           )}
         </div>
       )}

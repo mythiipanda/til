@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useCallback, useEffect } from 'react';
-import { ReactFlow, Background, Controls, BackgroundVariant, Node } from '@xyflow/react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
+import { ReactFlow, ReactFlowProvider, Background, Controls, BackgroundVariant, Node, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import ResearchNode from './ResearchNode';
@@ -9,6 +9,14 @@ import PinnedNoteNode from './PinnedNoteNode';
 import LandingState from './LandingState';
 
 export function KnowledgeCanvas() {
+  return (
+    <ReactFlowProvider>
+      <CanvasInner />
+    </ReactFlowProvider>
+  );
+}
+
+function CanvasInner() {
   const nodes = useMindMapStore(s => s.nodes);
   const edges = useMindMapStore(s => s.edges);
   const onNodesChange = useMindMapStore(s => s.onNodesChange);
@@ -16,11 +24,25 @@ export function KnowledgeCanvas() {
   const isResearching = useMindMapStore(s => s.isResearching);
   const selectNode = useMindMapStore(s => s.selectNode);
   const openDossier = useMindMapStore(s => s.openDossier);
+  const { fitView } = useReactFlow();
+
+  const prevNodeCount = useRef(nodes.length);
+  const isDragging = useRef(false);
 
   const nodeTypes = useMemo(() => ({
     research: ResearchNode,
     note: PinnedNoteNode,
   }), []);
+
+  // Auto-fit when a new node streams in during research so freshly spawned
+  // children stay in view without manual panning. Suppressed while the user
+  // is dragging to avoid fighting their pointer.
+  useEffect(() => {
+    if (nodes.length > prevNodeCount.current && isResearching && !isDragging.current) {
+      fitView({ padding: 0.12, maxZoom: 1.05, duration: 400 });
+    }
+    prevNodeCount.current = nodes.length;
+  }, [nodes.length, isResearching, fitView]);
 
   const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     if (node && node.id) {
@@ -29,7 +51,12 @@ export function KnowledgeCanvas() {
     }
   }, [selectNode, openDossier]);
 
+  const handleNodeDragStart = useCallback(() => {
+    isDragging.current = true;
+  }, []);
+
   const handleNodeDragStop = useCallback(() => {
+    isDragging.current = false;
     // A drag just ended — flush the debounced autosave so positions are durable
     // even if the tab closes before the debounce fires.
     useMindMapStore.getState().flushCanvasAutosave?.();
@@ -63,6 +90,7 @@ export function KnowledgeCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onNodeDragStart={handleNodeDragStart}
         onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
