@@ -6,6 +6,16 @@ Pick a topic, watch a multi-agent pipeline research it live across the web, and 
 
 **Live:** [tdilearned.vercel.app](https://tdilearned.vercel.app)
 
+## Screenshots
+
+| Infinite spatial canvas | Precomputed discovery hub |
+|-------------------------|---------------------------|
+| ![Canvas](screenshots/home.png) | ![Hub](screenshots/hub.PNG) |
+
+| Agent research activity | AI chat drawer |
+|-------------------------|----------------|
+| ![Agent](screenshots/agent.PNG) | ![Chat](screenshots/chat.PNG) |
+
 ---
 
 ## Architecture
