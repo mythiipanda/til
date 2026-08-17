@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface ThinkingReasoningProps {
   lines: string[];
   active: boolean;
   /** Label for the folded state, e.g. "Thought for 4s" */
-  doneLabel?: string;
+  doneLabel?: ReactNode;
 }
 
 /**

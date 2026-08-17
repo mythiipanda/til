@@ -165,7 +165,7 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
                           </h3>
                         </div>
 
-                        <span className="font-mono text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
+                        <span className="font-mono text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-[opacity,transform]">
                           →
                         </span>
                       </div>
@@ -227,6 +227,7 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
                           onClick={(e) => handleDeleteCloud(map.id, e)}
                           className="p-1 text-neutral-400 hover:text-white transition-colors"
                           title="Delete from cloud"
+                          aria-label="Delete mindmap from cloud"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

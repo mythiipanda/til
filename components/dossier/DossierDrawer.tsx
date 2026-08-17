@@ -65,6 +65,7 @@ export function DossierDrawer() {
             onClick={() => setIsMinimized(false)}
             className="p-1 hover:bg-white hover:text-black transition-colors"
             title="Expand Workstation"
+            aria-label="Expand workstation"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
@@ -72,6 +73,7 @@ export function DossierDrawer() {
             onClick={closeDossier}
             className="p-1 hover:bg-white hover:text-black transition-colors"
             title="Close Workstation"
+            aria-label="Close workstation"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -102,6 +104,7 @@ export function DossierDrawer() {
               onClick={() => setIsMinimized(true)}
               className="p-1 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
               title="Minimize Window"
+              aria-label="Minimize dossier window"
             >
               <Minus className="w-3.5 h-3.5" />
             </button>
@@ -109,6 +112,7 @@ export function DossierDrawer() {
               onClick={closeDossier}
               className="p-1 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
               title="Close Window"
+              aria-label="Close dossier window"
             >
               <X className="w-3.5 h-3.5" />
             </button>

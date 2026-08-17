@@ -49,7 +49,7 @@ export function MapViewer({ geography }: MapViewerProps) {
         <iframe
           title={`Map of ${locationName}`}
           src={osmEmbedUrl}
-          className="w-full h-full border-none grayscale contrast-125 hover:grayscale-0 transition-all duration-300"
+          className="w-full h-full border-none grayscale contrast-125 hover:grayscale-0 transition-[filter] duration-300 image-outline"
           loading="lazy"
         />
       </div>

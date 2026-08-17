@@ -147,6 +147,7 @@ export function ChatComposer() {
             onClick={() => setIsMinimized(false)}
             className="p-1 hover:bg-white hover:text-black transition-colors"
             title="Restore Q&A"
+            aria-label="Restore Q&A"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
@@ -166,15 +167,16 @@ export function ChatComposer() {
           <div className="px-3 py-2 bg-black text-white flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 bg-white shrink-0" />
-              <span className="font-mono text-[11px] font-bold tracking-wider truncate max-w-[400px]">
-                Q&amp;A: {currentTopic}
-              </span>
-            </div>
+<span className="font-mono text-[11px] font-bold tracking-wider truncate max-w-[400px]">
+              Q&amp;A: {currentTopic}
+            </span>
+          </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsMinimized(true)}
                 className="p-1 text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
                 title="Minimize Q&A"
+                aria-label="Minimize Q&A"
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
@@ -182,6 +184,7 @@ export function ChatComposer() {
                 onClick={() => setIsExpanded(false)}
                 className="p-1 text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
                 title="Close Q&A"
+                aria-label="Close Q&A"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -220,7 +223,7 @@ export function ChatComposer() {
                             <ThinkingReasoning
                               lines={msg.thoughts || []}
                               active={isStreamingThis}
-                              doneLabel={`Thought for ${elapsedSeconds(startedAt, isStreamingThis ? now : msg.timestamp || startedAt)}`}
+                              doneLabel={<span className="tabular-nums">Thought for {elapsedSeconds(startedAt, isStreamingThis ? now : msg.timestamp || startedAt)}</span>}
                             />
                           )}
 
@@ -259,8 +262,13 @@ export function ChatComposer() {
                                 onClick={() => handleCopy(idx, msg.content)}
                                 className="p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
                                 title="Copy answer"
+                                aria-label={isCopied ? 'Answer copied' : 'Copy answer'}
                               >
-                                {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                {isCopied ? (
+                                  <Check key="copied" className="w-3.5 h-3.5 icon-swap-enter" />
+                                ) : (
+                                  <Copy key="copy" className="w-3.5 h-3.5 icon-swap-enter" />
+                                )}
                               </button>
                               <button
                                 onClick={() => handlePin(idx, prevUserMsg, msg.content, msg.sources?.map(s => ({ title: s.title, url: s.url })))}
@@ -272,7 +280,7 @@ export function ChatComposer() {
                                 }`}
                                 title="Pin this answer as a card on the mindmap canvas"
                               >
-                                {isPinned ? <Check className="w-3.5 h-3.5" /> : <BookmarkPlus className="w-3.5 h-3.5" />}
+                                {isPinned ? <Check key="pinned" className="w-3.5 h-3.5 icon-swap-enter" /> : <BookmarkPlus key="pin" className="w-3.5 h-3.5 icon-swap-enter" />}
                                 {isPinned ? <span>Pinned</span> : <span>Pin</span>}
                               </button>
                             </div>

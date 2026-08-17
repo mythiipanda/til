@@ -100,7 +100,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
           <img
             src={data.imageUrl}
             alt=""
-            className="w-full h-full object-cover grayscale contrast-125 transition-all duration-300 group-hover:grayscale-0 pointer-events-none"
+            className="w-full h-full object-cover grayscale contrast-125 transition-[filter] duration-300 group-hover:grayscale-0 pointer-events-none image-outline"
             loading="lazy"
             onLoad={() => setImgLoaded(true)}
             onError={() => setImgLoaded(true)}

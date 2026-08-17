@@ -176,7 +176,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
       {/* Progress Bar */}
       <div className="w-full bg-neutral-800 h-1.5 overflow-hidden">
         <div 
-          className="bg-white h-full transition-all duration-300 ease-out"
+          className="bg-white h-full transition-[width] duration-300 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -207,6 +207,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
               onClick={handleStop}
               className="p-1.5 border border-neutral-700 text-neutral-400 hover:text-white hover:border-white transition-colors"
               title="Stop Narration"
+              aria-label="Stop narration"
             >
               <Square className="w-3.5 h-3.5" />
             </button>

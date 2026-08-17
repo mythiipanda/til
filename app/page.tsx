@@ -161,6 +161,7 @@ export default function Home() {
               isLibraryOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
             }`}
             title="My Saved Mindmaps & History"
+            aria-label="My saved mindmaps and history"
           >
             <Bookmark className="w-3.5 h-3.5" />
           </button>
@@ -173,6 +174,7 @@ export default function Home() {
                 isShareOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
               }`}
               title="Share & Export Mindmap"
+              aria-label="Share and export mindmap"
             >
               <Share2 className="w-3.5 h-3.5" />
             </button>
@@ -184,6 +186,7 @@ export default function Home() {
               onClick={resetCanvas}
               className="p-1.5 border border-black hover:bg-black hover:text-white transition-colors"
               title="Reset to Cover"
+              aria-label="Reset canvas to home cover"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -229,6 +232,7 @@ export default function Home() {
             onClick={dismissNewDossierAlert}
             className="p-1 text-neutral-400 hover:text-white"
             title="Dismiss"
+            aria-label="Dismiss new story alert"
           >
             <X className="w-3.5 h-3.5" />
           </button>

@@ -4,12 +4,29 @@
 
 /* ── Minimalist Monochrome Design Tokens ─────────────────────── */
 :root {
-  --background:        #FFFFFF;
-  --foreground:        #000000;
-  --muted:             #F8F8F8;
-  --muted-foreground:  #525252;
-  --border:            #000000;
-  --border-light:      #E5E5E5;
+  /* Semantic tokens — primitives behind them, roles as usage */
+  --color-page-bg:           #FFFFFF;
+  --color-page-text:         #000000;
+  --color-surface:           #F8F8F8;
+  --color-surface-hover:     #F0F0F0;
+  --color-text-body:         #000000;
+  --color-text-secondary:    #525252;
+  --color-text-tertiary:     #9E9E9E;
+  --color-border-strong:     #000000;
+  --color-border-subtle:     #E5E5E5;
+  --color-accent-solid:      #000000;
+  --color-accent-contrast:   #FFFFFF;
+
+  /* Image outline: 1px, offset -1px, black at 8% (light mode) */
+  --color-image-outline:     rgba(0, 0, 0, 0.08);
+
+  /* Background/foreground aliases for the Tailwind theme */
+  --background:        var(--color-page-bg);
+  --foreground:        var(--color-page-text);
+  --muted:             var(--color-surface);
+  --muted-foreground:  var(--color-text-secondary);
+  --border:            var(--color-border-strong);
+  --border-light:      var(--color-border-subtle);
   --card:              #FFFFFF;
   --card-foreground:   #000000;
 
@@ -32,6 +49,61 @@ html, body {
   font-family: var(--font-source-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings balance; descriptions pretty; long words/IDs break */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+/* Tabular figures on every changing value (timers, counters, counts) */
+.tabular-nums,
+[data-tabular] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Underlines clear descenders */
+a {
+  text-underline-position: from-font;
+  text-decoration-skip-ink: auto;
+}
+
+/* Focus: never outline:none without a visible replacement */
+:focus-visible {
+  outline: 2px solid var(--color-accent-solid);
+  outline-offset: 2px;
+}
+
+/* Decorative glows/gradients never swallow clicks */
+.pointer-events-none {
+  pointer-events: none;
+}
+
+/* Buttons: press scale, named-property transition */
+button:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 200ms ease-out;
+}
+
+/* Hover feedback only for devices that support it */
+@media (hover: hover) {
+  .hoverable {
+    transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 ::selection {
@@ -120,6 +192,30 @@ html, body {
 @keyframes lineReveal {
   from { opacity: 0; transform: translateY(3px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Icon swap: entering icon scales up + unblurs, exiting reverses */
+@keyframes iconEnter {
+  from { opacity: 0; transform: scale(0.25); filter: blur(4px); }
+  to   { opacity: 1; transform: scale(1);   filter: blur(0); }
+}
+@keyframes iconExit {
+  from { opacity: 1; transform: scale(1);   filter: blur(0); }
+  to   { opacity: 0; transform: scale(0.25); filter: blur(4px); }
+}
+
+/* Image outline: 1px, offset -1px (black 8% in light mode) */
+.image-outline {
+  outline: 1px solid var(--color-image-outline);
+  outline-offset: -1px;
+}
+
+/* Icon swap containers: children animate on swap via key remount */
+.icon-swap-enter {
+  animation: iconEnter 200ms ease-out forwards;
+}
+.icon-swap-exit {
+  animation: iconExit 200ms ease-in forwards;
 }
 
 .animate-fade {

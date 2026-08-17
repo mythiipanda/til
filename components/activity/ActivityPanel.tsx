@@ -75,6 +75,7 @@ export function ActivityPanel() {
             onClick={() => setIsMinimized(false)}
             className="p-1 hover:bg-white hover:text-black transition-colors"
             title="Expand Activity Log"
+            aria-label="Expand activity log"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
@@ -82,6 +83,7 @@ export function ActivityPanel() {
             onClick={() => setIsDismissed(true)}
             className="p-1 hover:bg-white hover:text-black transition-colors"
             title="Dismiss Activity Panel"
+            aria-label="Dismiss activity panel"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -119,6 +121,7 @@ export function ActivityPanel() {
             onClick={() => setIsMinimized(true)}
             className="p-1 border border-white hover:bg-white hover:text-black transition-colors"
             title="Minimize Window"
+            aria-label="Minimize activity panel"
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
@@ -126,6 +129,7 @@ export function ActivityPanel() {
             onClick={() => setIsDismissed(true)}
             className="p-1 border border-white hover:bg-white hover:text-black transition-colors"
             title="Close Window"
+            aria-label="Close activity panel"
           >
             <X className="w-3.5 h-3.5" />
           </button>

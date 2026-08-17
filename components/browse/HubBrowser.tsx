@@ -110,6 +110,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
           onClick={onClose}
           className="p-1 text-neutral-400 hover:text-white transition-colors"
           title="Close"
+          aria-label="Close topic browser"
         >
           <X className="w-5 h-5" />
         </button>
