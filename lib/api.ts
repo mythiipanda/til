@@ -44,6 +44,7 @@ export const api = {
     contextChain?: string[],
     parentSummary?: string,
     teaserContext?: string,
+    model?: string,
   ) => {
     const params = new URLSearchParams({ topic });
     if (category) params.set('category', category);
@@ -51,6 +52,7 @@ export const api = {
     if (contextChain && contextChain.length > 0) params.set('context_chain', contextChain.join(','));
     if (parentSummary) params.set('parent_summary', parentSummary);
     if (teaserContext) params.set('teaser_context', teaserContext);
+    if (model) params.set('model', model);
     return `${API}/api/v1/research/stream?${params}`;
   },
 
@@ -62,6 +64,7 @@ export const api = {
     history: ChatHistoryMessage[] = [],
     activeSummary?: string,
     nodeId?: string,
+    model?: string,
   ) => {
     const params = new URLSearchParams({
       node_title: nodeTitle,
@@ -78,8 +81,15 @@ export const api = {
     if (activeSummary) {
       params.set('active_summary', activeSummary);
     }
+    if (model) {
+      params.set('model', model);
+    }
     return `${API}/api/v1/chat/stream?${params}`;
   },
+
+  /** List free models catalog across Cerebras, Mistral, and OpenRouter */
+  modelsCatalog: () =>
+    withTimeout(`${API}/api/v1/models`),
 
   /** Pick a curiosity-ranked random topic */
   randomTopic: (category: string) =>

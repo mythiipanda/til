@@ -20,7 +20,8 @@ import type {
   ChatMessage,
   PrecomputedHubSummary,
   NodeSchema,
-  PrecomputedHub
+  PrecomputedHub,
+  ModelOption,
 } from '@/types';
 
 interface MindMapState {
@@ -32,6 +33,12 @@ interface MindMapState {
   contextChain: string[];
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
+  
+  // Model Selector
+  selectedModelId: string;
+  availableModels: ModelOption[];
+  setSelectedModelId: (modelId: string) => void;
+  fetchAvailableModels: () => Promise<void>;
   
   // Research flow
   isResearching: boolean;
@@ -210,6 +217,36 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     scheduleAutosave();
   },
   
+  selectedModelId: 'cerebras:gemma-4-31b',
+  availableModels: [],
+
+  setSelectedModelId: (modelId: string) => {
+    set({ selectedModelId: modelId });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tdilearned_model', modelId);
+    }
+  },
+
+  fetchAvailableModels: async () => {
+    try {
+      const res = await api.modelsCatalog();
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.models) {
+          set({ availableModels: data.models });
+          const saved = typeof window !== 'undefined' ? localStorage.getItem('tdilearned_model') : null;
+          if (saved && data.models.some((m: ModelOption) => m.id === saved && m.is_available)) {
+            set({ selectedModelId: saved });
+          } else if (data.default_model) {
+            set({ selectedModelId: data.default_model });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load models catalog:', e);
+    }
+  },
+
   currentTopic: '',
   isResearching: false,
   hasNewDossier: false,
@@ -319,7 +356,8 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       parentId,
       currentChain,
       parentSummary,
-      teaserContext
+      teaserContext,
+      get().selectedModelId
     );
     const es = new EventSource(url);
     researchES = es;
@@ -706,7 +744,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       ]
     }));
     
-    const url = api.chatStreamUrl(nodeTitle, question, ancestors, history, activeSummary, activeNode?.id);
+    const url = api.chatStreamUrl(nodeTitle, question, ancestors, history, activeSummary, activeNode?.id, get().selectedModelId);
     const es = new EventSource(url);
     chatES = es;
 

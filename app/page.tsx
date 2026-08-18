@@ -9,6 +9,7 @@ import { UserMenu } from '@/components/auth/UserMenu';
 import { MyMindMapsDrawer } from '@/components/library/MyMindMapsDrawer';
 import { ShareModal } from '@/components/share/ShareModal';
 import { MobileBottomBar } from '@/components/ui/MobileBottomBar';
+import { ModelSelector } from '@/components/model/ModelSelector';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
 import { Plus, RotateCcw, BookOpen, Sparkles, X, Share2, Bookmark, Keyboard, Command } from 'lucide-react';
@@ -120,17 +121,17 @@ export default function Home() {
     selectNode,
   ]);
 
+  const handleSurpriseMe = async () => {
+    const randomCategory = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
+    await loadRandomHubByCategory(randomCategory);
+  };
+
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customInput.trim()) return;
-    setIsCustomModalOpen(false);
-    startResearch(customInput.trim(), 'General');
+    startResearch(customInput.trim());
     setCustomInput('');
-  };
-
-  const handleSurpriseMe = () => {
-    const randomCat = FLAGSHIP_CATEGORIES[Math.floor(Math.random() * FLAGSHIP_CATEGORIES.length)];
-    loadRandomHubByCategory(randomCat);
+    setIsCustomModalOpen(false);
   };
 
   const handleToggleBrowse = () => {
@@ -203,8 +204,11 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Right: Actions */}
+        {/* Right: Actions & Model Selector */}
         <div className="flex items-center gap-2">
+          {/* Model Selector Dropdown */}
+          <ModelSelector className="hidden sm:inline-block" />
+
           {/* Researching Live Indicator */}
           {isResearching && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-black text-white font-mono text-[10px] uppercase tracking-wider font-bold">

@@ -142,6 +142,22 @@ export interface ChatMessage {
   suggestedFollowUps?: string[];
 }
 
+export interface ModelOption {
+  id: string; // e.g. "cerebras:gemma-4-31b" or "openrouter:meta-llama/llama-3.3-70b-instruct:free"
+  name: string; // "Gemma 4 31B"
+  provider: 'cerebras' | 'mistral' | 'openrouter' | string;
+  provider_label: string; // "Cerebras", "Mistral AI", "OpenRouter"
+  model_id: string;
+  tier: string;
+  is_free: boolean;
+  is_available: boolean;
+}
+
+export interface ModelCatalog {
+  default_model: string;
+  models: ModelOption[];
+}
+
 export interface PinnedNoteData extends Record<string, unknown> {
   id: string;
   sourceNodeId: string;
