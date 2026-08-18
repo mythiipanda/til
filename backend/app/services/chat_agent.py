@@ -33,14 +33,6 @@ MAX_CONTENT_CHARS = 3500
 LIVE_FALLBACK_MODEL = os.getenv("LIVE_FALLBACK_MODEL", "ministral-3b-2512")
 
 
-class DecideTurn(BaseModel):
-    """The agent's decision after reviewing gathered evidence."""
-
-    answer: str = Field(description="Final grounded educational answer if ready; else an empty string")
-    follow_up_query: str = Field(description="A refined keyword search query if more evidence is needed; else empty")
-    cites_used: list[str] = Field(default_factory=list, description="The source URLs actually used for the answer")
-
-
 class SuggestedFollowUps(BaseModel):
     """3 provocative curiosity follow-up questions for the user to explore next."""
 
@@ -157,13 +149,9 @@ async def stream_chat(
                     parts.append(f"ANCHOR SOURCES:\n{src_str}")
 
             monograph_canon = "\n\n" + "\n\n".join(parts)
-
     evidence_blocks: list[str] = []
     cited: list[dict] = []
-    answer_text = ""
-    follow_up = ""
     query = clean_query
-    _streamed_live = False
 
     llm = get_llm_with_fallback(
         engine="cerebras",
@@ -173,171 +161,120 @@ async def stream_chat(
         max_tokens=1000,
     )
 
-    for round_idx in range(MAX_ROUNDS):
-        is_final = round_idx == MAX_ROUNDS - 1
-        if round_idx > 0:
-            if not follow_up:
-                break
-            query = _clean_search_query(node_title, follow_up)
-            yield _emit_sse(
-                "thought",
-                {
-                    "agent": "Follow-up Guide",
-                    "text": f"Refining inquiry search: '{query}'.",
-                },
-            )
+    call_id = str(uuid.uuid4())[:8]
+    yield _emit_sse(
+        "tool_call",
+        {
+            "call_id": call_id,
+            "tool": "WebSearch",
+            "query": query,
+            "status": "running",
+        },
+    )
+    sources = await search_web_ladder(query, max_results=MAX_SOURCES_PER_ROUND)
+    yield _emit_sse(
+        "tool_result",
+        {
+            "call_id": call_id,
+            "tool": "WebSearch",
+            "preview": f"Found {len(sources)} verified sources",
+            "count": len(sources),
+            "status": "success",
+        },
+    )
 
-        call_id = str(uuid.uuid4())[:8]
+    for src in sources:
         yield _emit_sse(
-            "tool_call",
+            "source",
             {
-                "call_id": call_id,
-                "tool": "WebSearch",
-                "query": query,
-                "status": "running",
+                "id": str(uuid.uuid4())[:8],
+                "title": src.title,
+                "url": src.url,
+                "snippet": src.snippet[:250],
+                "publisher": src.publisher,
+                "reliabilityScore": src.reliabilityScore,
             },
         )
-        sources = await search_web_ladder(query, max_results=MAX_SOURCES_PER_ROUND)
-        yield _emit_sse(
-            "tool_result",
-            {
-                "call_id": call_id,
-                "tool": "WebSearch",
-                "preview": f"Found {len(sources)} sources for round {round_idx + 1}",
-                "count": len(sources),
-                "status": "success",
-            },
+
+    raw_contents = await fetch_page_content(
+        [s.url for s in sources[:4]],
+        max_chars=MAX_CONTENT_CHARS,
+    )
+    contents = raw_contents if isinstance(raw_contents, list) else []
+    for src, content in zip(sources[:4], contents):
+        if isinstance(content, str) and content:
+            evidence_blocks.append(f"SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}\nCONTENT: {content}")
+        elif src.snippet:
+            evidence_blocks.append(f"SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}")
+
+    history_context = ""
+    if history and len(history) > 0:
+        history_lines = [
+            f"{'User' if m.get('role') == 'user' else 'Assistant'}: {m.get('content', '')}"
+            for m in history[-4:]
+            if m.get("content")
+        ]
+        if history_lines:
+            history_context = "\n\nCONVERSATION HISTORY:\n" + "\n".join(history_lines)
+
+    summary_info = f"\nActive Card Overview: {active_summary}" if active_summary else ""
+
+    if evidence_blocks:
+        user_prompt = (
+            f"Active Concept: {node_title}\n"
+            f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
+            f"User Question: {user_question}\n\n"
+            f"VERIFIED EVIDENCE BLOCKS:\n" + "\n\n".join(evidence_blocks)
+        )
+    else:
+        user_prompt = (
+            f"Active Concept: {node_title}\n"
+            f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
+            f"User Question: {user_question}\n(no external search evidence retrieved)"
         )
 
-        for src in sources:
-            yield _emit_sse(
-                "source",
-                {
-                    "id": str(uuid.uuid4())[:8],
-                    "title": src.title,
-                    "url": src.url,
-                    "snippet": src.snippet[:250],
-                    "publisher": src.publisher,
-                    "reliabilityScore": src.reliabilityScore,
-                },
-            )
+    system_prompt = (
+        "You are an inspiring, authoritative educator for TDILEARNED (Today I Learned). "
+        "The reader is exploring an interactive knowledge map and has asked a follow-up question. "
+        "Your job is to provide a clear, insightful, and thoroughly grounded 2-3 paragraph answer.\n"
+        "GUIDELINES:\n"
+        "1. Ground your response in the provided CANON and SOURCE evidence, explaining underlying mechanisms or history.\n"
+        "2. Do not use robotic meta-commentary like 'Based on the provided text'. Write the answer directly.\n"
+        "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for legibility."
+    )
 
-        raw_contents = await fetch_page_content(
-            [s.url for s in sources[:4]],
-            max_chars=MAX_CONTENT_CHARS,
-        )
-        contents = raw_contents if isinstance(raw_contents, list) else []
-        for src, content in zip(sources[:4], contents):
-            if isinstance(content, str) and content:
-                evidence_blocks.append(
-                    f"SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}\nCONTENT: {content}"
-                )
-            elif src.snippet:
-                evidence_blocks.append(f"SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}")
+    yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
+    streamed_chunks: list[str] = []
 
-        if not llm or not llm.is_available:
-            break
-
-        history_context = ""
-        if history and len(history) > 0:
-            history_lines = [
-                f"{'User' if m.get('role') == 'user' else 'Assistant'}: {m.get('content', '')}"
-                for m in history[-4:]
-                if m.get("content")
-            ]
-            if history_lines:
-                history_context = "\n\nCONVERSATION HISTORY:\n" + "\n".join(history_lines)
-
-        summary_info = f"\nActive Card Overview: {active_summary}" if active_summary else ""
-
-        if evidence_blocks:
-            user_prompt = (
-                f"Active Concept: {node_title}\n"
-                f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
-                f"User Question: {user_question}\n\n"
-                f"VERIFIED EVIDENCE BLOCKS:\n" + "\n\n".join(evidence_blocks)
-            )
-        else:
-            user_prompt = (
-                f"Active Concept: {node_title}\n"
-                f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
-                f"User Question: {user_question}\n(no external search evidence retrieved)"
-            )
-
-        system_prompt = (
-            "You are an inspiring, authoritative educator and storyteller for TDILEARNED (Today I Learned). "
-            "The reader is exploring an interactive knowledge map and has asked a follow-up question. "
-            "Your job is to provide a captivating, clear, and thoroughly grounded 2-3 paragraph answer.\n"
-            "GUIDELINES:\n"
-            "1. Ground your response in the provided CANON and SOURCE evidence with factual citations, synthesizing key facts with underlying scientific or historical context.\n"
-            "2. NEVER use robotic meta-commentary like 'Based on the provided text' or 'The sources do not mention'. "
-            "If an exact phrase is metaphorical or cross-disciplinary, explain the core concepts and bridge the connection naturally.\n"
-            "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for maximum legibility.\n"
-            "4. If the evidence is sufficient, return your full answer and leave follow_up_query empty. "
-            "If crucial information is missing, leave answer empty and return a refined keyword follow_up_query."
-        )
-
-        if is_final:
-            # Final round: stream the answer token-by-token straight from the
-            # model for a true live-chat feel (no post-hoc word chunking).
-            system_prompt += (
-                "\n[FINAL ROUND]: You MUST provide your complete educational answer now using the gathered evidence "
-                "and your broad domain knowledge. Write the answer directly — no JSON envelope, no meta-commentary."
-            )
-            yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
-            streamed_chunks: list[str] = []
-            _streamed_live = True
-            try:
-                async for chunk_msg in llm.astream(
-                    [  # type: ignore[arg-type]
-                        SystemMessage(content=system_prompt),
-                        HumanMessage(content=user_prompt),
-                    ]
-                ):
-                    token = getattr(chunk_msg, "content", "") or ""
-                    if token:
-                        streamed_chunks.append(token)
-                        yield _emit_sse("token", {"token": token})
-            except Exception as e:
-                logger.warning(f"Final answer stream error ({e})")
-            answer_text = "".join(streamed_chunks)
-            cited = [{"url": s.url, "used": True} for s in sources[:5]]
-            follow_up = ""
-            break
-
+    if llm and llm.is_available:
         try:
-            structured = llm.with_structured_output(DecideTurn)
-            res = await structured.ainvoke(
-                [  # type: ignore[assignment]
+            async for chunk_msg in llm.astream(
+                [  # type: ignore[arg-type]
                     SystemMessage(content=system_prompt),
                     HumanMessage(content=user_prompt),
                 ]
-            )
-            decision = res if isinstance(res, DecideTurn) else DecideTurn.model_validate(res)  # type: ignore[arg-type]
-            answer_text = decision.answer
-            follow_up = decision.follow_up_query
-            cited = [{"url": u, "used": True} for u in decision.cites_used]
-            if answer_text and not follow_up:
-                break
+            ):
+                token = getattr(chunk_msg, "content", "") or ""
+                if token:
+                    streamed_chunks.append(token)
+                    yield _emit_sse("token", {"token": token})
         except Exception as e:
-            logger.warning(f"Follow-up decide error ({e})")
-            break
+            logger.warning(f"Live answer stream error ({e})")
 
-    # Fallback answer only when no live stream produced one
+    answer_text = "".join(streamed_chunks)
+    cited = [{"url": s.url, "used": True} for s in sources[:5]]
+
+    # Fallback answer only if streaming produced nothing
     if not answer_text:
         answer_text = (
             f"**{node_title}** relates to several key historical and scientific developments. "
             f"Regarding *{user_question}*, the core principle centers on how these mechanisms interact in practice. "
             f"You can explore the surrounding connected cards on the canvas to dive into specific branches."
         )
+        for w in answer_text.split(" "):
+            yield _emit_sse("token", {"token": w + " "})
 
-    if not _streamed_live:
-        yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
-        for idx, w in enumerate(answer_text.split(" ")):
-            chunk = w + (" " if idx < len(answer_text.split(" ")) - 1 else "")
-            yield _emit_sse("token", {"token": chunk})
-
-    # Proactively synthesize 3 dynamic follow-up questions to keep user exploring
+    # Proactively synthesize 3 dynamic follow-up questions
     follow_ups: list[str] = []
     if llm and llm.is_available:
         try:
@@ -348,7 +285,7 @@ async def stream_chat(
                         content=(
                             "You are a curiosity editor. Based on the topic and the answer just provided, "
                             "write exactly 3 short, intriguing, natural follow-up questions that a curious user would want to click next. "
-                            "Questions must be under 10 words, provocative, and lead to deeper insights or connected phenomena."
+                            "Questions must be under 10 words and lead to deeper insights."
                         )
                     ),
                     HumanMessage(

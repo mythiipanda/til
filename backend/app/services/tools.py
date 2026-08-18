@@ -1,6 +1,6 @@
 """
 Multi-Vector Research Tools for Deep Autonomous Agent Exploration
-Implements a retrieval ladder (Tavily -> DuckDuckGo -> Wikipedia) plus
+Implements a retrieval ladder (DuckDuckGo -> Wikipedia) plus
 page-content extraction, Wikimedia archives, and OSM geocoding.
 Every source URL returned by these tools is real and verifiable.
 """
@@ -67,46 +67,8 @@ async def aclose_shared_client() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Retrieval ladder: Tavily -> DuckDuckGo -> Wikipedia
+# Retrieval ladder: DuckDuckGo -> Wikipedia
 # ---------------------------------------------------------------------------
-
-
-async def tavily_search(query: str, max_results: int = 5) -> list[SourceCitationSchema] | None:
-    """Search via Tavily API. Returns None when no API key is configured."""
-    api_key = os.getenv("TAVILY_API_KEY")
-    if not api_key:
-        return None
-    try:
-        from tavily import AsyncTavilyClient
-
-        client = AsyncTavilyClient(api_key=api_key)
-        resp = await client.search(
-            query=query,
-            max_results=max_results,
-            search_depth="advanced",
-            include_answer=False,
-            include_raw_content="text",
-        )
-        sources: list[SourceCitationSchema] = []
-        for idx, r in enumerate(resp.get("results", [])):
-            url = r.get("url", "")
-            title = r.get("title", "") or url
-            if not url:
-                continue
-            sources.append(
-                SourceCitationSchema(
-                    id=f"tavily-{idx}-{hash(url) % 10**6}",
-                    title=title,
-                    url=url,
-                    snippet=(r.get("content") or "")[:400],
-                    publisher=(r.get("domain") or r.get("url") or "Web"),
-                    reliabilityScore=0.85,
-                )
-            )
-        return sources
-    except Exception as e:
-        logger.warning(f"Tavily search error ({e})")
-        return None
 
 
 async def duckduckgo_search(query: str, max_results: int = 5) -> list[SourceCitationSchema] | None:
@@ -191,7 +153,7 @@ async def search_web_ladder(
 ) -> list[SourceCitationSchema]:
     """Run the retrieval ladder and merge results, deduplicating by URL.
 
-    Order of preference: Tavily (needs key) -> DuckDuckGo (keyless) -> Wikipedia.
+    Combines DuckDuckGo web results and Wikipedia archival entries.
     Each non-Wikipedia pool is filtered by lexical relevance to the query to keep
     out off-topic noise. Returns a best-effort list of verified sources; never fabricates.
     """
@@ -217,16 +179,15 @@ async def search_web_ladder(
             seen.add(s.url)
             merged.append(s)
 
-    # Parallel: Tavily + DuckDuckGo attempt; Wikipedia always as a guaranteed floor.
+    # Parallel: DuckDuckGo + Wikipedia
     ddg_task = duckduckgo_search(query, max_results=max_results)
     wiki_task = wikipedia_search(query, max_results=max_results) if include_wikipedia else None
 
-    _add(await tavily_search(query, max_results=max_results))
     _add(await ddg_task)
     if wiki_task:
         _add(await wiki_task, filter_noise=False)
 
-    # Prefer authoritative sources (Wikipedia/Tavily) over keyless fallbacks.
+    # Prefer authoritative Wikipedia sources over general web.
     merged.sort(key=lambda s: float(s.reliabilityScore or 0.0), reverse=True)
     res = merged[: max_results + 3]
     if res:
