@@ -276,7 +276,7 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
     if context_str:
         context_str = f"\n\nCONTEXT FROM USER DISCOVERY TRAIL:\n{context_str}\n"
 
-    llm = _llm(config, temperature=0.4, max_tokens=1000)
+    llm = _llm(config, temperature=0.4, max_tokens=4000)
     angles: list[ResearchAngle] = []
     if llm:
         try:
@@ -415,7 +415,7 @@ async def researcher_node(state: ResearcherWorkerState, config: RunnableConfig) 
             evidence_blocks.append(f"SOURCE: {src.title}\nURL: {src.url}\nCONTENT: {content}")
 
     findings: list[ResearchFinding] = []
-    llm = _llm(config, temperature=0.2, max_tokens=1500)
+    llm = _llm(config, temperature=0.2, max_tokens=4000)
     if llm and evidence_blocks:
         try:
             structured = llm.with_structured_output(LLMResearcherExtraction)
@@ -533,7 +533,7 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
     if context_str:
         context_str = f"\n\nDISCOVERY CONTEXT:\n{context_str}\n"
 
-    llm = _llm(config, temperature=0.7, max_tokens=6000)
+    llm = _llm(config, temperature=0.7, max_tokens=8000)
     dossier_data: LLMDeepDossierOutput | None = None
     children_data: list[LLMChildBranchDefinition] = []
 
@@ -622,11 +622,13 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
         sink, 4, state["topic"], count_findings=len(findings), count_sources=len(state.get("sources", []))
     )
 
+    active_model = config.get("configurable", {}).get("model") or "cerebras:gemma-4-31b"
     await sink.emit(
         "thought",
         {
             "agent": "Storyteller Agent",
-            "text": "Synthesizing deep narrative story and explanatory mechanisms.",
+            "text": f"Synthesized deep narrative monograph and concept branches via {active_model}.",
+            "model": active_model,
         },
     )
 

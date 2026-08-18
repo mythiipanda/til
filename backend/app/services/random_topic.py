@@ -349,7 +349,7 @@ async def _catalog_pool(category: str) -> list[dict[str, str | int]]:
 
 async def _llm_seed_queries(category: str) -> list[str]:
     """LLM proposes curiosity-directed search queries for a category."""
-    llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.9, max_tokens=300)
+    llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.9, max_tokens=2000)
     if llm is None:
         return []
     try:
@@ -488,7 +488,7 @@ async def _fallback_any_page() -> list[dict[str, str]]:
 
 
 async def _llm_pick(category: str, candidates: list[dict[str, str | int]]) -> _TopicPick | None:
-    llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.4, max_tokens=500)
+    llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.4, max_tokens=2000)
     if llm is None:
         return None
     try:

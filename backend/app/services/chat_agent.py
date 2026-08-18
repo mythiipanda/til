@@ -259,16 +259,33 @@ async def stream_chat(
         "4. MANDATORY NUMERIC CITATIONS: You MUST cite your statements directly using the numbered bracket tags matching the evidence sources, e.g. [1], [2], [3]. Place [N] immediately after facts, figures, dates, or mechanisms derived from that source (for example: 'Discovered in 1901 [1], the artifact utilized a 30-gear train mechanism [2]').\n"
         "5. STRICT CITATION FORMAT: NEVER write words inside citation brackets (such as [Canon], [Source], [Ref], or (Canon)). Use ONLY numeric integer brackets like [1], [2]."
     )
+    active_model_id = model or "cerebras:gemma-4-31b"
+    # Format clean proof label
+    if ":" in active_model_id:
+        p_name, m_name = active_model_id.split(":", 1)
+        p_label = "Cerebras" if p_name == "cerebras" else ("Mistral AI" if p_name == "mistral" else "OpenRouter")
+        clean_m = m_name.replace(":free", "").replace("(free)", "").replace("-it", "").replace("-", " ").title()
+        model_label = f"{clean_m} · {p_label}"
+    else:
+        model_label = active_model_id.title()
 
     llm = get_llm_with_fallback(
-        engine=model or "cerebras",
+        engine=active_model_id,
         fallback_engine="mistral",
         fallback_model=LIVE_FALLBACK_MODEL,
         temperature=0.5,
-        max_tokens=1000,
+        max_tokens=4000,
     )
 
-    yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
+    yield _emit_sse(
+        "answer_start",
+        {
+            "node_title": node_title,
+            "question": user_question,
+            "model": active_model_id,
+            "model_label": model_label,
+        },
+    )
     streamed_chunks: list[str] = []
 
     if llm and llm.is_available:
@@ -301,7 +318,7 @@ async def stream_chat(
 
     # Proactively synthesize 3 dynamic follow-up questions
     follow_ups: list[str] = []
-    fu_llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.7, max_tokens=300)
+    fu_llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.7, max_tokens=2000)
     if fu_llm and fu_llm.is_available:
         try:
             structured_fu = fu_llm.with_structured_output(SuggestedFollowUps)
@@ -329,10 +346,19 @@ async def stream_chat(
 
     if not follow_ups:
         follow_ups = [
-            f"How does {node_title} work in practice?",
-            f"What are the biggest misconceptions about {node_title}?",
-            f"What historical events trace back to {node_title}?",
+            f"How did {node_title} first emerge?",
+            f"What was the key breakthrough behind {node_title}?",
+            f"How does {node_title} impact modern science?",
         ]
 
-    yield _emit_sse("suggested_questions", follow_ups[:3])
+    yield _emit_sse(
+        "answer_complete",
+        {
+            "answer": answer_text,
+            "cited_sources": cited,
+            "suggested_follow_ups": follow_ups,
+            "model": active_model_id,
+            "model_label": model_label,
+        },
+    )
     yield _emit_sse("done", {"cited": cited})

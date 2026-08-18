@@ -68,6 +68,7 @@ class ProviderConfig:
     model: str | None
     base_url: str | None
     default_headers: dict[str, str] = field(default_factory=dict)
+    extra_body: dict[str, Any] = field(default_factory=dict)
 
 
 _cerebras_cache: list[dict[str, Any]] = []
@@ -367,6 +368,7 @@ def _resolve(engine: str, model: str | None = None) -> ProviderConfig:
             model=resolved_model or os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free"),
             base_url=_OPENROUTER_BASE_URL,
             default_headers={"HTTP-Referer": "https://tdilearned.com", "X-Title": "TDILEARNED"},
+            extra_body={"reasoning": {"effort": "low", "exclude": True}},
         )
     raise ValueError(f"Unknown LLM engine '{eng}'. Use 'cerebras', 'mistral', or 'openrouter'.")
 
@@ -504,22 +506,24 @@ def get_llm(
     engine: str = "cerebras",
     model: str | None = None,
     temperature: float = 0.7,
-    max_tokens: int = 2000,
+    max_tokens: int = 4000,
 ) -> ChatOpenAI | None:
     """Return a configured ChatOpenAI client for the given provider engine and model."""
     config = _resolve(engine, model)
     if not config.api_key or not config.model:
         logger.warning(f"No API key configured for engine '{config.engine}'; returning None")
         return None
+    eff_tokens = max(max_tokens, 8192) if config.engine == "openrouter" else max_tokens
     return GuardedChatOpenAI(
         model=config.model,
         api_key=SecretStr(config.api_key),
         base_url=config.base_url,
         temperature=temperature,
-        max_completion_tokens=max_tokens,
+        max_completion_tokens=eff_tokens,
         max_retries=OPENAI_MAX_RETRIES,
         timeout=LLM_REQUEST_TIMEOUT,
         default_headers=config.default_headers,
+        extra_body=config.extra_body if config.extra_body else None,
     )
 
 
@@ -542,6 +546,13 @@ class _StructuredWithFallback:
             try:
                 return await self._primary.with_structured_output(self._schema).ainvoke(messages, **kwargs)
             except Exception as e:
+                err_str = str(e)
+                json_match = re.search(r"(\{[\s\S]*\})", err_str)
+                if json_match:
+                    try:
+                        return self._schema.model_validate_json(json_match.group(1))
+                    except Exception:
+                        pass
                 logger.warning(f"Structured call failed on primary provider ({e}); falling back")
 
         # 2. Try fallback provider with structured output
@@ -549,6 +560,13 @@ class _StructuredWithFallback:
             try:
                 return await self._fallback.with_structured_output(self._schema).ainvoke(messages, **kwargs)
             except Exception as e:
+                err_str = str(e)
+                json_match = re.search(r"(\{[\s\S]*\})", err_str)
+                if json_match:
+                    try:
+                        return self._schema.model_validate_json(json_match.group(1))
+                    except Exception:
+                        pass
                 logger.warning(f"Structured call failed on fallback provider ({e}); attempting JSON repair")
 
         # 3. Direct JSON schema repair fallback
@@ -627,21 +645,23 @@ def get_llm_with_fallback(
     fallback_engine: str = "mistral",
     fallback_model: str | None = None,
     temperature: float = 0.7,
-    max_tokens: int = 2000,
+    max_tokens: int = 4000,
 ) -> FallbackLLM:
     """Return a primary LLM with fail-over to the fallback provider."""
     primary_config = _resolve(engine, model)
     primary = None
     if primary_config.api_key and primary_config.model:
+        pri_tokens = max(max_tokens, 8192) if primary_config.engine == "openrouter" else max_tokens
         primary = GuardedChatOpenAI(
             model=primary_config.model,
             api_key=SecretStr(primary_config.api_key),
             base_url=primary_config.base_url,
             temperature=temperature,
-            max_completion_tokens=max_tokens,
+            max_completion_tokens=pri_tokens,
             max_retries=0,
             timeout=LLM_REQUEST_TIMEOUT,
             default_headers=primary_config.default_headers,
+            extra_body=primary_config.extra_body if primary_config.extra_body else None,
         )
     else:
         logger.warning(f"No API key configured for primary engine '{primary_config.engine}'; using fallback")
@@ -655,15 +675,17 @@ def get_llm_with_fallback(
     fallback_config = _resolve(fb_engine, fallback_model)
     fallback = None
     if fallback_config.api_key and fallback_config.model:
+        fb_tokens = max(max_tokens, 8192) if fallback_config.engine == "openrouter" else max_tokens
         fallback = GuardedChatOpenAI(
             model=fallback_config.model,
             api_key=SecretStr(fallback_config.api_key),
             base_url=fallback_config.base_url,
             temperature=temperature,
-            max_completion_tokens=max_tokens,
+            max_completion_tokens=fb_tokens,
             max_retries=OPENAI_MAX_RETRIES,
             timeout=LLM_REQUEST_TIMEOUT,
             default_headers=fallback_config.default_headers,
+            extra_body=fallback_config.extra_body if fallback_config.extra_body else None,
         )
     else:
         logger.warning(f"No API key configured for fallback engine '{fallback_config.engine}'")
