@@ -140,6 +140,8 @@ export interface ChatMessage {
   toolCalls?: Array<{ id: string; tool: string; query?: string; status: 'running' | 'success' }>;
   sources?: Array<{ id: string; title: string; url: string; snippet?: string }>;
   suggestedFollowUps?: string[];
+  model?: string;
+  modelLabel?: string;
 }
 
 export interface ModelOption {

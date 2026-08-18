@@ -735,12 +735,22 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       content: m.content,
     }));
 
+    const activeModelId = get().selectedModelId;
+    const selectedMod = get().availableModels.find(m => m.id === activeModelId);
+    const defaultModelLabel = selectedMod ? `${selectedMod.name} · ${selectedMod.provider_label}` : undefined;
+
     set((state) => ({
       isChatStreaming: true,
       chatMessages: [
         ...state.chatMessages,
         { role: 'user', content: question, timestamp: Date.now() },
-        { role: 'assistant', content: '', timestamp: Date.now() + 1 }
+        { 
+          role: 'assistant', 
+          content: '', 
+          timestamp: Date.now() + 1,
+          model: activeModelId,
+          modelLabel: defaultModelLabel,
+        }
       ]
     }));
     
@@ -831,6 +841,8 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             const last = msgs[msgs.length - 1];
             if (last && last.role === 'assistant') {
               last.content = '';
+              if (data.model) last.model = data.model;
+              if (data.model_label) last.modelLabel = data.model_label;
             }
             return { chatMessages: msgs };
           });
@@ -840,6 +852,17 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             const last = msgs[msgs.length - 1];
             if (last && last.role === 'assistant') {
               last.content += data.token;
+            }
+            return { chatMessages: msgs };
+          });
+        } else if (event === 'answer_complete') {
+          set((state) => {
+            const msgs = [...state.chatMessages];
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant') {
+              if (data.model) last.model = data.model;
+              if (data.model_label) last.modelLabel = data.model_label;
+              if (data.suggested_follow_ups) last.suggestedFollowUps = data.suggested_follow_ups;
             }
             return { chatMessages: msgs };
           });

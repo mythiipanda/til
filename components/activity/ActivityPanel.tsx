@@ -39,6 +39,10 @@ export function ActivityPanel() {
   const lastResearchedNodeId = useMindMapStore(s => s.lastResearchedNodeId);
   const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
   const activeDossier = useMindMapStore(s => s.activeDossier);
+  const selectedModelId = useMindMapStore(s => s.selectedModelId);
+  const availableModels = useMindMapStore(s => s.availableModels);
+  const activeModel = availableModels.find(m => m.id === selectedModelId);
+  const activeModelLabel = activeModel ? `${activeModel.name} · ${activeModel.provider_label}` : selectedModelId;
 
   const [isMinimized, setIsMinimized] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -104,8 +108,13 @@ export function ActivityPanel() {
             <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
           )}
           <div>
-            <div className="font-mono text-xs uppercase tracking-widest font-bold">
-              AGENT LOG
+            <div className="font-mono text-xs uppercase tracking-widest font-bold flex items-center gap-2">
+              <span>AGENT LOG</span>
+              {activeModelLabel && (
+                <span className="text-[9px] font-normal text-neutral-300 border border-neutral-700 px-1.5 py-0.5 rounded-sm bg-neutral-900">
+                  {activeModelLabel}
+                </span>
+              )}
             </div>
             <div className="font-mono text-[9px] text-neutral-400">
               {isResearching 

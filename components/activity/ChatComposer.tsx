@@ -259,34 +259,43 @@ export function ChatComposer() {
                             <InlineCitations sources={msg.sources} />
                           )}
 
-                          {/* Message actions */}
+                          {/* Message actions & Proof of model badge */}
                           {msg.content && !isStreamingThis && (
-                            <div className="flex items-center gap-1.5 pt-1">
-                              <button
-                                onClick={() => handleCopy(idx, msg.content)}
-                                className="p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
-                                title="Copy answer"
-                                aria-label={isCopied ? 'Answer copied' : 'Copy answer'}
-                              >
-                                {isCopied ? (
-                                  <Check key="copied" className="w-3.5 h-3.5 icon-swap-enter" />
-                                ) : (
-                                  <Copy key="copy" className="w-3.5 h-3.5 icon-swap-enter" />
-                                )}
-                              </button>
-                              <button
-                                onClick={() => handlePin(idx, prevUserMsg, msg.content, msg.sources?.map(s => ({ title: s.title, url: s.url })))}
-                                disabled={isPinned}
-                                className={`p-1.5 transition-colors flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
-                                  isPinned
-                                    ? 'text-neutral-400 cursor-default'
-                                    : 'text-neutral-500 hover:text-black hover:bg-neutral-100'
-                                }`}
-                                title="Pin this answer as a card on the mindmap canvas"
-                              >
-                                {isPinned ? <Check key="pinned" className="w-3.5 h-3.5 icon-swap-enter" /> : <BookmarkPlus key="pin" className="w-3.5 h-3.5 icon-swap-enter" />}
-                                {isPinned ? <span>Pinned</span> : <span>Pin</span>}
-                              </button>
+                            <div className="flex items-center justify-between pt-1 border-t border-neutral-100 mt-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => handleCopy(idx, msg.content)}
+                                  className="p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
+                                  title="Copy answer"
+                                  aria-label={isCopied ? 'Answer copied' : 'Copy answer'}
+                                >
+                                  {isCopied ? (
+                                    <Check key="copied" className="w-3.5 h-3.5 icon-swap-enter" />
+                                  ) : (
+                                    <Copy key="copy" className="w-3.5 h-3.5 icon-swap-enter" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handlePin(idx, prevUserMsg, msg.content, msg.sources?.map(s => ({ title: s.title, url: s.url })))}
+                                  disabled={isPinned}
+                                  className={`p-1.5 transition-colors flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
+                                    isPinned
+                                      ? 'text-neutral-400 cursor-default'
+                                      : 'text-neutral-500 hover:text-black hover:bg-neutral-100'
+                                  }`}
+                                  title="Pin this answer as a card on the mindmap canvas"
+                                >
+                                  {isPinned ? <Check key="pinned" className="w-3.5 h-3.5 icon-swap-enter" /> : <BookmarkPlus key="pin" className="w-3.5 h-3.5 icon-swap-enter" />}
+                                  {isPinned ? <span>Pinned</span> : <span>Pin</span>}
+                                </button>
+                              </div>
+
+                              {(msg.modelLabel || msg.model) && (
+                                <div className="flex items-center gap-1.5 font-mono text-[10px] text-neutral-400 tracking-tight pr-1 select-none">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 shrink-0" />
+                                  <span>{msg.modelLabel || msg.model}</span>
+                                </div>
+                              )}
                             </div>
                           )}
 

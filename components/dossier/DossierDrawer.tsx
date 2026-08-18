@@ -39,6 +39,10 @@ export function DossierDrawer() {
   const sources = useMindMapStore(s => s.sources);
   const workstationTab = useMindMapStore(s => s.workstationTab);
   const setWorkstationTab = useMindMapStore(s => s.setWorkstationTab);
+  const selectedModelId = useMindMapStore(s => s.selectedModelId);
+  const availableModels = useMindMapStore(s => s.availableModels);
+  const activeModel = availableModels.find(m => m.id === selectedModelId);
+  const activeModelLabel = activeModel ? `${activeModel.name} · ${activeModel.provider_label}` : selectedModelId;
 
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMagazineMode, setIsMagazineMode] = useState(false);
@@ -462,8 +466,13 @@ export function DossierDrawer() {
                 <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 font-bold">
                   {isResearching ? 'Researching' : 'Synthesis complete'}
                 </div>
-                <div className="font-serif text-sm font-bold text-black truncate">
-                  {currentTopic || 'Research Topic'}
+                <div className="font-serif text-sm font-bold text-black truncate flex items-center gap-2">
+                  <span>{currentTopic || 'Research Topic'}</span>
+                  {activeModelLabel && (
+                    <span className="font-mono text-[9px] font-normal text-neutral-500 border border-neutral-200 px-1.5 py-0.5 rounded-sm bg-neutral-50">
+                      {activeModelLabel}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -516,6 +525,17 @@ export function DossierDrawer() {
           {sources.length > 0 && !isResearching && (
             <div className="space-y-2 pt-1">
               <InlineCitations sources={sources} />
+            </div>
+          )}
+
+          {/* Model Attribution Footer */}
+          {activeModelLabel && (
+            <div className="pt-2.5 border-t border-neutral-100 flex items-center justify-between font-mono text-[10px] text-neutral-400 select-none">
+              <span>ORCHESTRATION SWARM</span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 shrink-0" />
+                {activeModelLabel}
+              </span>
             </div>
           )}
 
