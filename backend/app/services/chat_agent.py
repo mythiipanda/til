@@ -201,11 +201,13 @@ async def stream_chat(
         max_chars=MAX_CONTENT_CHARS,
     )
     contents = raw_contents if isinstance(raw_contents, list) else []
-    for src, content in zip(sources[:4], contents):
+    for idx, (src, content) in enumerate(zip(sources[:4], contents), start=1):
         if isinstance(content, str) and content:
-            evidence_blocks.append(f"SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}\nCONTENT: {content}")
+            evidence_blocks.append(
+                f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}\nCONTENT:\n{content}"
+            )
         elif src.snippet:
-            evidence_blocks.append(f"SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}")
+            evidence_blocks.append(f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET:\n{src.snippet}")
 
     history_context = ""
     if history and len(history) > 0:
@@ -224,7 +226,7 @@ async def stream_chat(
             f"Active Concept: {node_title}\n"
             f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
             f"User Question: {user_question}\n\n"
-            f"VERIFIED EVIDENCE BLOCKS:\n" + "\n\n".join(evidence_blocks)
+            f"VERIFIED EVIDENCE BLOCKS (Cite using [1], [2], etc.):\n" + "\n\n".join(evidence_blocks)
         )
     else:
         user_prompt = (
@@ -240,7 +242,8 @@ async def stream_chat(
         "GUIDELINES:\n"
         "1. Ground your response in the provided CANON and SOURCE evidence, explaining underlying mechanisms or history.\n"
         "2. Do not use robotic meta-commentary like 'Based on the provided text'. Write the answer directly.\n"
-        "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for legibility."
+        "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for legibility.\n"
+        "4. MANDATORY CITATIONS: You MUST cite your statements directly using the numbered bracket tags matching the evidence sources, e.g. [1], [2], [3]. Place [N] immediately after facts, figures, dates, or mechanisms derived from that source (for example: 'Discovered in 1901 [1], the artifact utilized a 30-gear train mechanism [2]')."
     )
 
     yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
@@ -276,9 +279,10 @@ async def stream_chat(
 
     # Proactively synthesize 3 dynamic follow-up questions
     follow_ups: list[str] = []
-    if llm and llm.is_available:
+    fu_llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.7, max_tokens=300)
+    if fu_llm and fu_llm.is_available:
         try:
-            structured_fu = llm.with_structured_output(SuggestedFollowUps)
+            structured_fu = fu_llm.with_structured_output(SuggestedFollowUps)
             fu_res = await structured_fu.ainvoke(
                 [  # type: ignore[assignment]
                     SystemMessage(

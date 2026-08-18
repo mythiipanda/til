@@ -43,7 +43,7 @@ from app.schemas.research import (
     ResearchPlan,
 )
 from app.services.cache import cache_service
-from app.services.llm import get_llm, get_llm_with_fallback
+from app.services.llm import get_llm_with_fallback
 from app.services.media import calculate_osm_tiles
 from app.services.tools import (
     fetch_page_content,
@@ -155,21 +155,51 @@ def _sink(config: RunnableConfig) -> EventSink:
 
 
 def _llm(config: RunnableConfig, temperature: float, max_tokens: int) -> Any:
-    """Resolve the per-run LLM engine (cerebras with fast failover for live, mistral for batch)."""
+    """Resolve the per-run LLM engine with failover and circuit breaker protection."""
     engine = config["configurable"].get("llm_engine", "cerebras")
-    if engine == "cerebras":
-        return get_llm_with_fallback(
-            engine="cerebras",
-            fallback_engine="mistral",
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-    return get_llm(engine, temperature=temperature, max_tokens=max_tokens)
+    return get_llm_with_fallback(
+        engine=engine,
+        fallback_engine="mistral",
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Sequential Plan Progression Helpers
 # ---------------------------------------------------------------------------
+
+
+def _extract_search_keywords(topic: str, question: str) -> str:
+    """Extract clean entity-anchored search keywords from a long analytical question."""
+    # Strip markdown formatting
+    q = re.sub(r"[\*_~`\"']+", "", question)
+    # Strip conversational / analytical question prefixes
+    prefixes = [
+        r"^what\s+(were|are|was|is)\s+(the\s+)?(precise|specific|core|key)?\s*",
+        r"^how\s+(did|does|do)\s+(the\s+)?",
+        r"^why\s+(did|does|do|was|is)\s+(the\s+)?",
+        r"^to\s+what\s+extent\s+(did|does)\s*",
+        r"^examine\s+(the\s+)?",
+        r"^analyze\s+(the\s+)?",
+    ]
+    for pat in prefixes:
+        q = re.sub(pat, "", q, flags=re.IGNORECASE)
+
+    # Strip trailing clauses
+    q = re.split(r"[?;:]", q)[0]
+    words = [w.strip() for w in q.split() if len(w.strip()) > 2]
+    # Filter stop words
+    stop_words = {"and", "the", "for", "with", "from", "that", "this", "between", "which", "into", "through", "about"}
+    meaningful = [w for w in words if w.lower() not in stop_words][:6]
+    clean_search = " ".join(meaningful)
+
+    # Ensure topic entity is present
+    topic_tokens = set(re.findall(r"\w{3,}", topic.lower()))
+    search_tokens = set(re.findall(r"\w{3,}", clean_search.lower()))
+    if not topic_tokens.intersection(search_tokens):
+        return f"{topic} {clean_search}".strip()
+    return clean_search or topic
 
 
 def _build_plan_steps(phase: int, topic: str, count_findings: int = 0, count_sources: int = 0) -> list[PlanStepSchema]:
@@ -329,14 +359,7 @@ async def researcher_node(state: ResearcherWorkerState, config: RunnableConfig) 
     topic = state["topic"]
     sink = _sink(config)
 
-    # Ensure search queries are entity-anchored so sub-angle questions don't drift
-    clean_q = angle.question.strip()
-    topic_tokens = set(re.findall(r"\w{3,}", topic.lower()))
-    q_tokens = set(re.findall(r"\w{3,}", clean_q.lower()))
-    if not topic_tokens.intersection(q_tokens):
-        search_query = f"{topic} {clean_q}"
-    else:
-        search_query = clean_q
+    search_query = _extract_search_keywords(topic, angle.question)
 
     await sink.emit(
         "tool_call",
@@ -514,7 +537,7 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
     dossier_data: LLMDeepDossierOutput | None = None
     children_data: list[LLMChildBranchDefinition] = []
 
-    if llm and llm.is_available:
+    if llm is not None:
         try:
             structured = llm.with_structured_output(LLMSeedTreeWithBranches)
             res = await structured.ainvoke(
@@ -796,7 +819,11 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
             await sink.emit("node_stream", c_node.model_dump())
             await asyncio.sleep(0.05)
 
-    return {"root_node": root_node.model_dump(), "child_nodes": [c.model_dump() for c in child_nodes]}
+    return {
+        "root_node": root_node.model_dump(),
+        "child_nodes": [c.model_dump() for c in child_nodes],
+        "dossier": dossier.model_dump(),
+    }
 
 
 # ---------------------------------------------------------------------------

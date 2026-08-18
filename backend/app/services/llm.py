@@ -129,30 +129,6 @@ def get_llm(
     )
 
 
-import time
-
-_disabled_providers: dict[str, float] = {}
-
-
-def is_provider_disabled(engine: str) -> bool:
-    """Return True if an engine is temporarily in circuit-breaker cooldown."""
-    t = _disabled_providers.get(engine.lower())
-    if t is None:
-        return False
-    if time.time() < t:
-        return True
-    del _disabled_providers[engine.lower()]
-    return False
-
-
-def disable_provider(engine: str, duration_seconds: float = 600.0) -> None:
-    """Trip the circuit breaker on a provider (e.g. 402 payment required / quota exhausted)."""
-    _disabled_providers[engine.lower()] = time.time() + duration_seconds
-    logger.warning(
-        f"Circuit breaker tripped for LLM engine '{engine}' (quota/payment error). Disabled for {duration_seconds:.0f}s."
-    )
-
-
 class _StructuredWithFallback:
     """Structured-output call that fails over from primary to fallback provider."""
 
@@ -161,21 +137,16 @@ class _StructuredWithFallback:
         primary: ChatOpenAI | None,
         fallback: ChatOpenAI | None,
         schema: type[Any],
-        primary_engine: str = "cerebras",
     ) -> None:
         self._primary = primary
         self._fallback = fallback
         self._schema = schema
-        self._primary_engine = primary_engine
 
     async def ainvoke(self, messages: list[Any], **kwargs: Any) -> Any:
-        if self._primary is not None and not is_provider_disabled(self._primary_engine):
+        if self._primary is not None:
             try:
                 return await self._primary.with_structured_output(self._schema).ainvoke(messages, **kwargs)
             except Exception as e:
-                err_msg = str(e)
-                if "402" in err_msg or "payment_required" in err_msg or "quota" in err_msg.lower():
-                    disable_provider(self._primary_engine, duration_seconds=600.0)
                 logger.warning(f"Structured call failed on primary provider ({e}); falling back")
         if self._fallback is not None:
             return await self._fallback.with_structured_output(self._schema).ainvoke(messages, **kwargs)
@@ -192,29 +163,37 @@ class FallbackLLM:
     """
 
     def __init__(
-        self, primary: ChatOpenAI | None, fallback: ChatOpenAI | None, primary_engine: str = "cerebras"
+        self,
+        primary: ChatOpenAI | None,
+        fallback: ChatOpenAI | None,
     ) -> None:
         self._primary = primary
         self._fallback = fallback
-        self._primary_engine = primary_engine
 
     @property
     def is_available(self) -> bool:
         return self._primary is not None or self._fallback is not None
 
     def with_structured_output(self, schema: type[Any]) -> _StructuredWithFallback:
-        return _StructuredWithFallback(self._primary, self._fallback, schema, self._primary_engine)
+        return _StructuredWithFallback(self._primary, self._fallback, schema)
+
+    async def ainvoke(self, messages: list[Any], **kwargs: Any) -> Any:
+        if self._primary is not None:
+            try:
+                return await self._primary.ainvoke(messages, **kwargs)
+            except Exception as e:
+                logger.warning(f"ainvoke failed on primary provider ({e}); falling back")
+        if self._fallback is not None:
+            return await self._fallback.ainvoke(messages, **kwargs)
+        raise RuntimeError("No LLM provider available for ainvoke")
 
     async def astream(self, messages: list[Any], **kwargs: Any):
-        if self._primary is not None and not is_provider_disabled(self._primary_engine):
+        if self._primary is not None:
             try:
                 async for chunk in self._primary.astream(messages, **kwargs):
                     yield chunk
                 return
             except Exception as e:
-                err_msg = str(e)
-                if "402" in err_msg or "payment_required" in err_msg or "quota" in err_msg.lower():
-                    disable_provider(self._primary_engine, duration_seconds=600.0)
                 logger.warning(f"Stream failed on primary provider ({e}); falling back")
         if self._fallback is not None:
             async for chunk in self._fallback.astream(messages, **kwargs):
@@ -240,7 +219,7 @@ def get_llm_with_fallback(
     """
     primary_config = _resolve(engine)
     primary = None
-    if primary_config.api_key and primary_config.model and not is_provider_disabled(engine):
+    if primary_config.api_key and primary_config.model:
         primary = GuardedChatOpenAI(
             model=primary_config.model,
             api_key=SecretStr(primary_config.api_key),
@@ -251,8 +230,6 @@ def get_llm_with_fallback(
             timeout=LLM_REQUEST_TIMEOUT,
             default_headers={_THIRD_PARTY_HEADER: _THIRD_PARTY_VALUE},
         )
-    elif is_provider_disabled(engine):
-        logger.debug(f"Primary engine '{engine}' is in circuit-breaker cooldown; routing directly to fallback")
     else:
         logger.warning(f"No API key configured for engine '{engine}'; no primary available")
 
@@ -272,4 +249,4 @@ def get_llm_with_fallback(
         )
     else:
         logger.warning(f"No API key configured for fallback engine '{fallback_engine}'; no fail-over available")
-    return FallbackLLM(primary, fallback, primary_engine=engine)
+    return FallbackLLM(primary, fallback)

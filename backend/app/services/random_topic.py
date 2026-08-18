@@ -350,7 +350,7 @@ async def _catalog_pool(category: str) -> list[dict[str, str | int]]:
 async def _llm_seed_queries(category: str) -> list[str]:
     """LLM proposes curiosity-directed search queries for a category."""
     llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.9, max_tokens=300)
-    if not llm or not llm.is_available:
+    if llm is None:
         return []
     try:
         structured = llm.with_structured_output(_SeedQueries)
@@ -489,7 +489,7 @@ async def _fallback_any_page() -> list[dict[str, str]]:
 
 async def _llm_pick(category: str, candidates: list[dict[str, str | int]]) -> _TopicPick | None:
     llm = get_llm_with_fallback(engine="cerebras", fallback_engine="mistral", temperature=0.4, max_tokens=500)
-    if not llm or not llm.is_available:
+    if llm is None:
         return None
     try:
         structured = llm.with_structured_output(_TopicPick)
