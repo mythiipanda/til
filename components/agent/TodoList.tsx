@@ -80,14 +80,14 @@ export function TodoList({ steps }: TodoListProps) {
                   ) : isActive ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
                   ) : (
-                    <span className="w-2.5 h-2.5 rounded-full border border-neutral-300 inline-block" />
+                    <span className="w-2.5 h-2.5 border border-neutral-300 inline-block" />
                   )}
                 </span>
                 <span className="font-body text-xs leading-snug flex-1 truncate">
                   {step.title}
                 </span>
                 {isActive && step.agent && (
-                  <span className="font-mono text-[9px] text-neutral-500 uppercase tracking-wider ml-auto shrink-0 animate-pulse border border-neutral-200 px-1 py-0.2">
+                  <span className="font-mono text-[9px] text-neutral-500 uppercase tracking-wider ml-auto shrink-0 animate-pulse border border-neutral-200 px-1.5 py-0.5">
                     {step.agent}
                   </span>
                 )}

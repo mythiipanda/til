@@ -111,7 +111,7 @@ export function ActivityPanel() {
             <div className="font-mono text-xs uppercase tracking-widest font-bold flex items-center gap-2">
               <span>AGENT LOG</span>
               {activeModelLabel && (
-                <span className="text-[9px] font-normal text-neutral-300 border border-neutral-700 px-1.5 py-0.5 rounded-sm bg-neutral-900">
+                <span className="text-[9px] font-medium text-neutral-300 border border-neutral-700 px-1.5 py-0.5 bg-neutral-900 tracking-wider">
                   {activeModelLabel}
                 </span>
               )}
@@ -222,7 +222,7 @@ export function ActivityPanel() {
             >
               <div className="flex items-center gap-2">
                 <Compass className="w-3.5 h-3.5 text-black" />
-                <span>[ AI REASONING &amp; FIELD NOTES ]</span>
+                <span>[ AGENT REASONING &amp; FIELD NOTES ]</span>
                 <span className="text-neutral-500">({thoughts.length})</span>
               </div>
               {isThinkingExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}

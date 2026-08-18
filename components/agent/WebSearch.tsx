@@ -149,7 +149,7 @@ export function WebSearch({ query, sources, active }: WebSearchProps) {
                 <span className="truncate">{src.title || src.url}</span>
                 <ExternalLink className="w-3 h-3 text-neutral-400 group-hover:text-black opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
               </a>
-              <span className="font-mono text-[9px] text-neutral-400 group-hover:text-neutral-600 shrink-0 truncate max-w-[130px] border border-neutral-200 px-1 py-0.2">
+              <span className="font-mono text-[9px] text-neutral-400 group-hover:text-neutral-600 shrink-0 truncate max-w-[130px] border border-neutral-200 px-1.5 py-0.5">
                 {getDomain(src.url)}
               </span>
             </li>

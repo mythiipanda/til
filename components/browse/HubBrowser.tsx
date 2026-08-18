@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { Search, X, Zap } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { CATEGORIES } from '@/types';
 import { api } from '@/lib/api';
 
@@ -176,13 +176,12 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
                 </span>
 
                 {item.precomputed ? (
-                  <span className="bg-black group-hover:bg-white text-white group-hover:text-black px-1.5 py-0.5 font-bold flex items-center gap-1">
-                    <Zap className="w-2.5 h-2.5" />
-                    <span>Ready</span>
+                  <span className="border border-current px-1.5 py-0.5 font-bold uppercase tracking-wider text-[9px]">
+                    INDEXED
                   </span>
                 ) : (
-                  <span className="text-neutral-500 group-hover:text-neutral-300">
-                    Explore →
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">
+                    EXPLORE →
                   </span>
                 )}
               </div>

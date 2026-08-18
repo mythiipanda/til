@@ -122,7 +122,7 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
           {activeTab === 'recent' && (
             <div className="space-y-3">
               <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 pb-1 border-b border-black">
-                // LOCAL DISK PERSISTENCE (ACTIVE BROWSER)
+                RECENT SESSIONS
               </div>
 
               {recentSessions.length === 0 ? (
@@ -186,7 +186,7 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
           {activeTab === 'cloud' && (
             <div className="space-y-3">
               <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 pb-1 border-b border-black">
-                // SUPABASE CLOUD ARCHIVE (CROSS-DEVICE)
+                SAVED CLOUD SESSIONS
               </div>
 
               {loading ? (

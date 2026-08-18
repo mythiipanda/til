@@ -39,7 +39,7 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
               target="_blank"
               rel="noopener noreferrer"
               title={source.title || 'Topic Monograph & Archival Source'}
-              className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 text-neutral-800 transition-colors align-super no-underline select-none cursor-pointer rounded-xs"
+              className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 text-neutral-800 transition-colors align-super no-underline select-none cursor-pointer"
             >
               [1]
             </a>
@@ -69,7 +69,7 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
                       target="_blank"
                       rel="noopener noreferrer"
                       title={source.title || source.url}
-                      className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 text-neutral-800 transition-colors no-underline select-none cursor-pointer rounded-xs"
+                      className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 text-neutral-800 transition-colors no-underline select-none cursor-pointer"
                     >
                       [{num}]
                     </a>

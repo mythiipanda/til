@@ -12,7 +12,7 @@ import { MobileBottomBar } from '@/components/ui/MobileBottomBar';
 import { ModelSelector } from '@/components/model/ModelSelector';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
-import { Plus, RotateCcw, BookOpen, Sparkles, X, Share2, Bookmark, Keyboard, Command } from 'lucide-react';
+import { Plus, RotateCcw, BookOpen, X, Share2, Bookmark, Keyboard, Command } from 'lucide-react';
 
 const FLAGSHIP_CATEGORIES = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'] as const;
 
@@ -197,10 +197,10 @@ export default function Home() {
           <button
             onClick={handleSurpriseMe}
             className="px-2.5 py-1 font-mono text-[10px] uppercase font-bold tracking-wider bg-neutral-100 border border-neutral-400 hover:bg-black hover:text-white hover:border-black transition-colors flex items-center gap-1"
-            title="Surprise me with a random topic"
+            title="Discover a random topic"
           >
-            <Sparkles className="w-3 h-3" />
-            <span>Surprise Me</span>
+            <RotateCcw className="w-3 h-3" />
+            <span>Random</span>
           </button>
         </div>
 
@@ -293,13 +293,13 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Story Ready Notification Toast */}
+      {/* Monograph Ready Notification Toast */}
       {hasNewDossier && !isDossierOpen && targetNodeId && (
         <div className="fixed top-18 right-6 z-30 bg-black text-white border-2 border-black p-3.5 shadow-none flex items-center gap-3 animate-drop">
-          <Sparkles className="w-4 h-4 shrink-0 text-white" />
+          <BookOpen className="w-4 h-4 shrink-0 text-white" />
           <div>
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">
-              Story Ready
+              Monograph Ready
             </div>
             <div className="font-serif text-sm font-bold truncate max-w-xs">
               {currentTopic}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square, Volume2, Sparkles, FastForward } from 'lucide-react';
+import { Play, Pause, Square, Volume2, FastForward } from 'lucide-react';
 
 interface AudioTourPlayerProps {
   script: string;
@@ -175,7 +175,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
       <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-2">
         <div className="flex items-center gap-1.5 font-bold text-white">
           <Volume2 className="w-3.5 h-3.5" />
-          <span>AUDIO MONOGRAPH TOUR</span>
+          <span>AUDIO MONOGRAPH</span>
         </div>
         <div className="flex items-center gap-2">
           {isPlaying && (
@@ -186,7 +186,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
               <span className="w-0.5 h-3 bg-white animate-pulse delay-100" />
             </div>
           )}
-          <span>{isPlaying ? 'NARRATING...' : isPaused ? 'PAUSED' : 'AI NARRATION READY'}</span>
+          <span>{isPlaying ? 'PLAYING' : isPaused ? 'PAUSED' : 'AUDIO READY'}</span>
         </div>
       </div>
 
@@ -198,7 +198,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
           </div>
         ) : (
           <div className="font-serif text-xs text-neutral-400">
-            Listen to an immersive podcast-style narrative breakdown of {topicTitle}.
+            Audio overview of {topicTitle}.
           </div>
         )}
 
@@ -208,7 +208,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
             onClick={() => setShowFullTranscript(!showFullTranscript)}
             className="font-mono text-[9px] text-neutral-400 hover:text-white uppercase tracking-wider transition-colors"
           >
-            {showFullTranscript ? 'Hide Interactive Script [-]' : 'Read & Click Interactive Script [+]'}
+            {showFullTranscript ? 'Hide Interactive Script [-]' : 'View Interactive Script [+]'}
           </button>
           <span className="font-mono text-[9px] text-neutral-500">
             Sentence {Math.min(currentIdx + 1, sentencesRef.current.length)} of {sentencesRef.current.length}
@@ -261,7 +261,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
               className="px-3 py-1.5 bg-white text-black font-mono text-xs uppercase font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1.5"
             >
               <Play className="w-3.5 h-3.5 fill-black" />
-              <span>{isPaused ? 'Resume' : 'Play Audio Story'}</span>
+              <span>{isPaused ? 'Resume' : 'Play Audio'}</span>
             </button>
           ) : (
             <button
@@ -277,8 +277,8 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
             <button
               onClick={handleStop}
               className="p-1.5 border border-neutral-700 text-neutral-400 hover:text-white hover:border-white transition-colors"
-              title="Stop Narration"
-              aria-label="Stop narration"
+              title="Stop Audio"
+              aria-label="Stop audio"
             >
               <Square className="w-3.5 h-3.5" />
             </button>
@@ -295,9 +295,8 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
           </button>
         </div>
 
-        <div className="font-mono text-[9px] text-neutral-400 flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-neutral-400" />
-          <span>SYNTHESIZED NARRATION</span>
+        <div className="font-mono text-[9px] uppercase tracking-wider text-neutral-400">
+          <span>AUDIO OVERVIEW</span>
         </div>
       </div>
     </div>

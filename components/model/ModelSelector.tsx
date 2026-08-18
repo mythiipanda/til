@@ -58,10 +58,11 @@ export function ModelSelector({ className = '' }: { className?: string }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-2.5 py-1 font-mono text-[10px] uppercase font-bold tracking-wider border border-black hover:bg-black hover:text-white bg-white text-black transition-colors duration-100"
-        title="Select AI Model"
+        className="flex items-center gap-2 px-3 py-1 font-mono text-[10px] uppercase font-bold tracking-wider border-2 border-black hover:bg-black hover:text-white bg-white text-black transition-colors duration-100 select-none"
+        title="Select AI Inference Engine"
       >
-        <span className="truncate max-w-[140px] md:max-w-[170px]">
+        <span className="text-neutral-500 font-normal">MODEL:</span>
+        <span className="truncate max-w-[130px] md:max-w-[160px]">
           {activeModel.name}
         </span>
         <ChevronDown
@@ -71,9 +72,19 @@ export function ModelSelector({ className = '' }: { className?: string }) {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-64 md:w-72 bg-white border-2 border-black shadow-none z-50 divide-y divide-neutral-200 animate-in fade-in-0 duration-100">
+        <div className="absolute right-0 mt-1.5 w-72 md:w-80 bg-white border-2 border-black shadow-none z-50 divide-y-2 divide-black animate-in fade-in-0 duration-100 select-none">
+          {/* Header */}
+          <div className="p-2.5 bg-black text-white flex items-center justify-between">
+            <span className="font-mono text-[9px] uppercase tracking-widest font-bold">
+              INFERENCE ENGINE
+            </span>
+            <span className="font-mono text-[9px] text-neutral-400">
+              {filteredModels.length} AVAILABLE
+            </span>
+          </div>
+
           {/* Provider Filter Tabs */}
-          <div className="p-1.5 bg-neutral-50 flex gap-1">
+          <div className="p-1.5 bg-neutral-50 flex gap-1 border-b-2 border-black">
             {[
               { id: 'all', label: 'All' },
               { id: 'cerebras', label: 'Cerebras' },
@@ -96,10 +107,10 @@ export function ModelSelector({ className = '' }: { className?: string }) {
           </div>
 
           {/* Model Options List */}
-          <div className="max-h-60 overflow-y-auto py-0.5 divide-y divide-neutral-100">
+          <div className="max-h-64 overflow-y-auto divide-y divide-neutral-200 custom-scrollbar">
             {filteredModels.length === 0 ? (
-              <div className="p-3 text-center font-mono text-[10px] text-neutral-400">
-                No models found
+              <div className="p-4 text-center font-mono text-[10px] text-neutral-400 uppercase tracking-wider">
+                No models available
               </div>
             ) : (
               filteredModels.map((m) => {
@@ -112,16 +123,19 @@ export function ModelSelector({ className = '' }: { className?: string }) {
                       setSelectedModelId(m.id);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 hover:bg-neutral-100 transition-colors ${
-                      isSelected ? 'bg-neutral-100 font-bold' : ''
+                    className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between gap-2.5 transition-colors ${
+                      isSelected
+                        ? 'bg-neutral-100 border-l-4 border-l-black font-bold'
+                        : 'hover:bg-neutral-50 border-l-4 border-l-transparent'
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-mono text-xs text-neutral-900 truncate">
+                      <div className="font-mono text-xs text-neutral-950 font-medium truncate">
                         {m.name}
                       </div>
-                      <div className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+                      <div className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 mt-0.5">
                         {m.provider_label}
+                        {m.tier ? ` · ${m.tier}` : ''}
                       </div>
                     </div>
 

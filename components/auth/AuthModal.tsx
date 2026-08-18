@@ -77,7 +77,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {sentMagicLink ? 'Check Your Inbox' : 'Account Access'}
               </h2>
               <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest">
-                {sentMagicLink ? 'Magic Link Dispatched' : 'Passwordless Session Sync'}
+                {sentMagicLink ? 'Sign-in Link Sent' : 'Passwordless Email Sign-In'}
               </p>
             </div>
           </div>
@@ -102,13 +102,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div className="py-4 space-y-6 animate-fade">
             <div className="space-y-2">
               <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
-                // DISPATCH CONFIRMED
+                EMAIL SENT
               </div>
               <h3 className="font-serif text-2xl font-bold text-black leading-tight">
-                One-Click Access Link Sent
+                Check Your Inbox
               </h3>
               <p className="font-body text-xs text-neutral-700 leading-relaxed">
-                A secure passwordless login link has been dispatched to:
+                A secure sign-in link has been sent to:
               </p>
               <div className="p-3 bg-neutral-50 border-2 border-black font-mono text-xs font-bold text-black break-all">
                 {email}

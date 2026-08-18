@@ -13,7 +13,6 @@ import {
   Loader2,
   BookmarkPlus,
   Check,
-  Sparkles,
   Minus,
   Maximize2,
   Copy,
@@ -291,9 +290,9 @@ export function ChatComposer() {
                               </div>
 
                               {(msg.modelLabel || msg.model) && (
-                                <div className="flex items-center gap-1.5 font-mono text-[10px] text-neutral-400 tracking-tight pr-1 select-none">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 shrink-0" />
-                                  <span>{msg.modelLabel || msg.model}</span>
+                                <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-400 select-none pr-1">
+                                  <span className="text-neutral-300">VIA</span>
+                                  <span className="font-semibold text-neutral-600">{msg.modelLabel || msg.model}</span>
                                 </div>
                               )}
                             </div>
@@ -302,9 +301,8 @@ export function ChatComposer() {
                           {/* Follow-up chips */}
                           {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && !isStreamingThis && (
                             <div className="pt-1.5 space-y-1.5">
-                              <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 font-bold flex items-center gap-1">
-                                <Sparkles className="w-3 h-3" />
-                                Follow up
+                              <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 font-bold">
+                                RELATED QUESTIONS
                               </span>
                               <div className="flex flex-wrap gap-1.5">
                                 {msg.suggestedFollowUps.slice(0, 3).map((fu, fuIdx) => (

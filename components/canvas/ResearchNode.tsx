@@ -77,7 +77,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
             {data.category || 'TOPIC'}
           </span>
           {data.isRoot ? (
-            <span className="font-mono text-[10px] bg-white text-black px-1.5 py-0.2 uppercase font-bold tracking-tight">
+            <span className="font-mono text-[10px] bg-white text-black px-1.5 py-0.5 uppercase font-bold tracking-tight">
               ORIGIN
             </span>
           ) : null}

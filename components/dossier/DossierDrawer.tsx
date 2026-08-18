@@ -12,7 +12,6 @@ import { InlineCitations } from '@/components/agent/InlineCitations';
 import { 
   X, 
   ExternalLink, 
-  Sparkles,
   Compass, 
   Layers, 
   ArrowRight,
@@ -205,7 +204,7 @@ export function DossierDrawer() {
               )}
               <span>Sources &amp; Steps</span>
               {sources.length > 0 && (
-                <span className="font-mono text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.2">
+                <span className="font-mono text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5">
                   {sources.length}
                 </span>
               )}
@@ -469,7 +468,7 @@ export function DossierDrawer() {
                 <div className="font-serif text-sm font-bold text-black truncate flex items-center gap-2">
                   <span>{currentTopic || 'Research Topic'}</span>
                   {activeModelLabel && (
-                    <span className="font-mono text-[9px] font-normal text-neutral-500 border border-neutral-200 px-1.5 py-0.5 rounded-sm bg-neutral-50">
+                    <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-neutral-600 border border-neutral-300 px-1.5 py-0.5 bg-neutral-100">
                       {activeModelLabel}
                     </span>
                   )}
@@ -530,12 +529,9 @@ export function DossierDrawer() {
 
           {/* Model Attribution Footer */}
           {activeModelLabel && (
-            <div className="pt-2.5 border-t border-neutral-100 flex items-center justify-between font-mono text-[10px] text-neutral-400 select-none">
-              <span>ORCHESTRATION SWARM</span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 shrink-0" />
-                {activeModelLabel}
-              </span>
+            <div className="pt-2.5 border-t-2 border-black flex items-center justify-between font-mono text-[9px] uppercase tracking-wider text-neutral-600 select-none">
+              <span className="font-bold text-black">DISCOVERY SWARM</span>
+              <span className="font-medium text-neutral-500">{activeModelLabel}</span>
             </div>
           )}
 

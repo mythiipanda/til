@@ -41,8 +41,8 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
   const handleExportMarkdown = () => {
     if (!currentTopic || nodes.length === 0) return;
 
-    let md = `# TDILEARNED Investigation: ${currentTopic}\n\n`;
-    md += `*Generated on ${new Date().toLocaleDateString()} via TDILEARNED Agentic Discovery Engine*\n\n`;
+    let md = `# TDILEARNED: ${currentTopic}\n\n`;
+    md += `*Exported on ${new Date().toLocaleDateString()} via TDILEARNED*\n\n`;
     md += `---\n\n`;
 
     // Overview & Dossier
@@ -155,7 +155,7 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
             <label className="font-mono text-[11px] uppercase font-bold tracking-wider text-black">
               1. Public Interactive Link
             </label>
-            <span className="font-mono text-[10px] text-neutral-500 uppercase">Instant Web Access</span>
+            <span className="font-mono text-[10px] text-neutral-500 uppercase">Public URL</span>
           </div>
 
           {shareUrl ? (

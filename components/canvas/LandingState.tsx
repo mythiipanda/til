@@ -148,7 +148,7 @@ export default function LandingState() {
               <span>Search or Propose Inquiry</span>
             </div>
             <span className="text-[10px] text-neutral-500 hidden sm:inline">
-              Instant AI Research
+              AUTONOMOUS DISCOVERY
             </span>
           </div>
 

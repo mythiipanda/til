@@ -40,7 +40,7 @@ export default function SharedMindMapPage() {
         <div className="flex flex-col items-center gap-3 border-2 border-black p-8">
           <Loader2 className="w-6 h-6 animate-spin text-black" />
           <p className="font-mono text-xs uppercase tracking-widest text-black font-bold">
-            Hydrating Shared Mindmap...
+            Loading Shared Mindmap...
           </p>
         </div>
       </div>
