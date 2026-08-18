@@ -20,18 +20,17 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
 
   if (!textContent.trim()) return null;
 
-  // Custom text renderer to parse [1], [2], etc. into interactive citation links
+  // Custom text renderer to parse [1], [2], [1, 2], [Canon], etc. into interactive citation links
   const renderTextWithCitations = (text: string) => {
     if (!sources || sources.length === 0) return text;
 
-    const parts = text.split(/(\[\d+\])/g);
+    const parts = text.split(/(\[(?:\d+(?:\s*,\s*\d+)*|Canon)\])/gi);
     if (parts.length === 1) return text;
 
     return parts.map((part, idx) => {
-      const match = part.match(/^\[(\d+)\]$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        const source = sources[num - 1];
+      // Check for [Canon]
+      if (/^\[Canon\]$/i.test(part)) {
+        const source = sources[0];
         if (source && source.url) {
           return (
             <a
@@ -39,11 +38,53 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
               href={source.url}
               target="_blank"
               rel="noopener noreferrer"
-              title={source.title || source.url}
-              className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1 py-0.2 mx-0.5 text-black transition-colors align-super no-underline select-none cursor-pointer"
+              title={source.title || 'Topic Monograph & Archival Source'}
+              className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 text-neutral-800 transition-colors align-super no-underline select-none cursor-pointer rounded-xs"
             >
-              [{num}]
+              [1]
             </a>
+          );
+        }
+        return null;
+      }
+
+      // Check for [1] or [1, 2, 3]
+      const match = part.match(/^\[([\d\s,]+)\]$/);
+      if (match) {
+        const nums = match[1]
+          .split(',')
+          .map((n) => parseInt(n.trim(), 10))
+          .filter((n) => !isNaN(n));
+
+        if (nums.length > 0) {
+          return (
+            <span key={idx} className="inline-flex items-center gap-0.5 align-super">
+              {nums.map((num, nIdx) => {
+                const source = sources[num - 1];
+                if (source && source.url) {
+                  return (
+                    <a
+                      key={nIdx}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={source.title || source.url}
+                      className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 text-neutral-800 transition-colors no-underline select-none cursor-pointer rounded-xs"
+                    >
+                      [{num}]
+                    </a>
+                  );
+                }
+                return (
+                  <span
+                    key={nIdx}
+                    className="inline-flex items-center text-[10px] font-mono text-neutral-500 px-1"
+                  >
+                    [{num}]
+                  </span>
+                );
+              })}
+            </span>
           );
         }
       }

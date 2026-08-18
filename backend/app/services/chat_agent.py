@@ -92,8 +92,9 @@ async def stream_chat(
     ancestor_context: list[str] | None = None,
     history: list[dict] | None = None,
     active_summary: str | None = None,
+    model: str | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Answer a follow-up question with grounded sources and cached monograph context, streaming over SSE."""
+    """Answer a follow-up question with grounded sources and cached background context, streaming over SSE."""
     ancestors = ancestor_context or []
     context_trail = " -> ".join(ancestors) if ancestors else node_title
     clean_query = _clean_search_query(node_title, user_question)
@@ -106,8 +107,9 @@ async def stream_chat(
         },
     )
 
-    # Pull cached canonical monograph if node_id is available
-    monograph_canon = ""
+    # Pull cached background monograph if node_id is available
+    background_context = ""
+    dossier_sources: list[dict] = []
     if node_id:
         dossier = cache_service.get(f"dossier:{node_id}")
         if isinstance(dossier, dict):
@@ -116,15 +118,15 @@ async def stream_chat(
             wow = dossier.get("wowFact") or ""
             mechs = dossier.get("mechanisms", [])
             timeline = dossier.get("timeline", [])
-            sources_dossier = dossier.get("sources", [])
+            dossier_sources = [s for s in dossier.get("sources", []) if isinstance(s, dict)]
 
-            parts = [f"CANONICAL TOPIC: {dossier.get('title', node_title)}"]
+            parts = [f"TOPIC: {dossier.get('title', node_title)}"]
             if thesis:
                 parts.append(f"CORE THESIS: {thesis}")
             if abstract:
-                parts.append(f"CANONICAL SUMMARY: {abstract}")
+                parts.append(f"BACKGROUND SUMMARY: {abstract}")
             if wow:
-                parts.append(f"PROVEN KEY FACT: {wow}")
+                parts.append(f"KEY FACT: {wow}")
             if mechs:
                 mech_str = "\n".join(
                     f"- {m.get('title')}: {m.get('explanation')}" for m in mechs[:3] if isinstance(m, dict)
@@ -139,27 +141,10 @@ async def stream_chat(
                 )
                 if time_str:
                     parts.append(f"VERIFIED TIMELINE:\n{time_str}")
-            if sources_dossier:
-                src_str = "\n".join(
-                    f"- [{s.get('title')}]({s.get('url')}): {s.get('snippet', '')[:100]}"
-                    for s in sources_dossier[:3]
-                    if isinstance(s, dict)
-                )
-                if src_str:
-                    parts.append(f"ANCHOR SOURCES:\n{src_str}")
 
-            monograph_canon = "\n\n" + "\n\n".join(parts)
-    evidence_blocks: list[str] = []
-    cited: list[dict] = []
+            background_context = "\n\n" + "\n\n".join(parts)
+
     query = clean_query
-
-    llm = get_llm_with_fallback(
-        engine="cerebras",
-        fallback_engine="mistral",
-        fallback_model=LIVE_FALLBACK_MODEL,
-        temperature=0.5,
-        max_tokens=1000,
-    )
 
     call_id = str(uuid.uuid4())[:8]
     yield _emit_sse(
@@ -171,28 +156,54 @@ async def stream_chat(
             "status": "running",
         },
     )
-    sources = await search_web_ladder(query, max_results=MAX_SOURCES_PER_ROUND)
+    raw_sources = await search_web_ladder(query, max_results=MAX_SOURCES_PER_ROUND)
     yield _emit_sse(
         "tool_result",
         {
             "call_id": call_id,
             "tool": "WebSearch",
-            "preview": f"Found {len(sources)} verified sources",
-            "count": len(sources),
+            "preview": f"Found {len(raw_sources)} verified sources",
+            "count": len(raw_sources),
             "status": "success",
         },
     )
+
+    # Unify web search sources and background dossier sources into an ordered, deduplicated citation list
+    sources: list[Any] = []
+    seen_urls = set()
+    for s in raw_sources:
+        if s.url not in seen_urls:
+            seen_urls.add(s.url)
+            sources.append(s)
+
+    for ds in dossier_sources:
+        u = ds.get("url")
+        t = ds.get("title") or "Archival Encyclopedia"
+        if u and u not in seen_urls:
+            seen_urls.add(u)
+            from app.schemas.graph import SourceCitationSchema
+
+            sources.append(
+                SourceCitationSchema(
+                    id=str(uuid.uuid4())[:8],
+                    title=t,
+                    url=u,
+                    snippet=ds.get("snippet", ""),
+                    publisher=ds.get("publisher", "Archival Reference"),
+                    reliabilityScore=0.95,
+                )
+            )
 
     for src in sources:
         yield _emit_sse(
             "source",
             {
-                "id": str(uuid.uuid4())[:8],
+                "id": getattr(src, "id", None) or str(uuid.uuid4())[:8],
                 "title": src.title,
                 "url": src.url,
-                "snippet": src.snippet[:250],
-                "publisher": src.publisher,
-                "reliabilityScore": src.reliabilityScore,
+                "snippet": getattr(src, "snippet", "")[:250],
+                "publisher": getattr(src, "publisher", "Academic / Archival"),
+                "reliabilityScore": getattr(src, "reliabilityScore", 0.92),
             },
         )
 
@@ -201,12 +212,13 @@ async def stream_chat(
         max_chars=MAX_CONTENT_CHARS,
     )
     contents = raw_contents if isinstance(raw_contents, list) else []
+    evidence_blocks: list[str] = []
     for idx, (src, content) in enumerate(zip(sources[:4], contents), start=1):
         if isinstance(content, str) and content:
             evidence_blocks.append(
-                f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {src.snippet}\nCONTENT:\n{content}"
+                f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {getattr(src, 'snippet', '')}\nCONTENT:\n{content}"
             )
-        elif src.snippet:
+        elif getattr(src, "snippet", ""):
             evidence_blocks.append(f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET:\n{src.snippet}")
 
     history_context = ""
@@ -224,14 +236,15 @@ async def stream_chat(
     if evidence_blocks:
         user_prompt = (
             f"Active Concept: {node_title}\n"
-            f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
+            f"Exploration Trail: {context_trail}{summary_info}{background_context}{history_context}\n\n"
             f"User Question: {user_question}\n\n"
-            f"VERIFIED EVIDENCE BLOCKS (Cite using [1], [2], etc.):\n" + "\n\n".join(evidence_blocks)
+            f"VERIFIED EVIDENCE SOURCES (Cite using [1], [2], [3] matching the numeric index):\n"
+            + "\n\n".join(evidence_blocks)
         )
     else:
         user_prompt = (
             f"Active Concept: {node_title}\n"
-            f"Exploration Trail: {context_trail}{summary_info}{monograph_canon}{history_context}\n\n"
+            f"Exploration Trail: {context_trail}{summary_info}{background_context}{history_context}\n\n"
             f"User Question: {user_question}\n(no external search evidence retrieved)"
         )
 
@@ -240,10 +253,19 @@ async def stream_chat(
         "The reader is exploring an interactive knowledge map and has asked a follow-up question. "
         "Your job is to provide a clear, insightful, and thoroughly grounded 2-3 paragraph answer.\n"
         "GUIDELINES:\n"
-        "1. Ground your response in the provided CANON and SOURCE evidence, explaining underlying mechanisms or history.\n"
-        "2. Do not use robotic meta-commentary like 'Based on the provided text'. Write the answer directly.\n"
+        "1. Ground your response in the provided background and verified evidence sources, explaining underlying mechanisms or history.\n"
+        "2. Do not use robotic meta-commentary like 'Based on the provided text' or 'According to the sources'. Write the explanation directly.\n"
         "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for legibility.\n"
-        "4. MANDATORY CITATIONS: You MUST cite your statements directly using the numbered bracket tags matching the evidence sources, e.g. [1], [2], [3]. Place [N] immediately after facts, figures, dates, or mechanisms derived from that source (for example: 'Discovered in 1901 [1], the artifact utilized a 30-gear train mechanism [2]')."
+        "4. MANDATORY NUMERIC CITATIONS: You MUST cite your statements directly using the numbered bracket tags matching the evidence sources, e.g. [1], [2], [3]. Place [N] immediately after facts, figures, dates, or mechanisms derived from that source (for example: 'Discovered in 1901 [1], the artifact utilized a 30-gear train mechanism [2]').\n"
+        "5. STRICT CITATION FORMAT: NEVER write words inside citation brackets (such as [Canon], [Source], [Ref], or (Canon)). Use ONLY numeric integer brackets like [1], [2]."
+    )
+
+    llm = get_llm_with_fallback(
+        engine=model or "cerebras",
+        fallback_engine="mistral",
+        fallback_model=LIVE_FALLBACK_MODEL,
+        temperature=0.5,
+        max_tokens=1000,
     )
 
     yield _emit_sse("answer_start", {"node_title": node_title, "question": user_question})
