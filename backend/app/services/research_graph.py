@@ -533,7 +533,7 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
     if context_str:
         context_str = f"\n\nDISCOVERY CONTEXT:\n{context_str}\n"
 
-    llm = _llm(config, temperature=0.7, max_tokens=2500)
+    llm = _llm(config, temperature=0.7, max_tokens=6000)
     dossier_data: LLMDeepDossierOutput | None = None
     children_data: list[LLMChildBranchDefinition] = []
 
@@ -782,6 +782,22 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
     child_nodes: list[NodeSchema] = []
     if not parent_id:
         branches = children_data[:3]
+        if not branches and dd.get("rabbitHoles"):
+            branches = [
+                {
+                    "title": rh.get("title") if isinstance(rh, dict) else str(rh),
+                    "summary": rh.get("teaser", f"Connected knowledge vector exploring {topic}.")
+                    if isinstance(rh, dict)
+                    else f"Exploration branch for {topic}.",
+                    "category": category,
+                    "era": dd.get("era", "Historic"),
+                    "image_search_query": rh.get("title") if isinstance(rh, dict) else str(rh),
+                    "rabbit_holes": [],
+                    "suggested_questions": [],
+                    "curiosityScore": 7,
+                }
+                for rh in dd.get("rabbitHoles", [])[:3]
+            ]
 
         async def _child_image(branch: dict[str, Any]) -> str | None:
             c_query = branch.get("image_search_query") or branch.get("title") or topic

@@ -125,3 +125,19 @@ class PrecomputedHubSummarySchema(BaseModel):
     category: str
     imageUrl: str | None = None
     summary: str = ""
+
+
+class ModelOptionSchema(BaseModel):
+    id: str  # e.g. "cerebras:gemma-4-31b" or "openrouter:meta-llama/llama-3.3-70b-instruct:free"
+    name: str  # e.g. "Gemma 4 31B"
+    provider: str  # "cerebras" | "mistral" | "openrouter"
+    provider_label: str  # "Cerebras", "Mistral AI", "OpenRouter"
+    model_id: str  # "gemma-4-31b"
+    tier: str  # "Ultra Fast (~3,000 tok/s)"
+    is_free: bool = True
+    is_available: bool = True
+
+
+class ModelCatalogResponse(BaseModel):
+    default_model: str
+    models: list[ModelOptionSchema]

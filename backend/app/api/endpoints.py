@@ -10,6 +10,7 @@ from app.api.middleware.rate_limit import (
     research_rate_limiter,
 )
 from app.schemas.graph import (
+    ModelCatalogResponse,
     PrecomputedHubSchema,
     PrecomputedHubSummarySchema,
     RandomTopicResponse,
@@ -17,6 +18,7 @@ from app.schemas.graph import (
 )
 from app.services.catalog import get_catalog
 from app.services.chat_agent import stream_chat
+from app.services.llm import get_available_models_async
 from app.services.precompute import get_precomputed_hub, list_precomputed_hubs
 from app.services.random_topic import pick_random_topic
 from app.services.research_agent import get_dossier, stream_deep_research
@@ -25,6 +27,12 @@ from app.services.supabase import fetch_hub_by_id_from_supabase, fetch_hubs_from
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["Research & Graph Discovery"])
+
+
+@router.get("/models", response_model=ModelCatalogResponse, dependencies=[Depends(general_rate_limiter)])
+async def list_models():
+    """List all available free LLM models, dynamically discovered from OpenRouter, Cerebras, and Mistral."""
+    return await get_available_models_async()
 
 
 @router.get("/health")
@@ -114,6 +122,7 @@ async def research_stream_endpoint(
     context_chain: str = Query("", max_length=2000, description="Comma-separated chain of parent topics"),
     parent_summary: str = Query(None, max_length=2000, description="Summary of parent node"),
     teaser_context: str = Query(None, max_length=2000, description="Teaser or hook of subtopic"),
+    model: str | None = Query(None, max_length=200, description="Optional custom free model ID"),
 ):
     """
     Manus-grade Server-Sent Events (SSE) stream:
@@ -129,6 +138,7 @@ async def research_stream_endpoint(
             context_chain=context_list,
             parent_summary=parent_summary,
             teaser_context=teaser_context,
+            model=model,
         ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
@@ -154,8 +164,9 @@ async def chat_stream_endpoint(
     ancestors: str = Query("", max_length=2000, description="Comma-separated ancestor node trail"),
     history: str = Query("", description="JSON-encoded previous conversation turns"),
     active_summary: str = Query(None, max_length=2000, description="Summary of active node"),
+    model: str | None = Query(None, max_length=200, description="Optional custom free model ID"),
 ):
-    """Server-Sent Events (SSE) streaming endpoint for Cerebras conversational follow-ups."""
+    """Server-Sent Events (SSE) streaming endpoint for conversational follow-ups."""
     context_list = [a.strip() for a in ancestors.split(",") if a.strip()]
     history_list = []
     if history:
@@ -176,6 +187,7 @@ async def chat_stream_endpoint(
             ancestor_context=context_list,
             history=history_list,
             active_summary=active_summary,
+            model=model,
         ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},

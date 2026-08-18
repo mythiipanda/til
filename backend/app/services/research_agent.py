@@ -43,6 +43,7 @@ async def stream_deep_research(
     parent_summary: str | None = None,
     teaser_context: str | None = None,
     image_query: str | None = None,
+    model: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Run the research graph and stream its events as SSE."""
     queue: asyncio.Queue = asyncio.Queue()
@@ -58,6 +59,7 @@ async def stream_deep_research(
             teaser_context=teaser_context,
             image_query=image_query,
             sink=sink,
+            engine=model or "cerebras",
         )
     )
 
