@@ -3,18 +3,9 @@
 import { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
-import { ArrowRight, Search, ChevronDown, ChevronUp, Shuffle, Sparkles } from 'lucide-react';
+import { ArrowRight, Search, ChevronDown, ChevronUp, Shuffle } from 'lucide-react';
 
 const FLAGSHIP_CATEGORIES = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'] as const;
-
-const TRENDING_SPARKS = [
-  'Voynich Manuscript',
-  'Fermi Paradox',
-  'Antikythera Mechanism',
-  'Bronze Age Collapse',
-  'Quantum Entanglement',
-  'Library of Alexandria',
-] as const;
 
 export default function LandingState() {
   const [customTopic, setCustomTopic] = useState('');
@@ -45,11 +36,6 @@ export default function LandingState() {
     if (!customTopic.trim()) return;
     setIsStartingResearch(true);
     startResearch(customTopic.trim(), 'General');
-  };
-
-  const handleSparkClick = (spark: string) => {
-    setIsStartingResearch(true);
-    startResearch(spark, 'General');
   };
 
   const remainingCategories = CATEGORIES.filter(c => !FLAGSHIP_CATEGORIES.includes(c as any));
@@ -183,24 +169,6 @@ export default function LandingState() {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Trending Spark Chips */}
-          <div className="flex items-center gap-1.5 flex-wrap pt-1">
-            <div className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-neutral-500 pr-1">
-              <Sparkles className="w-3 h-3" />
-              <span>Try:</span>
-            </div>
-            {TRENDING_SPARKS.map((spark) => (
-              <button
-                key={spark}
-                onClick={() => handleSparkClick(spark)}
-                disabled={isStartingResearch}
-                className="font-mono text-[10px] border border-neutral-300 hover:border-black bg-neutral-50 hover:bg-black hover:text-white px-2.5 py-1 transition-colors duration-100 rounded-none"
-              >
-                {spark}
-              </button>
-            ))}
-          </div>
         </div>
 
       </div>

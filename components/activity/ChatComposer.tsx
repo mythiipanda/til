@@ -41,12 +41,16 @@ export function ChatComposer() {
   const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
   const activeDossier = useMindMapStore(s => s.activeDossier);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(NOW);
 
   useEffect(() => {
-    if (chatMessages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatScrollContainerRef.current) {
+      const el = chatScrollContainerRef.current;
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+      if (isNearBottom || isChatStreaming) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      }
     }
   }, [chatMessages, isChatStreaming]);
 
@@ -192,7 +196,7 @@ export function ChatComposer() {
           </div>
 
           {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
+          <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
             {chatMessages.map((msg, idx) => {
               const prevUserMsg = idx > 0 && chatMessages[idx - 1]?.role === 'user' ? chatMessages[idx - 1].content : currentTopic;
               const isPinned = pinnedMsgIndices.includes(idx);
@@ -236,11 +240,11 @@ export function ChatComposer() {
                             />
                           )}
 
-                          {/* Answer prose */}
+                          {/* Answer prose with direct interactive citations */}
                           {msg.content ? (
                             <div className="font-body text-sm text-neutral-900 leading-relaxed">
                               <StreamingText streaming={isStreamingThis}>
-                                <MarkdownContent content={msg.content} />
+                                <MarkdownContent content={msg.content} sources={msg.sources} />
                               </StreamingText>
                             </div>
                           ) : (
@@ -313,7 +317,6 @@ export function ChatComposer() {
                 </div>
               );
             })}
-            <div ref={messagesEndRef} />
           </div>
 
         </div>

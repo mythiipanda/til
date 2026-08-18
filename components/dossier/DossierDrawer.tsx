@@ -35,6 +35,7 @@ export function DossierDrawer() {
   const currentTopic = useMindMapStore(s => s.currentTopic);
   const planSteps = useMindMapStore(s => s.planSteps);
   const thoughts = useMindMapStore(s => s.thoughts);
+  const toolCalls = useMindMapStore(s => s.toolCalls);
   const sources = useMindMapStore(s => s.sources);
   const workstationTab = useMindMapStore(s => s.workstationTab);
   const setWorkstationTab = useMindMapStore(s => s.setWorkstationTab);
@@ -247,7 +248,7 @@ export function DossierDrawer() {
               {activeDossier.wowFact && (
                 <div className="p-3.5 border-l-4 border-black bg-neutral-50 space-y-1">
                   <div className="font-body text-xs md:text-sm text-black leading-relaxed italic">
-                    <MarkdownContent content={activeDossier.wowFact} />
+                    <MarkdownContent content={activeDossier.wowFact} sources={activeDossier.sources} />
                   </div>
                 </div>
               )}
@@ -259,7 +260,7 @@ export function DossierDrawer() {
                     Overview
                   </div>
                   <div className="font-body text-sm md:text-base text-neutral-800 leading-relaxed space-y-2">
-                    <MarkdownContent content={activeDossier.coreThesis} />
+                    <MarkdownContent content={activeDossier.coreThesis} sources={activeDossier.sources} />
                   </div>
                 </div>
               )}
@@ -271,12 +272,12 @@ export function DossierDrawer() {
                     Context
                   </div>
                   <div className="font-body text-sm text-neutral-700 leading-relaxed">
-                    <MarkdownContent content={activeDossier.abstract} />
+                    <MarkdownContent content={activeDossier.abstract} sources={activeDossier.sources} />
                   </div>
                 </div>
               )}
 
-              {/* Mechanisms & Principles */}
+              {/* Key Concepts */}
               {activeDossier.mechanisms && activeDossier.mechanisms.length > 0 && (
                 <div className="space-y-3">
                   <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
@@ -290,7 +291,7 @@ export function DossierDrawer() {
                           {mech.title}
                         </h4>
                         <div className="font-body text-xs text-neutral-700 leading-relaxed">
-                          <MarkdownContent content={mech.explanation} />
+                          <MarkdownContent content={mech.explanation} sources={activeDossier.sources} />
                         </div>
                         {mech.bulletPoints && mech.bulletPoints.length > 0 && (
                           <ul className="list-disc list-inside pt-2 space-y-1 font-body text-xs text-neutral-600 border-t border-neutral-200">
@@ -319,7 +320,7 @@ export function DossierDrawer() {
                           [{evt.date}] — {evt.headline}
                         </div>
                         <div className="font-body text-xs text-neutral-700 leading-relaxed">
-                          <MarkdownContent content={evt.description} />
+                          <MarkdownContent content={evt.description} sources={activeDossier.sources} />
                         </div>
                       </div>
                     ))}
@@ -489,22 +490,31 @@ export function DossierDrawer() {
             />
           )}
 
-          {/* Web Search Sources */}
-          {sources.length > 0 && (
-            <WebSearch
-              query={currentTopic || 'topic'}
-              sources={sources}
-              active={isResearching}
-            />
+          {/* Web Search Queries & Discovered Sources */}
+          {toolCalls.length > 0 ? (
+            toolCalls
+              .filter((tc, idx, arr) => tc.query && arr.findIndex(t => t.query === tc.query) === idx)
+              .map((tc, idx) => (
+                <WebSearch
+                  key={tc.id || idx}
+                  query={tc.query || currentTopic || 'topic'}
+                  sources={sources}
+                  active={tc.status === 'running' && isResearching}
+                />
+              ))
+          ) : (
+            sources.length > 0 && (
+              <WebSearch
+                query={currentTopic || 'topic'}
+                sources={sources}
+                active={isResearching}
+              />
+            )
           )}
 
           {/* Discovered Citations */}
           {sources.length > 0 && !isResearching && (
-            <div className="space-y-2">
-              <div className="font-mono text-[10px] uppercase tracking-widest font-bold text-black border-b-2 border-black pb-1 flex items-center justify-between">
-                <span>Sources</span>
-                <span>{sources.length}</span>
-              </div>
+            <div className="space-y-2 pt-1">
               <InlineCitations sources={sources} />
             </div>
           )}
