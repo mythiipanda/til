@@ -8,6 +8,7 @@ import { DossierDrawer } from '@/components/dossier/DossierDrawer';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { MyMindMapsDrawer } from '@/components/library/MyMindMapsDrawer';
 import { ShareModal } from '@/components/share/ShareModal';
+import { MobileBottomBar } from '@/components/ui/MobileBottomBar';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
 import { Plus, RotateCcw, BookOpen, Sparkles, X, Share2, Bookmark, Keyboard, Command } from 'lucide-react';
@@ -25,7 +26,9 @@ export default function Home() {
   const hasNewDossier = useMindMapStore(s => s.hasNewDossier);
   const isDossierOpen = useMindMapStore(s => s.isDossierOpen);
   const openDossier = useMindMapStore(s => s.openDossier);
+  const closeDossier = useMindMapStore(s => s.closeDossier);
   const dismissNewDossierAlert = useMindMapStore(s => s.dismissNewDossierAlert);
+  const selectNode = useMindMapStore(s => s.selectNode);
 
   const lastResearchedNodeId = useMindMapStore(s => s.lastResearchedNodeId);
   const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
@@ -51,7 +54,7 @@ export default function Home() {
     return () => window.removeEventListener('popstate', onPopState);
   }, [restoreSessionFromLocalStorage]);
 
-  // Global Keyboard Shortcuts Listener
+  // Global Keyboard Shortcuts & LIFO Escape Stack
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -72,11 +75,22 @@ export default function Home() {
         e.preventDefault();
         setIsShortcutsOpen((prev) => !prev);
       } else if (e.key === 'Escape') {
-        setIsBrowseOpen(false);
-        setIsLibraryOpen(false);
-        setIsShareOpen(false);
-        setIsCustomModalOpen(false);
-        setIsShortcutsOpen(false);
+        // Orderly LIFO Stack Dismissal
+        if (isShortcutsOpen) {
+          setIsShortcutsOpen(false);
+        } else if (isCustomModalOpen) {
+          setIsCustomModalOpen(false);
+        } else if (isShareOpen) {
+          setIsShareOpen(false);
+        } else if (isLibraryOpen) {
+          setIsLibraryOpen(false);
+        } else if (isBrowseOpen) {
+          setIsBrowseOpen(false);
+        } else if (isDossierOpen) {
+          closeDossier();
+        } else if (selectedNodeId) {
+          selectNode(null);
+        }
       } else if (e.key.toLowerCase() === 's' && !e.metaKey && !e.ctrlKey) {
         handleSurpriseMe();
       } else if (e.key.toLowerCase() === 'b' && !e.metaKey && !e.ctrlKey) {
@@ -93,7 +107,18 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [loadRandomHubByCategory]);
+  }, [
+    isShortcutsOpen,
+    isCustomModalOpen,
+    isShareOpen,
+    isLibraryOpen,
+    isBrowseOpen,
+    isDossierOpen,
+    selectedNodeId,
+    loadRandomHubByCategory,
+    closeDossier,
+    selectNode,
+  ]);
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +162,7 @@ export default function Home() {
       <KnowledgeCanvas />
       
       {/* Top Masthead Bar */}
-      <header className="fixed top-4 left-4 right-4 z-20 flex items-center justify-between bg-white border-2 border-black p-2 md:px-4 shadow-none gap-2">
+      <header className="fixed top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-20 flex items-center justify-between bg-white border-2 border-black p-1.5 sm:p-2 md:px-4 shadow-none gap-1 sm:gap-2">
         
         {/* Left: Brand & Home Reset */}
         <div className="flex items-center gap-3">
@@ -424,6 +449,19 @@ export default function Home() {
       <ShareModal
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
+      />
+
+      {/* Mobile Bottom Navigation Bar (< md) */}
+      <MobileBottomBar
+        onToggleBrowse={handleToggleBrowse}
+        isBrowseOpen={isBrowseOpen}
+        onToggleLibrary={handleToggleLibrary}
+        isLibraryOpen={isLibraryOpen}
+        onCenterCanvas={() => {
+          setIsBrowseOpen(false);
+          setIsLibraryOpen(false);
+          closeDossier();
+        }}
       />
     </main>
   );

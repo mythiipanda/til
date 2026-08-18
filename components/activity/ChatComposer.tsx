@@ -131,7 +131,7 @@ export function ChatComposer() {
   // Minimized dock state in bottom-right corner
   if (isMinimized) {
     return (
-      <div className="fixed bottom-6 right-6 z-20 bg-black text-white border-2 border-black px-4 py-2.5 font-mono text-xs font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade select-none">
+      <div className="fixed bottom-16 sm:bottom-6 right-4 sm:right-6 z-20 bg-black text-white border-2 border-black px-3.5 py-2 font-mono text-xs font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade select-none">
         <div className="flex items-center gap-2">
           {isChatStreaming ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -157,11 +157,11 @@ export function ChatComposer() {
   }
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[820px] max-w-[95vw] z-20 flex flex-col gap-2 select-none animate-fade">
+    <div className="fixed bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 w-[720px] max-w-[calc(100vw-24px)] z-20 flex flex-col gap-2 select-none animate-fade">
 
       {/* Conversation Thread Window */}
       {chatMessages.length > 0 && isExpanded && (
-        <div className="bg-white border-2 border-black shadow-none max-h-[460px] flex flex-col overflow-hidden animate-drop">
+        <div className="bg-white border-2 border-black shadow-none max-h-[min(55vh,440px)] flex flex-col overflow-hidden animate-drop">
 
           {/* Thread Titlebar */}
           <div className="px-3 py-2 bg-black text-white flex items-center justify-between shrink-0">

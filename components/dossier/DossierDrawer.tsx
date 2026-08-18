@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 import { AudioTourPlayer } from './AudioTourPlayer';
@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Minus,
   Maximize2,
+  Minimize2,
   Loader2,
   CheckCircle2,
   Clock,
@@ -39,22 +40,47 @@ export function DossierDrawer() {
   const setWorkstationTab = useMindMapStore(s => s.setWorkstationTab);
 
   const [isMinimized, setIsMinimized] = useState(false);
-
-  if (!isDossierOpen) return null;
+  const [isMagazineMode, setIsMagazineMode] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const completedStepsCount = planSteps.filter(s => s.status === 'done').length;
+
+  const wordCount = useMemo(() => {
+    if (!activeDossier) return 0;
+    const fullText = [
+      activeDossier.coreThesis || '',
+      activeDossier.abstract || '',
+      activeDossier.wowFact || '',
+      ...(activeDossier.mechanisms?.map(m => `${m.title} ${m.explanation}`) || []),
+      ...(activeDossier.timeline?.map(t => `${t.headline} ${t.description}`) || []),
+    ].join(' ');
+    return fullText.trim().split(/\s+/).filter(Boolean).length;
+  }, [activeDossier]);
+
+  const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 220));
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const progress = el.scrollHeight - el.clientHeight > 0 
+      ? (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100 
+      : 0;
+    setScrollProgress(progress);
+  };
+
+  if (!isDossierOpen) return null;
 
   // Minimized dock state in bottom-right corner
   if (isMinimized) {
     return (
-      <div className="fixed right-6 bottom-6 z-30 bg-black text-white border-2 border-black p-3 font-mono text-xs uppercase font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade">
+      <div className="fixed right-4 sm:right-6 bottom-16 sm:bottom-6 z-30 bg-black text-white border-2 border-black p-3 font-mono text-xs uppercase font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade">
         <div className="flex items-center gap-2">
           {isResearching ? (
             <Loader2 className="w-4 h-4 animate-spin text-white" />
           ) : (
             <span className="w-2 h-2 bg-white" />
           )}
-          <span className="truncate max-w-[200px]">
+          <span className="truncate max-w-[180px] sm:max-w-[220px]">
             {isResearching 
               ? `AGENT: ${currentTopic || 'RESEARCHING...'}` 
               : `STORY: ${activeDossier?.title || currentTopic || 'MONOGRAPH'}`}
@@ -82,24 +108,47 @@ export function DossierDrawer() {
     );
   }
 
+  const containerClasses = isMagazineMode
+    ? 'fixed inset-0 z-50 bg-white flex flex-col shadow-none select-none animate-fade overflow-hidden'
+    : 'fixed inset-x-0 bottom-0 top-12 md:top-0 md:inset-y-0 md:left-auto md:right-0 w-full md:w-[620px] md:max-w-[96vw] bg-white border-t-4 md:border-t-0 md:border-l-4 border-black z-40 md:z-30 flex flex-col shadow-none select-none animate-fade overflow-hidden';
+
   return (
-    <div className="fixed inset-y-0 right-0 w-[620px] max-w-[96vw] bg-white border-l-4 border-black z-30 flex flex-col shadow-none select-none animate-fade overflow-hidden">
+    <div className={containerClasses}>
       
+      {/* Top Scroll Progress Bar */}
+      <div 
+        className="h-[3px] bg-black transition-all duration-75 shrink-0" 
+        style={{ width: `${scrollProgress}%` }} 
+      />
+
       {/* Unified Window Titlebar & Tab Bar */}
       <div className="border-b-2 border-black bg-black text-white shrink-0">
         
         {/* Top Action & Window Controls */}
         <div className="px-4 py-2.5 flex items-center justify-between border-b border-neutral-800">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] text-neutral-300 uppercase tracking-wider font-bold truncate max-w-[320px]">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-mono text-[10px] text-neutral-300 uppercase tracking-wider font-bold truncate max-w-[260px] sm:max-w-[340px]">
               {activeDossier?.title || currentTopic || 'Story'}
             </span>
+            {wordCount > 0 && (
+              <span className="hidden sm:inline-flex font-mono text-[9px] text-neutral-400 bg-neutral-900 border border-neutral-700 px-1.5 py-0.5">
+                {readingTimeMinutes} MIN READ
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 font-mono text-xs">
             <button
+              onClick={() => setIsMagazineMode(!isMagazineMode)}
+              className="p-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors hidden sm:inline-flex"
+              title={isMagazineMode ? "Side Drawer View" : "Fullscreen Magazine View"}
+              aria-label="Toggle reader mode"
+            >
+              {isMagazineMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
+            <button
               onClick={() => setIsMinimized(true)}
-              className="p-1 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
+              className="p-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
               title="Minimize"
               aria-label="Minimize dossier window"
             >
@@ -107,7 +156,7 @@ export function DossierDrawer() {
             </button>
             <button
               onClick={closeDossier}
-              className="p-1 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
+              className="p-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
               title="Close"
               aria-label="Close dossier window"
             >
@@ -163,7 +212,12 @@ export function DossierDrawer() {
 
       {/* Tab 1: Monograph Document View */}
       {workstationTab === 'monograph' && (
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-7 custom-scrollbar">
+        <div 
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-5 sm:p-6 md:p-8 space-y-7 custom-scrollbar"
+        >
+          <div className={isMagazineMode ? "max-w-3xl mx-auto space-y-8 py-4 md:py-8" : "space-y-7"}>
           {activeDossier ? (
             <>
               {/* Title Block */}
@@ -387,6 +441,7 @@ export function DossierDrawer() {
               </div>
             )
           )}
+          </div>
         </div>
       )}
 

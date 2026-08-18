@@ -62,16 +62,16 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
       onClick={handleCardClick}
       className={`group bg-white text-black transition-none select-none shadow-none cursor-pointer ${
         data.isRoot
-          ? 'w-[420px] border-4 border-black'
+          ? 'w-[min(90vw,420px)] border-4 border-black'
           : isSelected
-          ? 'w-[380px] border-4 border-black'
-          : 'w-[380px] border-2 border-black hover:border-4'
+          ? 'w-[min(86vw,380px)] border-4 border-black'
+          : 'w-[min(86vw,380px)] border-2 border-black hover:border-4'
       }`}
     >
       <Handle type="target" position={Position.Top} className="!opacity-0 !w-1 !h-1" />
 
       {/* Top Header Tag */}
-      <div className="dragHandle cursor-grab active:cursor-grabbing border-b-2 border-black p-3 flex items-center justify-between bg-black text-white">
+      <div className="dragHandle cursor-grab active:cursor-grabbing border-b-2 border-black p-2.5 sm:p-3 flex items-center justify-between bg-black text-white min-h-[38px]">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] uppercase tracking-widest font-bold">
             {data.category || 'TOPIC'}
@@ -107,27 +107,27 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
       )}
 
       {/* Card Content */}
-      <div className="p-5 space-y-4" onClick={e => e.stopPropagation()}>
+      <div className="p-4 sm:p-5 space-y-3.5 sm:space-y-4" onClick={e => e.stopPropagation()}>
         {/* Title Action */}
         <button
           className="nodrag nopan text-left w-full focus-visible:outline-none group/title"
           onClick={handleCardClick}
         >
           <h3 className={`font-serif font-bold leading-tight line-clamp-2 group-hover/title:underline decoration-2 underline-offset-4 ${
-            data.isRoot ? 'text-2xl text-black' : 'text-xl text-black'
+            data.isRoot ? 'text-xl sm:text-2xl text-black' : 'text-lg sm:text-xl text-black'
           }`}>
             {data.title}
           </h3>
         </button>
 
         {/* Markdown Summary */}
-        <div className="font-body text-sm text-neutral-800 leading-relaxed line-clamp-3">
+        <div className="font-body text-xs sm:text-sm text-neutral-800 leading-relaxed line-clamp-3">
           <MarkdownContent content={data.summary} />
         </div>
 
         {/* Key Fact Blockquote */}
         {data.wow_fact && (
-          <div className="p-3 border-l-4 border-black bg-neutral-50 text-xs font-body italic text-neutral-900 leading-relaxed">
+          <div className="p-2.5 sm:p-3 border-l-4 border-black bg-neutral-50 text-[11px] sm:text-xs font-body italic text-neutral-900 leading-relaxed">
             &ldquo;{data.wow_fact}&rdquo;
           </div>
         )}
@@ -135,14 +135,14 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
         {/* Related Topics / Next Inquiries */}
         {data.rabbit_holes && data.rabbit_holes.length > 0 && (
           <div className="pt-2 border-t-2 border-black space-y-2">
-            <div className="font-mono text-[10px] uppercase tracking-widest font-bold text-neutral-600">
+            <div className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-neutral-600">
               Related topics:
             </div>
             <div className="space-y-1.5">
               {data.rabbit_holes.slice(0, 3).map((rh, i) => (
                 <button
                   key={i}
-                  className="nodrag nopan w-full text-left font-mono text-xs py-2 px-3 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors duration-100 flex items-center justify-between group/btn"
+                  className="nodrag nopan w-full text-left font-mono text-[11px] sm:text-xs py-2 px-3 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors duration-100 flex items-center justify-between group/btn min-h-[36px]"
                   onClick={() => handleExpandRabbitHole(rh)}
                 >
                   <span className="truncate pr-2">{rh}</span>
@@ -157,7 +157,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
         <div className="pt-3 border-t-2 border-black flex items-center justify-between font-mono text-xs">
           <button
             onClick={handleCardClick}
-            className="nodrag nopan flex items-center gap-1.5 font-bold text-black uppercase tracking-wider hover:underline underline-offset-4"
+            className="nodrag nopan flex items-center gap-1.5 font-bold text-black uppercase tracking-wider hover:underline underline-offset-4 min-h-[36px]"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Read story</span>
@@ -166,7 +166,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
           {!data.isRoot && (
             <button
               onClick={handleDeepDiveSubtopic}
-              className="nodrag nopan text-black hover:text-white uppercase tracking-wider font-bold flex items-center gap-1 border-2 border-black px-2.5 py-1 bg-white hover:bg-black transition-colors duration-100"
+              className="nodrag nopan text-black hover:text-white uppercase tracking-wider font-bold flex items-center gap-1 border-2 border-black px-2.5 py-1.5 bg-white hover:bg-black transition-colors duration-100 min-h-[36px]"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Explore</span>

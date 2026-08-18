@@ -67,10 +67,10 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
 
   return (
     <div className="fixed inset-0 z-[90] flex justify-end bg-black/60 backdrop-blur-none animate-fade">
-      <div className="relative w-full max-w-[480px] h-full bg-white border-l-4 border-black flex flex-col shadow-none overflow-hidden">
+      <div className="relative w-full max-w-[480px] h-full bg-white border-t-4 md:border-t-0 md:border-l-4 border-black flex flex-col shadow-none overflow-hidden">
         
         {/* Masthead Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b-2 border-black bg-black text-white shrink-0">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-5 border-b-2 border-black bg-black text-white shrink-0">
           <div className="flex items-center gap-3">
             <Bookmark className="w-4 h-4 text-white" />
             <div>

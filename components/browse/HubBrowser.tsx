@@ -96,66 +96,64 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
   };
 
   return (
-    <div className="fixed left-4 md:left-6 top-20 bottom-6 w-[420px] max-w-[92vw] bg-white border-2 border-black z-30 flex flex-col shadow-none select-none animate-fade">
+    <div className="fixed inset-x-0 bottom-0 top-12 md:top-20 md:bottom-6 md:left-6 w-full md:w-[420px] md:max-w-[92vw] bg-white border-t-4 md:border-2 border-black z-40 md:z-30 flex flex-col shadow-none select-none animate-fade">
       
-      {/* Header */}
-      <div className="p-4 border-b-2 border-black flex items-center justify-between bg-black text-white">
-        <div>
-          <h2 className="font-serif text-base font-bold uppercase tracking-wider">Topics</h2>
-          <p className="font-mono text-[9px] text-neutral-400 mt-0.5">
-            {filteredTopics.length} topics available
-          </p>
+      {/* Titlebar */}
+      <div className="p-3 bg-black text-white flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 bg-white shrink-0" />
+          <span className="font-mono text-xs uppercase font-bold tracking-widest">
+            Topics ({filteredTopics.length})
+          </span>
         </div>
-        <button 
+        <button
           onClick={onClose}
-          className="p-1 text-neutral-400 hover:text-white transition-colors"
-          title="Close"
-          aria-label="Close topic browser"
+          className="p-1 hover:bg-neutral-800 transition-colors"
+          title="Close Catalog"
+          aria-label="Close catalog"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="p-3 space-y-3 border-b border-black bg-neutral-50">
+      {/* Filter / Search Bar */}
+      <div className="p-3 border-b-2 border-black bg-neutral-50 space-y-2 shrink-0">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search topics..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-black pl-9 pr-3 py-2 font-body text-xs text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:border-2 focus:border-black"
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Filter by keyword or summary..."
+            className="w-full pl-9 pr-3 py-2 border-2 border-black text-xs font-mono bg-white outline-none focus:bg-white placeholder:text-neutral-400"
           />
         </div>
-        
-        <div className="flex flex-wrap gap-1 max-h-[84px] overflow-y-auto no-scrollbar">
+
+        {/* Category Pills (Single-Row Horizontal Scroll) */}
+        <div className="flex gap-1.5 overflow-x-auto py-1 custom-scrollbar shrink-0">
           <button
             onClick={() => setActiveCategory(null)}
-            className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wider font-bold transition-colors ${
-              activeCategory === null 
-                ? 'bg-black text-white' 
-                : 'bg-white border border-neutral-300 text-neutral-600 hover:border-black'
+            className={`px-2.5 py-1 font-mono text-[10px] uppercase font-bold whitespace-nowrap border transition-colors shrink-0 ${
+              activeCategory === null
+                ? 'bg-black text-white border-black'
+                : 'bg-white text-black border-neutral-300 hover:border-black'
             }`}
           >
-            All ({mergedTopics.length})
+            All
           </button>
-          {CATEGORIES.map(cat => {
-            const count = mergedTopics.filter(i => i.category.toLowerCase() === cat.toLowerCase()).length;
-            return (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wider font-bold transition-colors ${
-                  activeCategory?.toLowerCase() === cat.toLowerCase()
-                    ? 'bg-black text-white' 
-                    : 'bg-white border border-neutral-300 text-neutral-600 hover:border-black'
-                }`}
-              >
-                {cat} {count > 0 && `(${count})`}
-              </button>
-            );
-          })}
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+              className={`px-2.5 py-1 font-mono text-[10px] uppercase font-bold whitespace-nowrap border transition-colors shrink-0 ${
+                activeCategory === cat
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-black border-neutral-300 hover:border-black'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
       </div>
 

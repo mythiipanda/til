@@ -89,7 +89,7 @@ interface MindMapState {
     teaserContext?: string
   ) => void;
   loadPrecomputedHub: (hubId: string) => Promise<void>;
-  selectNode: (nodeId: string) => void;
+  selectNode: (nodeId: string | null) => void;
   openDossier: (nodeId: string) => Promise<void>;
   closeDossier: () => void;
   setWorkstationTab: (tab: 'monograph' | 'agent') => void;
@@ -570,7 +570,11 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     }
   },
 
-  selectNode: (nodeId: string) => {
+  selectNode: (nodeId: string | null) => {
+    if (!nodeId) {
+      set({ selectedNodeId: null });
+      return;
+    }
     const node = get().nodes.find(n => n.id === nodeId);
     if (!node || !node.data) return;
 

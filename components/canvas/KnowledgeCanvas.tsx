@@ -122,12 +122,11 @@ function CanvasInner() {
           gap={32}
           color="#00000020"
         />
-        <Controls position="bottom-left" showInteractive={false} />
       </ReactFlow>
 
-      {/* Floating Canvas Navigation HUD (Bottom-Right) */}
+      {/* Floating Canvas Navigation HUD (Bottom-Left on Desktop) */}
       {nodes.length > 0 && (
-        <div className="fixed bottom-6 right-6 z-20 flex items-center gap-1.5 bg-white border-2 border-black p-1.5 shadow-none nodrag">
+        <div className="fixed bottom-6 left-6 z-20 hidden md:flex items-center gap-1.5 bg-white border-2 border-black p-1.5 shadow-none nodrag">
           <button
             onClick={() => zoomIn({ duration: 250 })}
             className="w-7 h-7 flex items-center justify-center font-mono text-sm font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"

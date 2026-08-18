@@ -1,6 +1,7 @@
 'use client';
 
-import { MapPin, Globe, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { MapPin, Globe, ExternalLink, Touchpad } from 'lucide-react';
 import type { Geography } from '@/types';
 
 interface MapViewerProps {
@@ -8,6 +9,8 @@ interface MapViewerProps {
 }
 
 export function MapViewer({ geography }: MapViewerProps) {
+  const [isInteractive, setIsInteractive] = useState(false);
+
   if (!geography || !geography.latitude || !geography.longitude) return null;
 
   const { latitude, longitude, locationName, historicalSignificance } = geography;
@@ -45,13 +48,25 @@ export function MapViewer({ geography }: MapViewerProps) {
       </div>
 
       {/* Map Embed Container */}
-      <div className="relative w-full h-[180px] border border-black overflow-hidden bg-neutral-100">
+      <div className="relative w-full h-[180px] border border-black overflow-hidden bg-neutral-100 group">
         <iframe
           title={`Map of ${locationName}`}
           src={osmEmbedUrl}
-          className="w-full h-full border-none grayscale contrast-125 hover:grayscale-0 transition-[filter] duration-300 image-outline"
+          className={`w-full h-full border-none grayscale contrast-125 hover:grayscale-0 transition-[filter] duration-300 image-outline ${
+            !isInteractive ? 'pointer-events-none' : 'pointer-events-auto'
+          }`}
           loading="lazy"
         />
+        {!isInteractive && (
+          <button
+            onClick={() => setIsInteractive(true)}
+            className="absolute inset-0 bg-black/5 hover:bg-black/10 flex items-center justify-center font-mono text-[10px] uppercase font-bold tracking-wider text-black transition-colors"
+          >
+            <span className="bg-white border border-black px-2.5 py-1 shadow-sm">
+              Tap to interact with map
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Footer attribution & link */}

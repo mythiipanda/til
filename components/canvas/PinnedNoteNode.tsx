@@ -18,7 +18,7 @@ function PinnedNoteNodeComponent({ data }: { data: PinnedNoteData }) {
   };
 
   return (
-    <div className="bg-white text-black border-2 border-black w-[360px] shadow-none select-none group transition-none animate-fade">
+    <div className="bg-white text-black border-2 border-black w-[min(86vw,360px)] shadow-none select-none group transition-none animate-fade">
       <Handle type="target" position={Position.Top} className="!opacity-0 !w-1 !h-1" />
 
       {/* Note Header / Drag Handle */}
