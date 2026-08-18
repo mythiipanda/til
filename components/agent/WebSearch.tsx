@@ -1,5 +1,8 @@
 'use client';
 
+import { useState } from 'react';
+import { ChevronDown, ExternalLink } from 'lucide-react';
+
 interface WebSearchProps {
   query: string;
   sources: Array<{ id?: string; title?: string; url: string }>;
@@ -16,28 +19,64 @@ const M = {
 function Globe() {
   const values = [M.L, M.ML, M.MR, M.R, M.L].join(';');
   return (
-    <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor"
-      strokeWidth="0.85" strokeLinecap="round" style={{ overflow: 'visible' }} className="globe-spin">
+    <svg
+      viewBox="0 0 12 12"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="0.9"
+      strokeLinecap="round"
+      style={{ overflow: 'visible' }}
+      className="globe-spin shrink-0"
+    >
       <circle cx="6" cy="6" r="5.7" opacity="0.9" />
       <line x1="0.3" y1="6" x2="11.7" y2="6" opacity="0.9" />
       {['0s', '-1.2s', '-2.4s', '-3.6s', '-4.8s', '-6s'].map((begin) => (
-        <path key={begin} d={M.L} opacity="0">
-          <animate attributeName="d" dur="7.2s" begin={begin} repeatCount="indefinite"
-            calcMode="spline" keyTimes="0;0.25;0.5;0.75;1"
-            keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1" values={values} />
-          <animate attributeName="opacity" dur="7.2s" begin={begin} repeatCount="indefinite"
-            calcMode="linear" keyTimes="0;0.05;0.7;0.75;1" values="0;0.9;0.9;0;0" />
+        <path
+          key={begin}
+          d={M.L}
+          opacity="0"
+        >
+          <animate
+            attributeName="d"
+            dur="7.2s"
+            begin={begin}
+            repeatCount="indefinite"
+            calcMode="spline"
+            keyTimes="0;0.25;0.5;0.75;1"
+            keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+            values={values}
+          />
+          <animate
+            attributeName="opacity"
+            dur="7.2s"
+            begin={begin}
+            repeatCount="indefinite"
+            calcMode="linear"
+            keyTimes="0;0.05;0.7;0.75;1"
+            values="0;0.9;0.9;0;0"
+          />
         </path>
       ))}
     </svg>
   );
 }
 
-function Check() {
+function CheckIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="shrink-0 text-black"
+    >
+      <path d="M20 6 9 17l-5-5" />
     </svg>
   );
 }
@@ -51,45 +90,66 @@ function getDomain(url: string): string {
 }
 
 /**
- * Live web-search block: a shimmering query header while searching, with
- * discovered sources resolving one by one — each globe settles into a check.
+ * Live Web Search component (aicss.dev standard).
+ * Shows a spinning globe while searching with resolving source citations.
  */
 export function WebSearch({ query, sources, active }: WebSearchProps) {
-  return (
-    <div className="border-2 border-black bg-white">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <Globe />
-        {active ? (
-          <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-black animate-pulse truncate">
-            Searching “{query}”
-          </span>
-        ) : (
-          <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-black truncate">
-            Searched “{query}”
-          </span>
-        )}
-        {sources.length > 0 && !active && (
-          <span className="font-mono text-[9px] text-neutral-500 shrink-0">
-            {sources.length} {sources.length === 1 ? 'source' : 'sources'}
-          </span>
-        )}
-      </div>
+  const [collapsed, setCollapsed] = useState(false);
 
-      {sources.length > 0 && (
-        <ul className="border-t-2 border-black px-3 py-1.5 space-y-1">
+  return (
+    <div className="border-2 border-black bg-white select-none transition-all">
+      <button
+        type="button"
+        onClick={() => !active && setCollapsed(c => !c)}
+        className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
+          active ? 'cursor-default bg-neutral-50' : 'cursor-pointer hover:bg-neutral-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {active ? <Globe /> : <CheckIcon />}
+          <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-black truncate">
+            {active ? `Searching “${query}”` : `Searched “${query}”`}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {sources.length > 0 && !active && (
+            <span className="font-mono text-[9px] text-neutral-500 font-semibold uppercase tracking-wider">
+              {sources.length} {sources.length === 1 ? 'source' : 'sources'}
+            </span>
+          )}
+          {!active && sources.length > 0 && (
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-black transition-transform duration-200 ${
+                !collapsed ? 'rotate-180' : ''
+              }`}
+            />
+          )}
+        </div>
+      </button>
+
+      {sources.length > 0 && !collapsed && (
+        <ul className="border-t-2 border-black px-3.5 py-2 space-y-1.5 bg-white">
           {sources.map((src, i) => (
-            <li key={src.id || i} className="line-reveal flex items-center gap-2 py-0.5">
-              <span className="text-black shrink-0">{active ? <Globe /> : <Check />}</span>
+            <li
+              key={src.id || i}
+              className="line-reveal flex items-center gap-2 py-0.5 group"
+              style={{ animationDelay: `${i * 30}ms` }}
+            >
+              <span className="text-black shrink-0">
+                {active ? <Globe /> : <CheckIcon />}
+              </span>
               <a
                 href={src.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-body text-xs text-neutral-800 hover:text-black hover:underline underline-offset-2 truncate min-w-0 flex-1"
-                title={src.url}
+                className="font-body text-xs text-neutral-800 hover:text-black hover:underline underline-offset-2 truncate min-w-0 flex-1 flex items-center gap-1.5"
+                title={src.title || src.url}
               >
-                {src.title || src.url}
+                <span className="truncate">{src.title || src.url}</span>
+                <ExternalLink className="w-3 h-3 text-neutral-400 group-hover:text-black opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
               </a>
-              <span className="font-mono text-[9px] text-neutral-500 shrink-0 truncate max-w-[120px]">
+              <span className="font-mono text-[9px] text-neutral-400 group-hover:text-neutral-600 shrink-0 truncate max-w-[130px] border border-neutral-200 px-1 py-0.2">
                 {getDomain(src.url)}
               </span>
             </li>

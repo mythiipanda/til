@@ -123,11 +123,13 @@ export interface ThoughtStep {
 
 export interface ToolCallEvent {
   id: string;
-  name: string;
+  name?: string;
+  tool?: string;
+  query?: string;
   args?: string;
-  status: 'running' | 'done';
+  status: 'running' | 'done' | 'success';
   result?: string;
-  timestamp: number;
+  timestamp?: number;
 }
 
 export interface ChatMessage {

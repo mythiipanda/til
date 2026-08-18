@@ -5,10 +5,11 @@ import ReactMarkdown from 'react-markdown';
 
 interface MarkdownContentProps {
   content?: string | null | unknown;
+  sources?: Array<{ id?: string; title?: string; url: string }>;
   className?: string;
 }
 
-function MarkdownContentImpl({ content, className = '' }: MarkdownContentProps) {
+function MarkdownContentImpl({ content, sources = [], className = '' }: MarkdownContentProps) {
   if (!content) return null;
 
   const textContent = typeof content === 'string' 
@@ -18,6 +19,37 @@ function MarkdownContentImpl({ content, className = '' }: MarkdownContentProps) 
     : String(content);
 
   if (!textContent.trim()) return null;
+
+  // Custom text renderer to parse [1], [2], etc. into interactive citation links
+  const renderTextWithCitations = (text: string) => {
+    if (!sources || sources.length === 0) return text;
+
+    const parts = text.split(/(\[\d+\])/g);
+    if (parts.length === 1) return text;
+
+    return parts.map((part, idx) => {
+      const match = part.match(/^\[(\d+)\]$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        const source = sources[num - 1];
+        if (source && source.url) {
+          return (
+            <a
+              key={idx}
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={source.title || source.url}
+              className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1 py-0.2 mx-0.5 text-black transition-colors align-super no-underline select-none cursor-pointer"
+            >
+              [{num}]
+            </a>
+          );
+        }
+      }
+      return part;
+    });
+  };
 
   try {
     return (
@@ -41,7 +73,12 @@ function MarkdownContentImpl({ content, className = '' }: MarkdownContentProps) 
             ),
             p: ({ children }) => (
               <p className="my-1.5 leading-relaxed text-inherit">
-                {children}
+                {React.Children.map(children, child => {
+                  if (typeof child === 'string') {
+                    return renderTextWithCitations(child);
+                  }
+                  return child;
+                })}
               </p>
             ),
             strong: ({ children }) => (
@@ -66,7 +103,12 @@ function MarkdownContentImpl({ content, className = '' }: MarkdownContentProps) 
             ),
             li: ({ children }) => (
               <li className="leading-relaxed">
-                {children}
+                {React.Children.map(children, child => {
+                  if (typeof child === 'string') {
+                    return renderTextWithCitations(child);
+                  }
+                  return child;
+                })}
               </li>
             ),
             blockquote: ({ children }) => (
