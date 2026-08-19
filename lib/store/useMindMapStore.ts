@@ -44,6 +44,7 @@ interface MindMapState {
   isResearching: boolean;
   currentTopic: string | null;
   hasNewDossier: boolean;
+  researchError: string | null;
   
   // SSE activity stream
   thoughts: ThoughtStep[];
@@ -102,6 +103,7 @@ interface MindMapState {
   setWorkstationTab: (tab: 'monograph' | 'agent') => void;
   dismissNewDossierAlert: () => void;
   sendChat: (question: string) => void;
+  retryChat: (question: string) => void;
   pinChatToCanvas: (question: string, answer: string, citations?: Array<{ title?: string; url: string }>) => void;
   deleteNode: (nodeId: string) => void;
   saveMindMap: () => Promise<{ id?: string; shareSlug?: string; error?: string }>;
@@ -135,6 +137,17 @@ function armIdleTimer(es: EventSource, timerRef: { current: ReturnType<typeof se
 function kickIdleTimer(es: EventSource, timerRef: { current: ReturnType<typeof setTimeout> | null }, onStale: () => void) {
   if (timerRef.current) clearTimeout(timerRef.current);
   armIdleTimer(es, timerRef, onStale);
+}
+
+function markLastChatError(messages: ChatMessage[], error: string): ChatMessage[] {
+  const msgs = [...messages];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role === 'assistant') {
+      msgs[i] = { ...msgs[i], streamError: error };
+      break;
+    }
+  }
+  return msgs;
 }
 
 // Debounced canvas autosave: coalesce rapid drag/edge edits into one write.
@@ -250,6 +263,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   currentTopic: '',
   isResearching: false,
   hasNewDossier: false,
+  researchError: null,
   
   thoughts: [],
   toolCalls: [],
@@ -339,6 +353,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       currentTopic: topic,
       chatNodeTitle: topic,
       hasNewDossier: false,
+      researchError: null,
       contextChain: currentChain,
       thoughts: [],
       toolCalls: [],
@@ -366,7 +381,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     const staleHandler = () => {
       if (researchES === es) researchES = null;
       if (researchIdleTimer) researchIdleTimer = null;
-      set({ isResearching: false });
+      set({ isResearching: false, researchError: 'The research stream stalled. Your connection may have dropped; please try again.' });
     };
     armIdleTimer(es, timerRef, staleHandler);
 
@@ -501,13 +516,14 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           set((state) => ({
             isResearching: false,
             hasNewDossier: true,
+            researchError: null,
             planSteps: state.planSteps.map((s) => ({ ...s, status: 'done' as const })),
           }));
           persistActiveSession(get());
           es.close();
         } else if (event === 'error') {
           if (timerRef.current) clearTimeout(timerRef.current);
-          set({ isResearching: false });
+          set({ isResearching: false, researchError: data?.message || 'The research run failed. Please try again.' });
           es.close();
         }
       } catch (err) {
@@ -517,7 +533,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
     es.onerror = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      set({ isResearching: false });
+      set({ isResearching: false, researchError: 'Lost connection to the research stream. Please try again.' });
       es.close();
     };
   },
@@ -762,7 +778,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     const staleHandler = () => {
       if (chatES === es) chatES = null;
       if (chatIdleTimer) chatIdleTimer = null;
-      set({ isChatStreaming: false });
+      set((state) => ({
+        isChatStreaming: false,
+        chatMessages: markLastChatError(state.chatMessages, 'The chat stream stalled. Your connection may have dropped; please retry.'),
+      }));
     };
     armIdleTimer(es, timerRef, staleHandler);
     
@@ -872,7 +891,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           es.close();
         } else if (event === 'error') {
           if (timerRef.current) clearTimeout(timerRef.current);
-          set({ isChatStreaming: false });
+          set((state) => ({
+            isChatStreaming: false,
+            chatMessages: markLastChatError(state.chatMessages, data?.message || 'The chat stream failed. Please retry.'),
+          }));
           es.close();
         }
       } catch (err) {
@@ -882,9 +904,22 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     
     es.onerror = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      set({ isChatStreaming: false });
+      set((state) => ({
+        isChatStreaming: false,
+        chatMessages: markLastChatError(state.chatMessages, 'Lost connection to the chat stream. Please retry.'),
+      }));
       es.close();
     };
+  },
+
+  retryChat: (question: string) => {
+    set((state) => ({
+      isChatStreaming: false,
+      chatMessages: state.chatMessages.map((m) =>
+        m.role === 'assistant' && m.streamError ? { ...m, streamError: undefined } : m
+      ),
+    }));
+    get().sendChat(question);
   },
   
   pinChatToCanvas: (question: string, answer: string, citations?: Array<{ title?: string; url: string }>) => {
@@ -1252,10 +1287,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       selectedNodeId: null,
       lastResearchedNodeId: null,
       contextChain: [],
-      isResearching: false,
-      currentTopic: null,
-      chatNodeTitle: null,
-      hasNewDossier: false,
+isResearching: false,
+  currentTopic: null,
+  hasNewDossier: false,
+  researchError: null,
       thoughts: [],
       toolCalls: [],
       sources: [],

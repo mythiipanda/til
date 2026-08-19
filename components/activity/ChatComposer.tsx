@@ -16,6 +16,7 @@ import {
   Minus,
   Maximize2,
   Copy,
+  RotateCcw,
 } from 'lucide-react';
 
 const NOW = () => Date.now();
@@ -35,6 +36,7 @@ export function ChatComposer() {
   const chatMessages = useMindMapStore(s => s.chatMessages);
   const isChatStreaming = useMindMapStore(s => s.isChatStreaming);
   const sendChat = useMindMapStore(s => s.sendChat);
+  const retryChat = useMindMapStore(s => s.retryChat);
   const pinChatToCanvas = useMindMapStore(s => s.pinChatToCanvas);
   const nodes = useMindMapStore(s => s.nodes);
   const selectedNodeId = useMindMapStore(s => s.selectedNodeId);
@@ -256,6 +258,22 @@ export function ChatComposer() {
                           {/* Inline citations footer */}
                           {msg.sources && msg.sources.length > 0 && !isStreamingThis && (
                             <InlineCitations sources={msg.sources} />
+                          )}
+
+                          {/* Stream error + chat-only retry */}
+                          {msg.streamError && !isStreamingThis && (
+                            <div className="flex items-center gap-2 pt-1.5">
+                              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-red-600">
+                                {msg.streamError}
+                              </span>
+                              <button
+                                onClick={() => retryChat(prevUserMsg)}
+                                className="inline-flex items-center gap-1 px-2 py-1 border border-black font-mono text-[10px] font-bold uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Retry
+                              </button>
+                            </div>
                           )}
 
                           {/* Message actions & Proof of model badge */}

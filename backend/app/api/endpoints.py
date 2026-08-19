@@ -22,6 +22,7 @@ from app.services.llm import get_available_models_async
 from app.services.precompute import get_precomputed_hub, list_precomputed_hubs
 from app.services.random_topic import pick_random_topic
 from app.services.research_agent import get_dossier, stream_deep_research
+from app.services.sse import with_heartbeat
 from app.services.supabase import fetch_hub_by_id_from_supabase, fetch_hubs_from_supabase, is_supabase_configured
 
 logger = logging.getLogger(__name__)
@@ -131,14 +132,16 @@ async def research_stream_endpoint(
     """
     context_list = [c.strip() for c in context_chain.split(",") if c.strip()]
     return StreamingResponse(
-        stream_deep_research(
-            topic=topic,
-            category=category,
-            parent_id=parent_id,
-            context_chain=context_list,
-            parent_summary=parent_summary,
-            teaser_context=teaser_context,
-            model=model,
+        with_heartbeat(
+            stream_deep_research(
+                topic=topic,
+                category=category,
+                parent_id=parent_id,
+                context_chain=context_list,
+                parent_summary=parent_summary,
+                teaser_context=teaser_context,
+                model=model,
+            )
         ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
@@ -180,14 +183,16 @@ async def chat_stream_endpoint(
             pass
 
     return StreamingResponse(
-        stream_chat(
-            node_title=node_title,
-            user_question=question,
-            node_id=node_id,
-            ancestor_context=context_list,
-            history=history_list,
-            active_summary=active_summary,
-            model=model,
+        with_heartbeat(
+            stream_chat(
+                node_title=node_title,
+                user_question=question,
+                node_id=node_id,
+                ancestor_context=context_list,
+                history=history_list,
+                active_summary=active_summary,
+                model=model,
+            )
         ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},

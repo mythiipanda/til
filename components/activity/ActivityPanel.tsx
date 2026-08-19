@@ -29,6 +29,7 @@ function getDomain(url: string): string {
 
 export function ActivityPanel() {
   const isResearching = useMindMapStore(s => s.isResearching);
+  const researchError = useMindMapStore(s => s.researchError);
   const planSteps = useMindMapStore(s => s.planSteps);
   const thoughts = useMindMapStore(s => s.thoughts);
   const toolCalls = useMindMapStore(s => s.toolCalls);
@@ -49,7 +50,7 @@ export function ActivityPanel() {
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
 
   // If dossier is open on the right side, or dismissed, hide panel to prevent overlap
-  const isVisible = (isResearching || thoughts.length > 0 || sources.length > 0) && !isDossierOpen && !isDismissed;
+  const isVisible = (isResearching || thoughts.length > 0 || sources.length > 0 || !!researchError) && !isDossierOpen && !isDismissed;
   if (!isVisible) return null;
 
   const targetNodeId = lastResearchedNodeId || activeDossier?.nodeId || selectedNodeId || nodes[0]?.id;
@@ -144,6 +145,15 @@ export function ActivityPanel() {
           </button>
         </div>
       </div>
+
+      {/* Research stream error */}
+      {researchError && (
+        <div className="p-3 bg-red-50 border-b-2 border-red-700 flex items-start gap-2 shrink-0">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-red-700 leading-snug">
+            {researchError}
+          </span>
+        </div>
+      )}
 
       {/* Completion Monograph CTA */}
       {!isResearching && thoughts.length > 0 && (

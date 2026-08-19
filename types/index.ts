@@ -142,6 +142,7 @@ export interface ChatMessage {
   suggestedFollowUps?: string[];
   model?: string;
   modelLabel?: string;
+  streamError?: string;
 }
 
 export interface ModelOption {
