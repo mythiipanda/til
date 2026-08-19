@@ -1,127 +1,92 @@
-'use client';
+import type { Metadata } from 'next';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import SharedMindMapClient from './SharedMindMapClient';
 
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { KnowledgeCanvas } from '@/components/canvas/KnowledgeCanvas';
-import { DossierDrawer } from '@/components/dossier/DossierDrawer';
-import { ArrowLeft, Copy, Check, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://til-seven.vercel.app';
 
-export default function SharedMindMapPage() {
-  const params = useParams();
-  const slug = params?.slug as string;
+async function getSharedMindMap(slug: string) {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from('mindmaps')
+    .select('id, title, share_slug, nodes, updated_at')
+    .eq('share_slug', slug)
+    .single();
 
-  const { loadMindMapBySlug, nodes, currentTopic } = useMindMapStore();
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [copied, setCopied] = useState(false);
+  if (error || !data) return null;
 
-  useEffect(() => {
-    if (slug) {
-      loadMindMapBySlug(slug).then((success) => {
-        setLoading(false);
-        if (!success) setNotFound(true);
-      });
-    }
-  }, [slug, loadMindMapBySlug]);
+  const rootNode = Array.isArray(data.nodes) ? (data.nodes as any[]).find((n) => !n?.parentId) : null;
+  const summary =
+    (rootNode?.data?.summary as string) ||
+    (rootNode?.data?.label as string) ||
+    `${data.title} — an interactive spatial knowledge map`;
 
-  const handleCopy = () => {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  return {
+    id: data.id,
+    title: data.title,
+    slug: data.share_slug,
+    summary,
+    nodeCount: Array.isArray(data.nodes) ? data.nodes.length : 0,
+    category: (rootNode?.data?.category as string) || 'General',
   };
+}
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-white text-black">
-        <div className="flex flex-col items-center gap-3 border-2 border-black p-8">
-          <Loader2 className="w-6 h-6 animate-spin text-black" />
-          <p className="font-mono text-xs uppercase tracking-widest text-black font-bold">
-            Loading Shared Mindmap...
-          </p>
-        </div>
-      </div>
-    );
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const mindmap = await getSharedMindMap(slug);
+  if (!mindmap) {
+    return {
+      title: 'Shared Mindmap Not Found — TDILEARNED',
+      robots: { index: false, follow: false },
+    };
   }
 
-  if (notFound || nodes.length === 0) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-white p-6 text-center">
-        <div className="border-2 border-black p-8 max-w-md space-y-4">
-          <div className="w-3 h-3 bg-black mx-auto" />
-          <h1 className="font-serif text-2xl font-bold text-black">
-            Shared Mindmap Not Found
-          </h1>
-          <p className="font-body text-xs text-neutral-600 leading-relaxed">
-            This mindmap link may have expired or is set to private by its author.
-          </p>
-          <div className="pt-2">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white hover:bg-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-widest transition-colors duration-100"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Explore TDILEARNED</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const url = `${SITE_URL}/m/${mindmap.slug}`;
+  const description = `Explore "${mindmap.title}" — ${mindmap.summary}`;
+
+  return {
+    title: `${mindmap.title} — TDILEARNED`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${mindmap.title} — TDILEARNED`,
+      description,
+      url,
+      siteName: 'TDILEARNED',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title: `${mindmap.title} — TDILEARNED`,
+      description,
+    },
+  };
+}
+
+export default async function SharedMindMapPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const mindmap = await getSharedMindMap(slug);
+
+  const jsonLd = mindmap
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'LearningResource',
+        name: mindmap.title,
+        description: mindmap.summary,
+        url: `${SITE_URL}/m/${mindmap.slug}`,
+        provider: { '@type': 'Organization', name: 'TDILEARNED' },
+        learningResourceType: 'Interactive Spatial Knowledge Map',
+      }
+    : null;
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-white select-none">
-      {/* Top Banner Header */}
-      <header className="fixed top-4 left-4 right-4 z-30 flex items-center justify-between bg-white border-2 border-black p-2 md:px-4 shadow-none">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>TDILEARNED</span>
-          </Link>
-          <div className="h-4 w-px bg-black hidden sm:block" />
-          <div className="flex items-center gap-2">
-            <span className="font-serif text-base font-bold text-black truncate max-w-[240px] sm:max-w-[400px]">
-              {currentTopic}
-            </span>
-            <span className="font-mono text-[10px] uppercase font-bold bg-neutral-100 border border-black px-2 py-0.5 text-black">
-              {nodes.length} NODES
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3 h-3" />
-                <span>Link Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3 h-3" />
-                <span>Copy Share Link</span>
-              </>
-            )}
-          </button>
-        </div>
-      </header>
-
-      {/* Main Interactive Canvas */}
-      <main className="h-full w-full">
-        <KnowledgeCanvas />
-      </main>
-
-      {/* Dossier Drawer */}
-      <DossierDrawer />
-    </div>
+    <>
+      {jsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      ) : null}
+      <SharedMindMapClient />
+    </>
   );
 }
