@@ -207,13 +207,15 @@ async def stream_chat(
             },
         )
 
-    raw_contents = await fetch_page_content(
-        [s.url for s in sources[:4]],
-        max_chars=MAX_CONTENT_CHARS,
-    )
-    contents = raw_contents if isinstance(raw_contents, list) else []
+    evidence_sources = sources[:4]
+    fetched_by_url = {}
+    for src in evidence_sources:
+        content = await fetch_page_content(src.url, max_chars=MAX_CONTENT_CHARS)
+        if isinstance(content, str) and content:
+            fetched_by_url[src.url] = content
     evidence_blocks: list[str] = []
-    for idx, (src, content) in enumerate(zip(sources[:4], contents), start=1):
+    for idx, src in enumerate(evidence_sources, start=1):
+        content = fetched_by_url.get(src.url)
         if isinstance(content, str) and content:
             evidence_blocks.append(
                 f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {getattr(src, 'snippet', '')}\nCONTENT:\n{content}"
