@@ -1,6 +1,13 @@
 """
 Sliding-window in-memory rate limiter for TDILEARNED FastAPI endpoints.
 Protects Cerebras inference tokens and upstream search quotas against scraping/abuse.
+
+Client IP resolution notes (Azure App Service):
+- The app sits behind Azure ARR, which APPENDS the real client IP as the LAST
+  hop of the `x-forwarded-for` chain. The leading hops are client-supplied and
+  spoofable, so we must read the LAST hop — never the first.
+- When the Cloudflare API gateway is in front, it forwards the real client IP
+  in the trusted `x-cf-client-ip` header, which takes priority.
 """
 
 import logging
@@ -15,6 +22,26 @@ logger = logging.getLogger(__name__)
 _MEMORY_TIMESTAMPS: dict[str, list[float]] = defaultdict(list)
 
 
+def resolve_client_ip(request: Request) -> str:
+    """Return the real client IP, prioritizing trusted proxies over spoofable hops."""
+    cf_ip = request.headers.get("x-cf-client-ip")
+    if cf_ip:
+        return cf_ip.strip()
+
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        # Azure ARR appends the true client IP as the final hop.
+        last_hop = forwarded.split(",")[-1].strip()
+        if last_hop:
+            return last_hop
+
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+
+    return request.client.host if request.client else "127.0.0.1"
+
+
 class RateLimiter:
     def __init__(self, max_requests: int = 20, window_seconds: int = 60):
         """
@@ -25,12 +52,7 @@ class RateLimiter:
         self.window_seconds = window_seconds
 
     async def __call__(self, request: Request):
-        # Determine client IP (handles reverse proxies on Azure Container Apps)
-        client_ip = (
-            request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-            or request.headers.get("x-real-ip")
-            or (request.client.host if request.client else "127.0.0.1")
-        )
+        client_ip = resolve_client_ip(request)
 
         now = time.time()
         key = f"ratelimit:{request.url.path}:{client_ip}"
