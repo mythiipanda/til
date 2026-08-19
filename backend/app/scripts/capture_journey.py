@@ -169,7 +169,7 @@ async def main() -> None:
     lines.append(LINE + "\n")
 
     chat_events: list[dict] = []
-    async for chunk in stream_chat(topic, question, [category, topic]):
+    async for chunk in stream_chat(topic, question, ancestor_context=[category, topic]):
         if chunk.startswith("data: "):
             try:
                 payload = json.loads(chunk[len("data: ") :])

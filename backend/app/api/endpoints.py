@@ -67,8 +67,6 @@ async def list_catalog(limit: int = Query(2000, ge=1, le=3000)):
     catalog = get_catalog()
     supabase_hubs = await fetch_hubs_from_supabase(limit=limit) if is_supabase_configured() else []
 
-    existing_titles = {t["title"].lower().strip() for t in (catalog or [])}
-
     hub_entries = [
         {
             "id": h["id"],
@@ -80,7 +78,11 @@ async def list_catalog(limit: int = Query(2000, ge=1, le=3000)):
         for h in supabase_hubs
     ]
 
-    merged = hub_entries + [t for t in (catalog or []) if t.get("title", "").lower().strip() not in existing_titles]
+    # Fold the catalog in, dropping any topic already covered by a hub (hubs win).
+    hub_titles = {h["title"].lower().strip() for h in hub_entries}
+    merged = hub_entries + [
+        t for t in (catalog or []) if t.get("title", "").lower().strip() not in hub_titles
+    ]
     return {"total": len(merged), "topics": merged[:limit]}
 
 

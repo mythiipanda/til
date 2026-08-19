@@ -235,7 +235,7 @@ async def _run(cmd: str, args: list[str], state: CliState) -> None:
             return
         print(f"{BOLD}Follow-up guide answering about: {topic}{RESET}")
         print(f"{DIM}Q: {question}{RESET}\n")
-        async for chunk in stream_chat(topic, question, [state.category or "", topic]):
+        async for chunk in stream_chat(topic, question, ancestor_context=[state.category or "", topic]):
             if chunk.startswith("data: "):
                 try:
                     ev = json.loads(chunk[len("data: ") :])

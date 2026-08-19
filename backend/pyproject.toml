@@ -23,6 +23,7 @@ dev = [
     "mypy>=1.13.0",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-cov>=7.1.0",
 ]
 
 [tool.pytest.ini_options]
@@ -30,6 +31,12 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = ["ignore::DeprecationWarning"]
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=70"
+
+[tool.coverage.run]
+# Operational CLI utilities (agent_cli, signal_collector, bulk_precompute, ...)
+# are not part of the served API surface; exclude them from the coverage gate.
+omit = ["app/scripts/*"]
 
 [build-system]
 requires = ["hatchling"]

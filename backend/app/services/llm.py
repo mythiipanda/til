@@ -562,6 +562,8 @@ class _StructuredWithFallback:
             ]
             raw_res = await active_llm.ainvoke(repair_messages, **kwargs)
             content = raw_res.content if hasattr(raw_res, "content") else str(raw_res)
+            if not isinstance(content, str):
+                content = str(content)
             try:
                 json_match = re.search(r"(\{[\s\S]*\})", content)
                 json_str = json_match.group(1) if json_match else content
