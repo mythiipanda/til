@@ -133,7 +133,6 @@ class ModelOptionSchema(BaseModel):
     provider: str  # "cerebras" | "mistral" | "openrouter"
     provider_label: str  # "Cerebras", "Mistral AI", "OpenRouter"
     model_id: str  # "gemma-4-31b"
-    tier: str  # "Ultra Fast (~3,000 tok/s)"
     is_free: bool = True
     is_available: bool = True
 

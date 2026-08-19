@@ -1,7 +1,8 @@
 """
 Model-agnostic LLM provider factory.
-Supports Cerebras, Mistral, and OpenRouter for free, ultra-fast, and deep reasoning models.
-Swapping hardware providers is a configuration change, not a code change.
+Supports Cerebras, Mistral, and OpenRouter, with models discovered dynamically
+from each provider's live API. Swapping hardware providers is a configuration
+change, not a code change.
 """
 
 import asyncio
@@ -99,7 +100,6 @@ async def fetch_cerebras_models() -> list[dict[str, Any]]:
                 "provider": "cerebras",
                 "provider_label": "Cerebras",
                 "model_id": "gemma-4-31b",
-                "tier": "Ultra Fast (~3,000 tok/s)",
                 "is_free": True,
             },
             {
@@ -108,7 +108,6 @@ async def fetch_cerebras_models() -> list[dict[str, Any]]:
                 "provider": "cerebras",
                 "provider_label": "Cerebras",
                 "model_id": "gpt-oss-120b",
-                "tier": "Ultra Fast (~2,800 tok/s)",
                 "is_free": True,
             },
         ]
@@ -135,7 +134,6 @@ async def fetch_cerebras_models() -> list[dict[str, Any]]:
                             "provider": "cerebras",
                             "provider_label": "Cerebras",
                             "model_id": m_id,
-                            "tier": "Ultra Fast",
                             "is_free": True,
                         }
                     )
@@ -153,7 +151,6 @@ async def fetch_cerebras_models() -> list[dict[str, Any]]:
             "provider": "cerebras",
             "provider_label": "Cerebras",
             "model_id": "gemma-4-31b",
-            "tier": "Ultra Fast (~3,000 tok/s)",
             "is_free": True,
         }
     ]
@@ -175,7 +172,6 @@ async def fetch_mistral_models() -> list[dict[str, Any]]:
                 "provider": "mistral",
                 "provider_label": "Mistral AI",
                 "model_id": "ministral-8b-2512",
-                "tier": "Balanced (~150 tok/s)",
                 "is_free": True,
             },
             {
@@ -184,7 +180,6 @@ async def fetch_mistral_models() -> list[dict[str, Any]]:
                 "provider": "mistral",
                 "provider_label": "Mistral AI",
                 "model_id": "ministral-3b-2512",
-                "tier": "Fast (~220 tok/s)",
                 "is_free": True,
             },
             {
@@ -193,7 +188,6 @@ async def fetch_mistral_models() -> list[dict[str, Any]]:
                 "provider": "mistral",
                 "provider_label": "Mistral AI",
                 "model_id": "mistral-small-latest",
-                "tier": "Deep Synthesis (~120 tok/s)",
                 "is_free": True,
             },
         ]
@@ -221,9 +215,8 @@ async def fetch_mistral_models() -> list[dict[str, Any]]:
                                 "id": f"mistral:{m_id}",
                                 "name": clean_name,
                                 "provider": "mistral",
-                                "provider_label": "Mistral AI",
+"provider_label": "Mistral AI",
                                 "model_id": m_id,
-                                "tier": "Specialized Synthesis",
                                 "is_free": True,
                             }
                         )
@@ -241,7 +234,6 @@ async def fetch_mistral_models() -> list[dict[str, Any]]:
             "provider": "mistral",
             "provider_label": "Mistral AI",
             "model_id": "ministral-8b-2512",
-            "tier": "Balanced (~150 tok/s)",
             "is_free": True,
         }
     ]
@@ -293,15 +285,6 @@ async def fetch_openrouter_free_models() -> list[dict[str, Any]]:
                         if ":" in clean_name:
                             clean_name = clean_name.split(":", 1)[1].strip()
 
-                        # Format context tier
-                        ctx = m.get("context_length", 0)
-                        if ctx >= 1_000_000:
-                            tier_str = f"{ctx // 1_000_000}M Ctx • Free"
-                        elif ctx > 0:
-                            tier_str = f"{ctx // 1_000}K Ctx • Free"
-                        else:
-                            tier_str = "Free Tier"
-
                         discovered.append(
                             {
                                 "id": f"openrouter:{m_id}",
@@ -309,7 +292,6 @@ async def fetch_openrouter_free_models() -> list[dict[str, Any]]:
                                 "provider": "openrouter",
                                 "provider_label": "OpenRouter",
                                 "model_id": m_id,
-                                "tier": tier_str,
                                 "is_free": True,
                             }
                         )
@@ -328,7 +310,6 @@ async def fetch_openrouter_free_models() -> list[dict[str, Any]]:
             "provider": "openrouter",
             "provider_label": "OpenRouter",
             "model_id": "nvidia/nemotron-3-ultra-550b-a55b:free",
-            "tier": "1M Ctx • Free",
             "is_free": True,
         }
     ]
@@ -402,7 +383,6 @@ async def get_available_models_async() -> ModelCatalogResponse:
                 provider=item["provider"],
                 provider_label=item["provider_label"],
                 model_id=item["model_id"],
-                tier=item.get("tier", "Standard"),
                 is_free=item.get("is_free", True),
                 is_available=is_avail,
             )
@@ -438,7 +418,6 @@ def get_available_models() -> ModelCatalogResponse:
                     "provider": "cerebras",
                     "provider_label": "Cerebras",
                     "model_id": "gemma-4-31b",
-                    "tier": "Ultra Fast",
                     "is_free": True,
                 }
             ]
@@ -452,7 +431,6 @@ def get_available_models() -> ModelCatalogResponse:
                     "provider": "mistral",
                     "provider_label": "Mistral AI",
                     "model_id": "ministral-8b-2512",
-                    "tier": "Specialized Synthesis",
                     "is_free": True,
                 }
             ]
@@ -466,7 +444,6 @@ def get_available_models() -> ModelCatalogResponse:
                     "provider": "openrouter",
                     "provider_label": "OpenRouter",
                     "model_id": "nvidia/nemotron-3-ultra-550b-a55b:free",
-                    "tier": "1M Ctx • Free",
                     "is_free": True,
                 }
             ]
@@ -488,7 +465,6 @@ def get_available_models() -> ModelCatalogResponse:
                 provider=item["provider"],
                 provider_label=item["provider_label"],
                 model_id=item["model_id"],
-                tier=item.get("tier", "Standard"),
                 is_free=item.get("is_free", True),
                 is_available=is_avail,
             )

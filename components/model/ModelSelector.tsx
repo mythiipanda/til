@@ -42,7 +42,6 @@ export function ModelSelector({ className = '' }: { className?: string }) {
       ? 'OpenRouter'
       : 'Mistral AI',
     model_id: selectedModelId,
-    tier: '',
     is_free: true,
     is_available: true,
   };
@@ -135,7 +134,6 @@ export function ModelSelector({ className = '' }: { className?: string }) {
                       </div>
                       <div className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 mt-0.5">
                         {m.provider_label}
-                        {m.tier ? ` · ${m.tier}` : ''}
                       </div>
                     </div>
 

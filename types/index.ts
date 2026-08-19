@@ -151,7 +151,6 @@ export interface ModelOption {
   provider: 'cerebras' | 'mistral' | 'openrouter' | string;
   provider_label: string; // "Cerebras", "Mistral AI", "OpenRouter"
   model_id: string;
-  tier: string;
   is_free: boolean;
   is_available: boolean;
 }
