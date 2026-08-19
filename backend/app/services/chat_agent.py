@@ -85,6 +85,28 @@ def _clean_search_query(node_title: str, user_question: str) -> str:
     return clean_q or node_title
 
 
+def build_evidence_blocks(
+    sources: list[Any], fetched_by_url: dict[str, str], max_evidence: int = 4
+) -> list[str]:
+    """Numbered `[1]..[N]` evidence blocks whose index matches the source order.
+
+    The citation contract is count-align: block `[N]` always corresponds to
+    `sources[N-1]`. The index is derived from the source's position in the
+    ordered, deduplicated list — never from zip-with-content, which can
+    mislabel blocks when a page fetch fails and shifts the pairing.
+    """
+    blocks: list[str] = []
+    for idx, src in enumerate(sources[:max_evidence], start=1):
+        content = fetched_by_url.get(src.url)
+        if isinstance(content, str) and content:
+            blocks.append(
+                f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {getattr(src, 'snippet', '')}\nCONTENT:\n{content}"
+            )
+        elif getattr(src, "snippet", ""):
+            blocks.append(f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET:\n{src.snippet}")
+    return blocks
+
+
 async def stream_chat(
     node_title: str,
     user_question: str,
@@ -213,15 +235,7 @@ async def stream_chat(
         content = await fetch_page_content(src.url, max_chars=MAX_CONTENT_CHARS)
         if isinstance(content, str) and content:
             fetched_by_url[src.url] = content
-    evidence_blocks: list[str] = []
-    for idx, src in enumerate(evidence_sources, start=1):
-        content = fetched_by_url.get(src.url)
-        if isinstance(content, str) and content:
-            evidence_blocks.append(
-                f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET: {getattr(src, 'snippet', '')}\nCONTENT:\n{content}"
-            )
-        elif getattr(src, "snippet", ""):
-            evidence_blocks.append(f"[{idx}] SOURCE: {src.title}\nURL: {src.url}\nSNIPPET:\n{src.snippet}")
+    evidence_blocks = build_evidence_blocks(evidence_sources, fetched_by_url)
 
     history_context = ""
     if history and len(history) > 0:
