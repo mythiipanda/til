@@ -250,7 +250,7 @@ export function DossierDrawer() {
               {/* Did You Know Fact */}
               {activeDossier.wowFact && (
                 <div className="p-3.5 border-l-4 border-black bg-neutral-50 space-y-1">
-                  <div className="font-body text-xs md:text-sm text-black leading-relaxed italic">
+                  <div className="font-body text-sm md:text-base text-black leading-relaxed italic">
                     <MarkdownContent content={activeDossier.wowFact} sources={activeDossier.sources} />
                   </div>
                 </div>
@@ -293,11 +293,11 @@ export function DossierDrawer() {
                         <h4 className="font-serif text-base font-bold text-black">
                           {mech.title}
                         </h4>
-                        <div className="font-body text-xs text-neutral-700 leading-relaxed">
+                        <div className="font-body text-sm text-neutral-700 leading-relaxed">
                           <MarkdownContent content={mech.explanation} sources={activeDossier.sources} />
                         </div>
                         {mech.bulletPoints && mech.bulletPoints.length > 0 && (
-                          <ul className="list-disc list-inside pt-2 space-y-1 font-body text-xs text-neutral-600 border-t border-neutral-200">
+                          <ul className="list-disc list-inside pt-2 space-y-1 font-body text-sm text-neutral-600 border-t border-neutral-200">
                             {mech.bulletPoints.map((bp, bIdx) => (
                               <li key={bIdx}>{bp}</li>
                             ))}
