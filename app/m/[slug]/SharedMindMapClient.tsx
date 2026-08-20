@@ -79,7 +79,7 @@ export default function SharedMindMapClient() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
+            className="flex items-center gap-1.5 px-3 py-2.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>TDILEARNED</span>
@@ -98,7 +98,7 @@ export default function SharedMindMapClient() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
           >
             {copied ? (
               <>

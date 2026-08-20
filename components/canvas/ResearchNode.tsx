@@ -142,7 +142,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
               {data.rabbit_holes.slice(0, 3).map((rh, i) => (
                 <button
                   key={i}
-                  className="nodrag nopan w-full text-left font-mono text-[11px] sm:text-xs py-2 px-3 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors duration-100 flex items-center justify-between group/btn min-h-[36px]"
+                  className="nodrag nopan w-full text-left font-mono text-[11px] sm:text-xs py-2 px-3 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors duration-100 flex items-center justify-between group/btn min-h-[44px]"
                   onClick={() => handleExpandRabbitHole(rh)}
                 >
                   <span className="truncate pr-2">{rh}</span>
@@ -157,7 +157,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
         <div className="pt-3 border-t-2 border-black flex items-center justify-between font-mono text-xs">
           <button
             onClick={handleCardClick}
-            className="nodrag nopan flex items-center gap-1.5 font-bold text-black uppercase tracking-wider hover:underline underline-offset-4 min-h-[36px]"
+            className="nodrag nopan flex items-center gap-1.5 font-bold text-black uppercase tracking-wider hover:underline underline-offset-4 min-h-[44px]"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Read story</span>
@@ -166,7 +166,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
           {!data.isRoot && (
             <button
               onClick={handleDeepDiveSubtopic}
-              className="nodrag nopan text-black hover:text-white uppercase tracking-wider font-bold flex items-center gap-1 border-2 border-black px-2.5 py-1.5 bg-white hover:bg-black transition-colors duration-100 min-h-[36px]"
+              className="nodrag nopan text-black hover:text-white uppercase tracking-wider font-bold flex items-center gap-1 border-2 border-black px-2.5 py-1.5 bg-white hover:bg-black transition-colors duration-100 min-h-[44px]"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Explore</span>
