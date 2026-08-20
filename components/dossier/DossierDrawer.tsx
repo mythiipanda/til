@@ -387,7 +387,7 @@ export function DossierDrawer() {
                         href={src.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 border border-neutral-200 hover:border-black flex items-center justify-between text-neutral-700 hover:text-black transition-colors"
+                        className="p-2.5 border border-neutral-200 hover:border-black flex items-center justify-between text-neutral-700 hover:text-black transition-colors min-h-[44px]"
                       >
                         <span className="truncate pr-2">[{idx + 1}] {src.title}</span>
                         <ExternalLink className="w-3 h-3 shrink-0" />
