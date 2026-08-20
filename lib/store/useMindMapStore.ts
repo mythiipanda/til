@@ -479,12 +479,13 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             };
 
             const newEdges = [...state.edges];
-            if (parentId) {
-              const edgeId = `e-${parentId}-${nodeId}`;
+            const edgeParentId = parentId ?? (state.nodes.length > 0 ? state.nodes[0].id : null);
+            if (edgeParentId && edgeParentId !== nodeId) {
+              const edgeId = `e-${edgeParentId}-${nodeId}`;
               if (!newEdges.some(e => e.id === edgeId)) {
                 newEdges.push({
                   id: edgeId,
-                  source: parentId,
+                  source: edgeParentId,
                   target: nodeId,
                   type: 'smoothstep',
                   animated: false
