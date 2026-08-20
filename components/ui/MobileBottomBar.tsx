@@ -42,7 +42,7 @@ export function MobileBottomBar({
   if (nodes.length === 0) return null;
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-black h-14 pb-[env(safe-area-inset-bottom)] flex items-center justify-around select-none">
+    <nav aria-label="Primary" className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-black h-14 pb-[env(safe-area-inset-bottom)] flex items-center justify-around select-none">
       {/* Canvas / Center */}
       <button
         onClick={onCenterCanvas}
@@ -58,6 +58,7 @@ export function MobileBottomBar({
       {/* Topics Catalog */}
       <button
         onClick={onToggleBrowse}
+        aria-current={isBrowseOpen ? 'page' : undefined}
         className={`flex-1 flex flex-col items-center justify-center h-full transition-colors ${
           isBrowseOpen ? 'bg-black text-white' : 'text-black hover:bg-neutral-100'
         }`}
@@ -72,6 +73,7 @@ export function MobileBottomBar({
       {/* Story / Dossier */}
       <button
         onClick={handleStoryClick}
+        aria-current={isDossierOpen ? 'page' : undefined}
         className={`flex-1 flex flex-col items-center justify-center h-full relative transition-colors ${
           isDossierOpen ? 'bg-black text-white' : 'text-black hover:bg-neutral-100'
         }`}
@@ -89,6 +91,7 @@ export function MobileBottomBar({
       {/* Library */}
       <button
         onClick={onToggleLibrary}
+        aria-current={isLibraryOpen ? 'page' : undefined}
         className={`flex-1 flex flex-col items-center justify-center h-full transition-colors ${
           isLibraryOpen ? 'bg-black text-white' : 'text-black hover:bg-neutral-100'
         }`}

@@ -110,7 +110,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
       <div className="p-3 sm:p-5 space-y-2.5 sm:space-y-4" onClick={e => e.stopPropagation()}>
         {/* Title Action */}
         <button
-          className="nodrag nopan text-left w-full focus-visible:outline-none group/title"
+          className="nodrag nopan text-left w-full focus-visible:outline-2 focus-visible:outline-offset-2 group/title"
           onClick={handleCardClick}
         >
           <h3 className={`font-serif font-bold leading-tight line-clamp-2 group-hover/title:underline decoration-2 underline-offset-4 ${
