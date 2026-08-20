@@ -174,7 +174,7 @@ export function DossierDrawer() {
         <div className="flex items-center px-4 pt-1 bg-neutral-950">
           <button
             onClick={() => setWorkstationTab('monograph')}
-            className={`px-4 py-2 font-mono text-[11px] uppercase tracking-wider font-bold transition-colors border-t-2 border-r-2 ${
+            className={`px-4 min-h-[44px] font-mono text-[11px] uppercase tracking-wider font-bold transition-colors border-t-2 border-r-2 ${
               workstationTab === 'monograph'
                 ? 'bg-white text-black border-white'
                 : 'bg-transparent text-neutral-400 border-transparent hover:text-white'
@@ -191,7 +191,7 @@ export function DossierDrawer() {
 
           <button
             onClick={() => setWorkstationTab('agent')}
-            className={`px-4 py-2 font-mono text-[11px] uppercase tracking-wider font-bold transition-colors border-t-2 border-r-2 ${
+            className={`px-4 min-h-[44px] font-mono text-[11px] uppercase tracking-wider font-bold transition-colors border-t-2 border-r-2 ${
               workstationTab === 'agent'
                 ? 'bg-white text-black border-white'
                 : 'bg-transparent text-neutral-400 border-transparent hover:text-white'
