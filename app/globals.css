@@ -218,6 +218,15 @@ button:not(:disabled):active {
   animation: iconExit 200ms ease-in forwards;
 }
 
+/* Restrained entrance: slight rise + fade, used with staggered delays */
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-rise {
+  animation: riseIn 260ms ease-out both;
+}
+
 .animate-fade {
   animation: fadeIn 100ms ease-out forwards;
 }

@@ -59,7 +59,7 @@ export default function LandingState() {
 
         {/* Oversized Hero Headline */}
         <div className="space-y-3 sm:space-y-4">
-          <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-normal tracking-tight text-black leading-[0.98]">
+          <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-normal tracking-tight text-black leading-[0.98] animate-rise" style={{ animationDelay: '40ms' }}>
             What did you <br className="hidden sm:inline" />
             <span className="italic font-normal">learn today?</span>
           </h1>
@@ -90,7 +90,8 @@ export default function LandingState() {
                   key={cat}
                   disabled={isLoading || isStartingResearch}
                   onClick={() => handleCategoryClick(cat)}
-                  className="group p-3 sm:p-4 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors duration-100 text-left flex flex-col justify-between h-24 sm:h-28 disabled:opacity-40"
+                  style={{ animationDelay: `${80 + idx * 55}ms` }}
+                  className="group p-3 sm:p-4 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors duration-100 text-left flex flex-col justify-between h-24 sm:h-28 disabled:opacity-40 animate-rise"
                 >
                   <div className="flex items-center justify-between w-full font-mono text-[10px] text-neutral-500 group-hover:text-neutral-400">
                     <span>0{idx + 1}</span>
