@@ -141,7 +141,7 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
         ) : (
           <button
             onClick={() => setIsAuthOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-widest transition-colors duration-100"
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-widest transition-colors duration-100"
           >
             <User className="w-3.5 h-3.5" />
             <span>Sign In</span>

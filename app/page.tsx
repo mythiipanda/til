@@ -12,7 +12,8 @@ import { MobileBottomBar } from '@/components/ui/MobileBottomBar';
 import { ModelSelector } from '@/components/model/ModelSelector';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
-import { Plus, RotateCcw, BookOpen, X, Share2, Bookmark, Keyboard, Command } from 'lucide-react';
+import { Plus, RotateCcw, BookOpen, X, Share2, Bookmark, Keyboard, Command, Search as SearchIcon, MoreVertical } from 'lucide-react';
+import { MobileOverflowMenu } from '@/components/ui/MobileOverflowMenu';
 
 const FLAGSHIP_CATEGORIES = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'] as const;
 
@@ -40,6 +41,7 @@ export default function Home() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [customInput, setCustomInput] = useState('');
   const startResearch = useMindMapStore(s => s.startResearch);
 
@@ -77,7 +79,9 @@ export default function Home() {
         setIsShortcutsOpen((prev) => !prev);
       } else if (e.key === 'Escape') {
         // Orderly LIFO Stack Dismissal
-        if (isShortcutsOpen) {
+        if (isOverflowOpen) {
+          setIsOverflowOpen(false);
+        } else if (isShortcutsOpen) {
           setIsShortcutsOpen(false);
         } else if (isCustomModalOpen) {
           setIsCustomModalOpen(false);
@@ -116,6 +120,7 @@ export default function Home() {
     isBrowseOpen,
     isDossierOpen,
     selectedNodeId,
+    isOverflowOpen,
     loadRandomHubByCategory,
     closeDossier,
     selectNode,
@@ -139,6 +144,7 @@ export default function Home() {
     setIsLibraryOpen(false);
     setIsShareOpen(false);
     setIsShortcutsOpen(false);
+    setIsOverflowOpen(false);
   };
 
   const handleToggleLibrary = () => {
@@ -146,6 +152,7 @@ export default function Home() {
     setIsBrowseOpen(false);
     setIsShareOpen(false);
     setIsShortcutsOpen(false);
+    setIsOverflowOpen(false);
   };
 
   const handleToggleShare = () => {
@@ -153,6 +160,7 @@ export default function Home() {
     setIsBrowseOpen(false);
     setIsLibraryOpen(false);
     setIsShortcutsOpen(false);
+    setIsOverflowOpen(false);
   };
 
   const targetNodeId = lastResearchedNodeId || activeDossier?.nodeId || selectedNodeId || nodes[0]?.id;
@@ -183,6 +191,28 @@ export default function Home() {
           </span>
         </div>
 
+        {/* Mobile-only actions: search + overflow */}
+        <div className="md:hidden flex items-center gap-2">
+          <button
+            onClick={() => setIsCustomModalOpen(true)}
+            className="w-11 h-11 flex items-center justify-center border border-black hover:bg-black hover:text-white transition-colors"
+            title="Search Topic"
+            aria-label="Search topic"
+          >
+            <SearchIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsOverflowOpen(true)}
+            className={`w-11 h-11 flex items-center justify-center border border-black transition-colors ${
+              isOverflowOpen ? 'bg-black text-white' : 'hover:bg-black hover:text-white'
+            }`}
+            title="Menu"
+            aria-label="Open menu"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        </div>
+
         {/* Center: 5 Flagship Pillars + Surprise Me */}
         <div className="hidden md:flex items-center gap-1.5">
           {FLAGSHIP_CATEGORIES.map((cat) => (
@@ -204,8 +234,8 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Right: Actions & Model Selector */}
-        <div className="flex items-center gap-2">
+        {/* Right: Actions & Model Selector (desktop only — mobile uses overflow menu) */}
+        <div className="hidden md:flex items-center gap-2">
           {/* Model Selector Dropdown */}
           <ModelSelector className="hidden sm:inline-block" />
 
@@ -445,6 +475,29 @@ export default function Home() {
       {isBrowseOpen && <HubBrowser onClose={() => setIsBrowseOpen(false)} />}
       <ChatComposer />
       <DossierDrawer />
+      <MobileOverflowMenu
+        isOpen={isOverflowOpen}
+        onClose={() => setIsOverflowOpen(false)}
+        onSearch={() => {
+          setIsOverflowOpen(false);
+          setIsCustomModalOpen(true);
+        }}
+        canShare={nodes.length > 0 && !!currentTopic}
+        onShare={() => {
+          setIsOverflowOpen(false);
+          handleToggleShare();
+        }}
+        canClear={nodes.length > 0}
+        onClear={() => {
+          setIsOverflowOpen(false);
+          resetCanvas();
+        }}
+        onShortcuts={() => {
+          setIsOverflowOpen(false);
+          setIsShortcutsOpen(true);
+        }}
+        onOpenLibrary={handleToggleLibrary}
+      />
       <MyMindMapsDrawer
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
