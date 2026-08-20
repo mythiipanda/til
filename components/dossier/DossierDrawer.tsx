@@ -478,7 +478,7 @@ export function DossierDrawer() {
             {!isResearching && activeDossier && (
               <button
                 onClick={() => setWorkstationTab('monograph')}
-                className="px-3 py-1.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-[10px] uppercase font-bold tracking-wider transition-colors duration-100 flex items-center gap-1.5 shrink-0"
+                className="px-3 py-2.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-[10px] uppercase font-bold tracking-wider transition-colors duration-100 flex items-center gap-1.5 shrink-0 min-h-[44px]"
               >
                 <BookOpen className="w-3 h-3" />
                 <span>Read Story</span>

@@ -133,7 +133,7 @@ export function WebSearch({ query, sources, active }: WebSearchProps) {
           {sources.map((src, i) => (
             <li
               key={src.id || i}
-              className="line-reveal flex items-center gap-2 py-0.5 group"
+              className="line-reveal flex items-center gap-2 py-1.5 group min-h-[36px]"
               style={{ animationDelay: `${i * 30}ms` }}
             >
               <span className="text-black shrink-0">

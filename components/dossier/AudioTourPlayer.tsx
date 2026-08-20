@@ -258,7 +258,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
           {!isPlaying ? (
             <button
               onClick={handlePlay}
-              className="px-3 py-1.5 bg-white text-black font-mono text-xs uppercase font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1.5"
+              className="px-3 py-2.5 bg-white text-black font-mono text-xs uppercase font-bold hover:bg-neutral-200 transition-colors flex items-center gap-1.5 min-h-[44px]"
             >
               <Play className="w-3.5 h-3.5 fill-black" />
               <span>{isPaused ? 'Resume' : 'Play Audio'}</span>
@@ -266,7 +266,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
           ) : (
             <button
               onClick={handlePause}
-              className="px-3 py-1.5 bg-neutral-200 text-black font-mono text-xs uppercase font-bold hover:bg-white transition-colors flex items-center gap-1.5"
+              className="px-3 py-2.5 bg-neutral-200 text-black font-mono text-xs uppercase font-bold hover:bg-white transition-colors flex items-center gap-1.5 min-h-[44px]"
             >
               <Pause className="w-3.5 h-3.5 fill-black" />
               <span>Pause</span>
@@ -276,7 +276,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
           {(isPlaying || isPaused || progress > 0) && (
             <button
               onClick={handleStop}
-              className="p-1.5 border border-neutral-700 text-neutral-400 hover:text-white hover:border-white transition-colors"
+              className="p-2.5 border border-neutral-700 text-neutral-400 hover:text-white hover:border-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               title="Stop Audio"
               aria-label="Stop audio"
             >
@@ -287,7 +287,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
           {/* Speed Toggle */}
           <button
             onClick={toggleRate}
-            className="px-2 py-1 border border-neutral-700 text-neutral-300 font-mono text-[10px] font-bold hover:border-white hover:text-white transition-colors flex items-center gap-1"
+            className="px-3 py-2 border border-neutral-700 text-neutral-300 font-mono text-[10px] font-bold hover:border-white hover:text-white transition-colors flex items-center gap-1 min-h-[44px]"
             title="Playback Speed"
           >
             <FastForward className="w-3 h-3" />
