@@ -121,13 +121,13 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
         </button>
 
         {/* Markdown Summary */}
-        <div className="font-body text-xs sm:text-sm text-neutral-800 leading-relaxed line-clamp-3">
+        <div className="font-body text-sm sm:text-base text-neutral-800 leading-relaxed line-clamp-3">
           <MarkdownContent content={data.summary} />
         </div>
 
         {/* Key Fact Blockquote */}
         {data.wow_fact && (
-          <div className="p-2.5 sm:p-3 border-l-4 border-black bg-neutral-50 text-[11px] sm:text-xs font-body italic text-neutral-900 leading-relaxed">
+          <div className="p-2.5 sm:p-3 border-l-4 border-black bg-neutral-50 text-xs sm:text-sm font-body italic text-neutral-900 leading-relaxed">
             &ldquo;{data.wow_fact}&rdquo;
           </div>
         )}
