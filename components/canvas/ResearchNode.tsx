@@ -62,16 +62,16 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
       onClick={handleCardClick}
       className={`group bg-white text-black transition-none select-none shadow-none cursor-pointer ${
         data.isRoot
-          ? 'w-[min(90vw,420px)] border-4 border-black'
+          ? 'w-[min(62vw,420px)] border-4 border-black'
           : isSelected
-          ? 'w-[min(86vw,380px)] border-4 border-black'
-          : 'w-[min(86vw,380px)] border-2 border-black hover:border-4'
-      }`}
+          ? 'w-[min(60vw,380px)] border-4 border-black'
+          : 'w-[min(60vw,380px)] border-2 border-black hover:border-4'
+      } sm:w-[min(86vw,380px)]`}
     >
       <Handle type="target" position={Position.Top} className="!opacity-0 !w-1 !h-1" />
 
       {/* Top Header Tag */}
-      <div className="dragHandle cursor-grab active:cursor-grabbing border-b-2 border-black p-2.5 sm:p-3 flex items-center justify-between bg-black text-white min-h-[38px]">
+      <div className="dragHandle cursor-grab active:cursor-grabbing border-b-2 border-black p-1.5 sm:p-3 flex items-center justify-between bg-black text-white min-h-[30px] sm:min-h-[38px]">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] uppercase tracking-widest font-bold">
             {data.category || 'TOPIC'}
@@ -91,7 +91,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
 
       {/* Grayscale-to-Color Image */}
       {data.imageUrl && (
-        <div className="dragHandle cursor-grab active:cursor-grabbing relative h-[160px] w-full border-b-2 border-black overflow-hidden bg-neutral-100">
+        <div className="dragHandle cursor-grab active:cursor-grabbing relative h-[88px] sm:h-[160px] w-full border-b-2 border-black overflow-hidden bg-neutral-100">
           {!imgLoaded && (
             <div className="absolute inset-0 animate-pulse-block bg-neutral-200" />
           )}
@@ -107,34 +107,34 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
       )}
 
       {/* Card Content */}
-      <div className="p-4 sm:p-5 space-y-3.5 sm:space-y-4" onClick={e => e.stopPropagation()}>
+      <div className="p-3 sm:p-5 space-y-2.5 sm:space-y-4" onClick={e => e.stopPropagation()}>
         {/* Title Action */}
         <button
           className="nodrag nopan text-left w-full focus-visible:outline-none group/title"
           onClick={handleCardClick}
         >
           <h3 className={`font-serif font-bold leading-tight line-clamp-2 group-hover/title:underline decoration-2 underline-offset-4 ${
-            data.isRoot ? 'text-xl sm:text-2xl text-black' : 'text-lg sm:text-xl text-black'
+            data.isRoot ? 'text-base sm:text-2xl text-black' : 'text-sm sm:text-xl text-black'
           }`}>
             {data.title}
           </h3>
         </button>
 
-        {/* Markdown Summary */}
-        <div className="font-body text-sm sm:text-base text-neutral-800 leading-relaxed line-clamp-3">
+        {/* Markdown Summary — desktop only; mobile reads it in the dossier */}
+        <div className="hidden sm:block font-body text-sm sm:text-base text-neutral-800 leading-relaxed line-clamp-3">
           <MarkdownContent content={data.summary} />
         </div>
 
         {/* Key Fact Blockquote */}
         {data.wow_fact && (
-          <div className="p-2.5 sm:p-3 border-l-4 border-black bg-neutral-50 text-xs sm:text-sm font-body italic text-neutral-900 leading-relaxed">
+          <div className="hidden sm:block p-2.5 sm:p-3 border-l-4 border-black bg-neutral-50 text-xs sm:text-sm font-body italic text-neutral-900 leading-relaxed">
             &ldquo;{data.wow_fact}&rdquo;
           </div>
         )}
 
         {/* Related Topics / Next Inquiries */}
         {data.rabbit_holes && data.rabbit_holes.length > 0 && (
-          <div className="pt-2 border-t-2 border-black space-y-2">
+          <div className="hidden sm:block pt-2 border-t-2 border-black space-y-2">
             <div className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-neutral-600">
               Related topics:
             </div>
@@ -154,7 +154,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
         )}
 
         {/* Card Footer Actions */}
-        <div className="pt-3 border-t-2 border-black flex items-center justify-between font-mono text-xs">
+        <div className="pt-2 sm:pt-3 border-t-2 border-black flex items-center justify-between font-mono text-xs">
           <button
             onClick={handleCardClick}
             className="nodrag nopan flex items-center gap-1.5 font-bold text-black uppercase tracking-wider hover:underline underline-offset-4 min-h-[44px]"
@@ -166,7 +166,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
           {!data.isRoot && (
             <button
               onClick={handleDeepDiveSubtopic}
-              className="nodrag nopan text-black hover:text-white uppercase tracking-wider font-bold flex items-center gap-1 border-2 border-black px-2.5 py-1.5 bg-white hover:bg-black transition-colors duration-100 min-h-[44px]"
+              className="hidden sm:flex nodrag nopan text-black hover:text-white uppercase tracking-wider font-bold items-center gap-1 border-2 border-black px-2.5 py-1.5 bg-white hover:bg-black transition-colors duration-100 min-h-[44px]"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Explore</span>
