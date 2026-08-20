@@ -91,10 +91,22 @@ function CanvasInner() {
   }, []);
 
   const showLanding = nodes.length === 0 && !isResearching;
+  const showResearchSkeleton = nodes.length === 0 && isResearching;
 
   return (
     <div className="absolute inset-0 bg-white select-none texture-grid">
       {showLanding && <LandingState />}
+
+      {showResearchSkeleton && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="flex items-center gap-3 border-2 border-black bg-white p-3.5 animate-fade">
+            <span className="w-2 h-2 bg-black animate-pulse" />
+            <span className="font-mono text-[10px] uppercase tracking-widest font-bold">
+              Researching...
+            </span>
+          </div>
+        </div>
+      )}
 
       <ReactFlow
         nodes={nodes}

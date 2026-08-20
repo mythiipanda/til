@@ -31,6 +31,7 @@ export function DossierDrawer() {
   const closeDossier = useMindMapStore(s => s.closeDossier);
   const startResearch = useMindMapStore(s => s.startResearch);
   const isResearching = useMindMapStore(s => s.isResearching);
+  const researchError = useMindMapStore(s => s.researchError);
   const currentTopic = useMindMapStore(s => s.currentTopic);
   const planSteps = useMindMapStore(s => s.planSteps);
   const thoughts = useMindMapStore(s => s.thoughts);
@@ -213,6 +214,21 @@ export function DossierDrawer() {
         </div>
 
       </div>
+
+      {/* Research Error Strip */}
+      {researchError && (
+        <div className="bg-black text-white px-4 py-3 border-t-2 border-black flex items-center justify-between gap-3">
+          <p className="font-mono text-[11px] uppercase tracking-wider leading-snug">
+            {researchError}
+          </p>
+          <button
+            onClick={() => startResearch(currentTopic || '')}
+            className="shrink-0 bg-white text-black border-2 border-white px-3 py-1.5 font-mono text-[10px] uppercase font-bold tracking-wider hover:bg-black hover:text-white transition-colors duration-100 min-h-[44px]"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Tab 1: Monograph Document View */}
       {workstationTab === 'monograph' && (

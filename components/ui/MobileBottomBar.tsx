@@ -34,6 +34,8 @@ export function MobileBottomBar({
       closeDossier();
     } else if (activeNodeId) {
       openDossier(activeNodeId);
+    } else {
+      onToggleBrowse();
     }
   };
 

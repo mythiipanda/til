@@ -502,6 +502,10 @@ export default function Home() {
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
         onOpenShareModal={() => setIsShareOpen(true)}
+        onBrowseTopics={() => {
+          setIsLibraryOpen(false);
+          handleToggleBrowse();
+        }}
       />
       <ShareModal
         isOpen={isShareOpen}

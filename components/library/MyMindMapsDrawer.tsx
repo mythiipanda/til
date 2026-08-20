@@ -3,15 +3,16 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { X, Bookmark, History, Trash2, ArrowRight, Folder } from 'lucide-react';
+import { X, Bookmark, History, Trash2, ArrowRight, Folder, Compass } from 'lucide-react';
 
 interface MyMindMapsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenShareModal?: () => void;
+  onBrowseTopics?: () => void;
 }
 
-export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
+export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMapsDrawerProps) {
   const [cloudMindmaps, setCloudMindmaps] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'recent' | 'cloud'>('recent');
@@ -126,11 +127,18 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
               </div>
 
               {recentSessions.length === 0 ? (
-                <div className="p-8 text-center border-2 border-dashed border-neutral-300 space-y-2">
+                <div className="p-8 text-center border-2 border-dashed border-neutral-300 space-y-3">
                   <p className="font-serif text-sm font-bold text-black">No Recent Explorations</p>
                   <p className="font-body text-xs text-neutral-500">
                     Explore any topic from the cover or search bar to automatically build your session archive.
                   </p>
+                  <button
+                    onClick={onBrowseTopics}
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 min-h-[44px] bg-black text-white hover:bg-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>Browse Topics</span>
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-2.5">
@@ -199,6 +207,13 @@ export function MyMindMapsDrawer({ isOpen, onClose }: MyMindMapsDrawerProps) {
                   <p className="font-body text-xs text-neutral-500">
                     Sign in and click &quot;Save to Cloud&quot; from the masthead menu to archive your canvas.
                   </p>
+                  <button
+                    onClick={onBrowseTopics}
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 min-h-[44px] bg-black text-white hover:bg-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>Browse Topics</span>
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-2.5">
