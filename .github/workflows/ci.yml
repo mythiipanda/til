@@ -29,7 +29,11 @@ jobs:
       - name: Verify requirements in sync
         run: |
           uv export --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt
-          diff <(grep -v '^#' requirements.txt) <(grep -v '^#' /tmp/requirements.txt)
+          # Normalize before diffing: drop comments and env markers (uv-version/platform noise), sort.
+          # Pin drift (pkg==version) still fails the check, which is what Azure Oryx installs depend on.
+          diff \
+            <(grep -v '^#' requirements.txt | sed 's/ *;.*$//' | sort) \
+            <(grep -v '^#' /tmp/requirements.txt | sed 's/ *;.*$//' | sort)
 
   frontend:
     name: Frontend (typecheck + vitest)
