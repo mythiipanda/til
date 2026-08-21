@@ -29,11 +29,11 @@ jobs:
       - name: Verify requirements in sync
         run: |
           uv export --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt
-          # Normalize before diffing: drop comments and env markers (uv-version/platform noise), sort.
+          # Normalize before diffing: drop ALL comment lines (uv >=0.12 emits indented
+          # "# via ..." provenance), drop env markers (formatting varies by uv/platform), sort.
           # Pin drift (pkg==version) still fails the check, which is what Azure Oryx installs depend on.
-          diff \
-            <(grep -v '^#' requirements.txt | sed 's/ *;.*$//' | sort) \
-            <(grep -v '^#' /tmp/requirements.txt | sed 's/ *;.*$//' | sort)
+          norm() { sed '/^[[:space:]]*#/d' "$1" | sed 's/[[:space:]]*;.*$//' | sort; }
+          diff <(norm requirements.txt) <(norm /tmp/requirements.txt)
 
   frontend:
     name: Frontend (typecheck + vitest)
