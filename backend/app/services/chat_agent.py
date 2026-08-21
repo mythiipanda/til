@@ -273,7 +273,9 @@ async def stream_chat(
         "2. Do not use robotic meta-commentary like 'Based on the provided text' or 'According to the sources'. Write the explanation directly.\n"
         "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for legibility.\n"
         "4. MANDATORY NUMERIC CITATIONS: You MUST cite your statements directly using the numbered bracket tags matching the evidence sources, e.g. [1], [2], [3]. Place [N] immediately after facts, figures, dates, or mechanisms derived from that source (for example: 'Discovered in 1901 [1], the artifact utilized a 30-gear train mechanism [2]').\n"
-        "5. STRICT CITATION FORMAT: NEVER write words inside citation brackets (such as [Canon], [Source], [Ref], or (Canon)). Use ONLY numeric integer brackets like [1], [2]."
+        "5. STRICT CITATION FORMAT: NEVER write words inside citation brackets (such as [Canon], [Source], [Ref], or (Canon)). Use ONLY numeric integer brackets like [1], [2].\n"
+        "6. GROUNDING HONESTY: If the evidence doesn't contain the answer, say what IS known and acknowledge the gap — never fill silence with speculation.\n"
+        "7. MISATTRIBUTION GUARD: Do not attribute facts, inventions, or events to the wrong person, place, or era even if the question presupposes them — correct the premise instead."
     )
     active_model_id = model or "cerebras:gemma-4-31b"
     # Format clean proof label

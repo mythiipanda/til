@@ -290,7 +290,8 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
                             "1. Vector 1 (Genesis & Paradox): The origin story, historical catalyst, and core contradiction.\n"
                             "2. Vector 2 (Mechanisms & Principles): The internal architecture, technical/mathematical gears, or step-by-step process.\n"
                             "3. Vector 3 (Twists & Modern Echoes): Surprising misconceptions, turning points, and lasting real-world significance.\n"
-                            "CRITICAL: Explicitly name the subject entity in every question. Avoid vague pronouns or generic definitions."
+                            "CRITICAL: Explicitly name the subject entity in every question. Avoid vague pronouns or generic definitions. "
+                            "Each question must be self-contained and answerable by web search — no yes/no questions."
                         )
                     ),
                     HumanMessage(
@@ -549,7 +550,11 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
                             "GUIDELINES:\n"
                             "1. Clarity First: Open with the core premise, mystery, or breakthrough in clear, direct English.\n"
                             "2. Explain How It Works: Provide concrete, factual explanations of the underlying mechanisms, key principles, or timeline events.\n"
-                            "3. Child Branches: Formulate 3 distinct, high-interest related topics to explore next (e.g. historical precursor, technical principle, downstream consequence)."
+                            "3. Child Branches: Formulate 3 distinct, high-interest related topics to explore next (e.g. historical precursor, technical principle, downstream consequence).\n"
+                            "4. Grounding: Use ONLY facts supported by the VERIFIED EVIDENCE BLOCKS. Never invent dates, names, numbers, or quotes. If evidence is thin, write less but stay accurate.\n"
+                            "5. Myth Discipline: Prefer mainstream scientific and historical consensus. If popular misconceptions exist about this subject, do not repeat them as fact — debunk or omit them.\n"
+                            "6. Specificity Anchors: Pack the timeline and mechanisms with concrete anchors: exact years, named discoverers, quantities, and physical processes — never vague placeholders like 'scientists discovered' or 'in the early 20th century'.\n"
+                            "7. wowFact & suggestedQuestions: wowFact must be one genuinely surprising, verifiable fact — not trivia filler. suggestedQuestions must be 3 follow-ups a curious reader would actually ask next, each answerable from the dossier's evidence."
                         )
                     ),
                     HumanMessage(
