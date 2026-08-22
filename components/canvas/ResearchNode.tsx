@@ -3,6 +3,7 @@
 import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
+import { trackLaunchEvent } from '@/lib/metrics/launch-events';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 import { ArrowUpRight, BookOpen, Plus } from 'lucide-react';
 
@@ -38,6 +39,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
   };
 
   const handleExpandRabbitHole = (rh: string) => {
+    trackLaunchEvent('expand_click', { topic: rh, metadata: { from: data.title } });
     startResearch(
       rh,
       data.category || undefined,
