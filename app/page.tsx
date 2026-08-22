@@ -8,6 +8,7 @@ import { DossierDrawer } from '@/components/dossier/DossierDrawer';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { MyMindMapsDrawer } from '@/components/library/MyMindMapsDrawer';
 import { ShareModal } from '@/components/share/ShareModal';
+import { SharePromptModal } from '@/components/share/SharePromptModal';
 import { MobileBottomBar } from '@/components/ui/MobileBottomBar';
 import { ModelSelector } from '@/components/model/ModelSelector';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
@@ -511,6 +512,7 @@ export default function Home() {
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
       />
+      <SharePromptModal />
 
       {/* Mobile Bottom Navigation Bar (< md) */}
       <MobileBottomBar

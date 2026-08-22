@@ -70,6 +70,10 @@ interface MindMapState {
   // Sidebar / browse
   precomputedHubs: PrecomputedHubSummary[];
 
+  // Post-generation share prompt (shown at most once per tab session)
+  sharePromptOpen: boolean;
+  setSharePromptOpen: (open: boolean) => void;
+
   // Persistence & Sharing
   activeMindMapId: string | null;
   shareSlug: string | null;
@@ -290,6 +294,9 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   chatNodeTitle: null,
   
   precomputedHubs: [],
+
+  sharePromptOpen: false,
+  setSharePromptOpen: (open: boolean) => set({ sharePromptOpen: open }),
 
   activeMindMapId: null,
   shareSlug: null,
@@ -552,6 +559,18 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             planSteps: state.planSteps.map((s) => ({ ...s, status: 'done' as const })),
           }));
           persistActiveSession(get());
+          // Share moment: root maps only, at most once per tab session.
+          if (!parentId && typeof window !== 'undefined') {
+            try {
+              const key = 'tdilearned-share-prompt-shown';
+              if (!window.sessionStorage.getItem(key)) {
+                window.sessionStorage.setItem(key, '1');
+                set({ sharePromptOpen: true });
+              }
+            } catch {
+              set({ sharePromptOpen: true });
+            }
+          }
         } else if (event === 'error') {
           settleDone();
           void get().handleResearchFailure(topic, !!parentId, false, false);
@@ -1322,8 +1341,13 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         updated_at: new Date().toISOString(),
       };
 
+      // Track whether the row actually persisted. A share URL must never be
+      // handed out for a map the database refused — it would 404 for everyone.
+      let persisted = true;
+
       if (user && activeMindMapId) {
-        await supabase.from('mindmaps').update(payload).eq('id', activeMindMapId);
+        const { error } = await supabase.from('mindmaps').update(payload).eq('id', activeMindMapId);
+        if (error) persisted = false;
       } else if (user) {
         const { data, error } = await supabase
           .from('mindmaps')
@@ -1331,6 +1355,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           .select()
           .single();
         if (!error && data) set({ activeMindMapId: data.id });
+        if (error) persisted = false;
       } else {
         // Guests: upsert a public row keyed by share_slug so shared links resolve for everyone
         const { data, error } = await supabase
@@ -1339,15 +1364,22 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           .select()
           .single();
         if (!error && data) set({ activeMindMapId: data.id });
+        if (error) persisted = false;
+      }
+
+      if (!persisted) {
+        console.warn('Share persist failed; refusing to hand out a dead link');
+        return null;
       }
     } catch (e) {
-      console.warn('Supabase share update skipped (guest mode)');
+      console.warn('Supabase share update failed:', e);
+      return null;
     }
 
     set({ shareSlug: slug });
     persistActiveSession(get());
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://tdilearned.com';
-    return `${origin}/m/${slug}`;
+    return `${origin}/m/${slug}?ref=share`;
   },
 
   restoreSessionFromLocalStorage: () => {
