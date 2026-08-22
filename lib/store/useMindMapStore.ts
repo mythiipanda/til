@@ -382,6 +382,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       window.history.pushState({}, '', `/?topic=${encodeURIComponent(topic)}`);
     }
 
+    if (!parentId) {
+      trackLaunchEvent('topic_search', { topic });
+    }
+
     const url = api.researchStreamUrl(
       topic,
       category,
