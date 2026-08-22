@@ -35,11 +35,13 @@ function flush(): void {
   flushTimer = null;
   if (queue.length === 0) return;
   const batch = queue.splice(0, MAX_QUEUE);
-  supabase
-    .from('launch_events')
-    .insert(batch)
+  Promise.resolve(
+    supabase
+      .from('launch_events')
+      .insert(batch)
+  )
     .then(({ error }) => {
-      if (error && import.meta.env?.DEV) {
+      if (error && process.env.NODE_ENV === 'development') {
         console.warn('[launch-events] insert failed:', error.message);
       }
     })
