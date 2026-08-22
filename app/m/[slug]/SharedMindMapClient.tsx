@@ -1,30 +1,42 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
+import { trackLaunchEvent } from '@/lib/metrics/launch-events';
 import { KnowledgeCanvas } from '@/components/canvas/KnowledgeCanvas';
 import { DossierDrawer } from '@/components/dossier/DossierDrawer';
-import { ArrowLeft, Copy, Check, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { ArrowLeft, ArrowUpRight, Copy, Check, Loader2 } from 'lucide-react';
 
 export default function SharedMindMapClient() {
   const params = useParams();
   const slug = params?.slug as string;
 
-  const { loadMindMapBySlug, nodes, currentTopic } = useMindMapStore();
+  const loadMindMapBySlug = useMindMapStore(s => s.loadMindMapBySlug);
+  const fetchPrecomputedHubs = useMindMapStore(s => s.fetchPrecomputedHubs);
+  const nodes = useMindMapStore(s => s.nodes);
+  const currentTopic = useMindMapStore(s => s.currentTopic);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (slug) {
-      loadMindMapBySlug(slug).then((success) => {
-        setLoading(false);
-        if (!success) setNotFound(true);
-      });
-    }
-  }, [slug, loadMindMapBySlug]);
+    if (!slug) return;
+    // Warm the hub catalog immediately so the saturation fallback can match
+    // instantly when a cold visitor types their own topic.
+    void fetchPrecomputedHubs();
+    loadMindMapBySlug(slug).then((success) => {
+      setLoading(false);
+      if (!success) {
+        setNotFound(true);
+      } else {
+        const ref = new URLSearchParams(window.location.search).get('ref');
+        trackLaunchEvent('map_visit', { topic: currentTopic || slug, ref, onceKey: `visit:${slug}` });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, loadMindMapBySlug, fetchPrecomputedHubs]);
 
   const handleCopy = () => {
     if (typeof window !== 'undefined') {
@@ -96,6 +108,14 @@ export default function SharedMindMapClient() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-white hover:bg-black text-black hover:text-white border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
+          >
+            <ArrowUpRight className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Make Your Own</span>
+            <span className="sm:hidden">Make One</span>
+          </Link>
           <button
             onClick={handleCopy}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
