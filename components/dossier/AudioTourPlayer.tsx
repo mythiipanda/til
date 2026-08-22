@@ -175,7 +175,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
       <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-2">
         <div className="flex items-center gap-1.5 font-bold text-white">
           <Volume2 className="w-3.5 h-3.5" />
-          <span>AUDIO MONOGRAPH</span>
+          <span>AUDIO OVERVIEW</span>
         </div>
         <div className="flex items-center gap-2">
           {isPlaying && (

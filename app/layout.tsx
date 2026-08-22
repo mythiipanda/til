@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'TDILEARNED — Today I Learned',
-  description: 'Explore the things you never knew you were curious about. Interactive visual topic maps, deep stories, and live AI research.',
+  description: 'Type any topic and get a visual mindmap: sourced stories, key facts, and follow-up threads. Live web research on anything you want to learn.',
   keywords: ['Today I Learned', 'TDILEARNED', 'Learning', 'Knowledge', 'Science', 'History', 'Curiosity'],
 };
 

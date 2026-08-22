@@ -169,7 +169,7 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
               className="hidden sm:flex nodrag nopan text-black hover:text-white uppercase tracking-wider font-bold items-center gap-1 border-2 border-black px-2.5 py-1.5 bg-white hover:bg-black transition-colors duration-100 min-h-[44px]"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Explore</span>
+              <span>Expand</span>
             </button>
           )}
         </div>

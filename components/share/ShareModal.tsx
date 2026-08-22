@@ -47,11 +47,11 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
 
     // Overview & Dossier
     if (activeDossier) {
-      md += `## Executive Monograph\n\n`;
+      md += `## Overview\n\n`;
       md += `${activeDossier.abstract || ''}\n\n`;
 
       if (activeDossier.mechanisms && activeDossier.mechanisms.length > 0) {
-        md += `### Core Mechanisms & Explanations\n\n`;
+        md += `### Key Concepts\n\n`;
         activeDossier.mechanisms.forEach((m) => {
           md += `#### ${m.title}\n`;
           md += `${m.explanation}\n\n`;
@@ -59,20 +59,20 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
       }
 
       if (activeDossier.timeline && activeDossier.timeline.length > 0) {
-        md += `### Historical Chronology\n\n`;
+        md += `### Timeline\n\n`;
         activeDossier.timeline.forEach((t) => {
-          md += `- **${t.date}**: ${t.headline} — *${t.description}*\n`;
+          md += `- **${t.date}**: ${t.headline}. *${t.description}*\n`;
         });
         md += `\n`;
       }
     }
 
     // Graph Nodes
-    md += `## Explored Concept Map (${nodes.length} nodes)\n\n`;
+    md += `## Mindmap (${nodes.length} nodes)\n\n`;
     nodes.forEach((node) => {
       const data = node.data as any;
       if (node.type === 'note') {
-        md += `### 📌 Pinned Insight: ${data.question}\n\n`;
+        md += `### Pinned note: ${data.question}\n\n`;
         md += `${data.answer}\n\n`;
         if (data.citations && data.citations.length > 0) {
           md += `*Sources:*\n`;
@@ -94,7 +94,7 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-monograph.md`;
+    a.download = `${currentTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-notes.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -133,10 +133,10 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
             </span>
             <div>
               <h2 className="font-serif text-lg font-bold tracking-tight text-black">
-                Share & Export Monograph
+                Share &amp; Export
               </h2>
               <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest truncate max-w-[280px]">
-                {currentTopic || 'Spatial Exploration'}
+                {currentTopic || 'Untitled map'}
               </p>
             </div>
           </div>
@@ -185,7 +185,7 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
                 </button>
               </div>
               <p className="font-mono text-[10px] text-neutral-500">
-                Anyone with this URL can navigate and view this mindmap and its dossiers.
+                Anyone with this link can open this mindmap and its stories.
               </p>
             </div>
           ) : (
@@ -225,9 +225,9 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
                 </span>
               </div>
               <div>
-                <h3 className="font-serif text-sm font-bold">Markdown Monograph</h3>
+                <h3 className="font-serif text-sm font-bold">Markdown file</h3>
                 <p className="font-body text-xs text-neutral-600 group-hover:text-neutral-300 leading-snug pt-0.5">
-                  Full text, chronology, and insights formatted for Obsidian &amp; Notion.
+                  Full text, timeline, and pinned notes formatted for Obsidian &amp; Notion.
                 </p>
               </div>
             </button>
@@ -245,9 +245,9 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
                 </span>
               </div>
               <div>
-                <h3 className="font-serif text-sm font-bold">Canvas Image</h3>
+                <h3 className="font-serif text-sm font-bold">Canvas image</h3>
                 <p className="font-body text-xs text-neutral-600 group-hover:text-neutral-300 leading-snug pt-0.5">
-                  High-resolution raster screenshot of the current spatial graph.
+                  Screenshot of the canvas at 2x resolution.
                 </p>
               </div>
             </button>

@@ -62,7 +62,7 @@ export function MobileBottomBar({
         className={`flex-1 flex flex-col items-center justify-center h-full transition-colors ${
           isBrowseOpen ? 'bg-black text-white' : 'text-black hover:bg-neutral-100'
         }`}
-        title="Explore Topics"
+        title="Browse Topics"
       >
         <Compass className="w-4 h-4" />
         <span className="font-mono text-[9px] uppercase font-bold tracking-wider pt-0.5">

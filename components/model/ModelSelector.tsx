@@ -58,7 +58,7 @@ export function ModelSelector({ className = '' }: { className?: string }) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1 font-mono text-[10px] uppercase font-bold tracking-wider border-2 border-black hover:bg-black hover:text-white bg-white text-black transition-colors duration-100 select-none"
-        title="Select AI Inference Engine"
+        title="Select AI model"
       >
         <span className="text-neutral-500 font-normal">MODEL:</span>
         <span className="truncate max-w-[130px] md:max-w-[160px]">
@@ -75,7 +75,7 @@ export function ModelSelector({ className = '' }: { className?: string }) {
           {/* Header */}
           <div className="p-2.5 bg-black text-white flex items-center justify-between">
             <span className="font-mono text-[9px] uppercase tracking-widest font-bold">
-              INFERENCE ENGINE
+              AI MODEL
             </span>
             <span className="font-mono text-[9px] text-neutral-400">
               {filteredModels.length} AVAILABLE

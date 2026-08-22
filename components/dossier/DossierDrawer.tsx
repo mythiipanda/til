@@ -88,7 +88,7 @@ export function DossierDrawer() {
           <span className="truncate max-w-[180px] sm:max-w-[220px]">
             {isResearching 
               ? `AGENT: ${currentTopic || 'RESEARCHING...'}` 
-              : `STORY: ${activeDossier?.title || currentTopic || 'MONOGRAPH'}`}
+              : `STORY: ${activeDossier?.title || currentTopic || 'STORY'}`}
           </span>
         </div>
         <div className="flex items-center gap-1.5 border-l border-neutral-700 pl-2">
@@ -369,14 +369,14 @@ export function DossierDrawer() {
                             rh.affinityCategory || activeDossier.category,
                             activeDossier.nodeId,
                             activeDossier.abstract || activeDossier.coreThesis,
-                            rh.teaser || `Exploring related topic: ${rh.title}`
+                            rh.teaser || `Related: ${rh.title}`
                           );
                         }}
                         className="p-3 border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors duration-100 text-left group flex flex-col justify-between"
                       >
                         <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 group-hover:text-neutral-300">
                           <span className="uppercase">{rh.affinityCategory || 'Topic'}</span>
-                          <span>Explore →</span>
+                          <span>Open →</span>
                         </div>
                         <div className="font-serif text-sm font-bold pt-0.5">
                           {rh.title}
@@ -422,12 +422,12 @@ export function DossierDrawer() {
                       activeDossier.category,
                       activeDossier.nodeId,
                       activeDossier.abstract || activeDossier.coreThesis,
-                      activeDossier.tagline || activeDossier.wowFact || `Deep dive into ${activeDossier.title}`
+                      activeDossier.tagline || activeDossier.wowFact || `More about ${activeDossier.title}`
                     );
                   }}
                   className="w-full py-3 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase tracking-wider font-bold transition-colors duration-100 flex items-center justify-center gap-1.5"
                 >
-                  <span>Explore deeper branches →</span>
+                  <span>Dig deeper →</span>
                 </button>
               </div>
             </>
@@ -449,7 +449,7 @@ export function DossierDrawer() {
               </div>
             ) : (
               <div className="text-center py-20 font-mono text-xs text-neutral-500 space-y-3">
-                <p>[ SELECT ANY NODE ON THE CANVAS TO READ MONOGRAPH ]</p>
+                <p>[ SELECT A NODE ON THE CANVAS TO READ ITS STORY ]</p>
                 {isResearching && (
                   <button
                     onClick={() => setWorkstationTab('agent')}
@@ -479,7 +479,7 @@ export function DossierDrawer() {
               )}
               <div className="min-w-0">
                 <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 font-bold">
-                  {isResearching ? 'Researching' : 'Synthesis complete'}
+                  {isResearching ? 'Researching' : 'Research complete'}
                 </div>
                 <div className="font-serif text-sm font-bold text-black truncate flex items-center gap-2">
                   <span>{currentTopic || 'Research Topic'}</span>
@@ -546,7 +546,7 @@ export function DossierDrawer() {
           {/* Model Attribution Footer */}
           {activeModelLabel && (
             <div className="pt-2.5 border-t-2 border-black flex items-center justify-between font-mono text-[9px] uppercase tracking-wider text-neutral-600 select-none">
-              <span className="font-bold text-black">DISCOVERY SWARM</span>
+              <span className="font-bold text-black">RESEARCH AGENT</span>
               <span className="font-medium text-neutral-500">{activeModelLabel}</span>
             </div>
           )}

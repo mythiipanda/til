@@ -74,10 +74,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </span>
             <div>
               <h2 className="font-serif text-lg font-bold tracking-tight text-black">
-                {sentMagicLink ? 'Check Your Inbox' : 'Account Access'}
+                {sentMagicLink ? 'Check Your Inbox' : 'Sign in'}
               </h2>
               <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest">
-                {sentMagicLink ? 'Sign-in Link Sent' : 'Passwordless Email Sign-In'}
+                {sentMagicLink ? 'Link Sent' : 'No Password Needed'}
               </p>
             </div>
           </div>
@@ -108,7 +108,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 Check Your Inbox
               </h3>
               <p className="font-body text-xs text-neutral-700 leading-relaxed">
-                A secure sign-in link has been sent to:
+                We sent a sign-in link to:
               </p>
               <div className="p-3 bg-neutral-50 border-2 border-black font-mono text-xs font-bold text-black break-all">
                 {email}
@@ -197,7 +197,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <Loader2 className="w-4 h-4 animate-spin text-current" />
               ) : (
                 <>
-                  <span>Send Passwordless Link</span>
+                  <span>Email me a link</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
@@ -205,7 +205,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             <div className="border-t border-neutral-200 pt-3">
               <p className="font-body text-xs text-neutral-600 leading-relaxed">
-                Zero passwords required. Your mindmaps and research dossiers will be permanently preserved and accessible from any device.
+                No password needed. Sign in to save your mindmaps and open them on any device.
               </p>
             </div>
           </form>

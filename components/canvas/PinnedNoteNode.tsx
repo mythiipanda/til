@@ -26,7 +26,7 @@ function PinnedNoteNodeComponent({ data }: { data: PinnedNoteData }) {
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest font-bold">
           <BookmarkCheck className="w-3.5 h-3.5" />
           <span className="truncate max-w-[200px]">
-            PINNED: {data.sourceNodeTitle || 'INSIGHT'}
+            PINNED: {data.sourceNodeTitle || 'NOTE'}
           </span>
         </div>
         <button
@@ -45,7 +45,7 @@ function PinnedNoteNodeComponent({ data }: { data: PinnedNoteData }) {
         <div className="space-y-1.5">
           <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 flex items-center gap-1.5">
             <MessageSquare className="w-3 h-3" />
-            <span>INQUIRY</span>
+            <span>QUESTION</span>
           </div>
           <div className="font-serif font-bold text-base text-black leading-snug">
             &ldquo;{data.question}&rdquo;
@@ -61,7 +61,7 @@ function PinnedNoteNodeComponent({ data }: { data: PinnedNoteData }) {
         {data.citations && data.citations.length > 0 && (
           <div className="border-t border-neutral-200 pt-3 space-y-1.5">
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500">
-              VERIFIED CITATIONS:
+              SOURCES:
             </div>
             <div className="flex flex-wrap gap-1.5">
               {data.citations.map((c, i) => (

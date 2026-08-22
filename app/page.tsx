@@ -329,7 +329,7 @@ export default function Home() {
           <BookOpen className="w-4 h-4 shrink-0 text-white" />
           <div>
             <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">
-              Monograph Ready
+              Story Ready
             </div>
             <div className="font-serif text-sm font-bold truncate max-w-xs">
               {currentTopic}
@@ -374,7 +374,7 @@ export default function Home() {
             </div>
 
             <p className="font-body text-xs text-neutral-600 leading-relaxed">
-              Explore scientific breakthroughs, historical turning points, mysteries, and ideas.
+              Type any topic. You get a researched mindmap with sources and threads to follow.
             </p>
 
             <form onSubmit={handleCustomSubmit} className="space-y-4 pt-1">
@@ -400,7 +400,7 @@ export default function Home() {
                   disabled={!customInput.trim()}
                   className="px-6 py-3 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase tracking-widest font-bold transition-colors duration-100 disabled:opacity-40"
                 >
-                  Explore →
+                  Research →
                 </button>
               </div>
             </form>
@@ -430,15 +430,15 @@ export default function Home() {
 
             <div className="space-y-2.5 font-mono text-xs text-neutral-800">
               <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Research Custom Topic</span>
+                <span className="font-serif text-neutral-700">Search Any Topic</span>
                 <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">⌘ / Ctrl + K</span>
               </div>
               <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Quick Search Inquiry</span>
+                <span className="font-serif text-neutral-700">Quick Search</span>
                 <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">/</span>
               </div>
               <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Surprise Me (Instant Hub)</span>
+                <span className="font-serif text-neutral-700">Random Topic</span>
                 <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">S</span>
               </div>
               <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
@@ -450,7 +450,7 @@ export default function Home() {
                 <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">L</span>
               </div>
               <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Flagship Category Pillars</span>
+                <span className="font-serif text-neutral-700">Category Shortcuts</span>
                 <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">1 - 5</span>
               </div>
               <div className="flex items-center justify-between pt-1">

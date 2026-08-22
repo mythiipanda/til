@@ -71,7 +71,7 @@ export function MapViewer({ geography }: MapViewerProps) {
 
       {/* Footer attribution & link */}
       <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 pt-1">
-        <span>OpenStreetMap Verified Geospatial Data</span>
+        <span>© OpenStreetMap contributors</span>
         <a
           href={osmDirectUrl}
           target="_blank"

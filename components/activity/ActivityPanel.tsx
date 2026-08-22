@@ -71,7 +71,7 @@ export function ActivityPanel() {
           )}
           <span>
             {isResearching 
-              ? `AGENT SWARM: ${completedStepsCount}/${planSteps.length || 4}`
+              ? `RESEARCHING: ${completedStepsCount}/${planSteps.length || 4}`
               : `RESEARCH COMPLETE (${sources.length} SOURCES)`}
           </span>
         </div>
@@ -119,8 +119,8 @@ export function ActivityPanel() {
             </div>
             <div className="font-mono text-[9px] text-neutral-400">
               {isResearching 
-                ? (planSteps.length > 0 ? `PHASE ${currentStepNumber} OF ${planSteps.length}` : 'DISPATCHING AGENTS...')
-                : 'SYNTHESIS COMPLETE'}
+                ? (planSteps.length > 0 ? `PHASE ${currentStepNumber} OF ${planSteps.length}` : 'STARTING RESEARCH...')
+                : 'RESEARCH COMPLETE'}
             </div>
           </div>
         </div>
@@ -169,7 +169,7 @@ export function ActivityPanel() {
             className="w-full py-3 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100 flex items-center justify-center gap-2"
           >
             <BookOpen className="w-4 h-4" />
-            <span>Open Research Monograph</span>
+            <span>Read the story</span>
           </button>
         </div>
       )}
@@ -243,7 +243,7 @@ export function ActivityPanel() {
                 {thoughts.map((t, idx) => (
                   <div key={idx} className="border-l-2 border-black pl-3 space-y-0.5">
                     <span className="font-mono text-[9px] text-neutral-500 block uppercase font-bold">
-                      {t.agent || `INSIGHT #${idx + 1}`}
+                      {t.agent || `STEP ${idx + 1}`}
                     </span>
                     <MarkdownContent content={t.text} className="text-xs text-black" />
                   </div>

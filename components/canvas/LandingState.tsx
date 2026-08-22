@@ -49,11 +49,11 @@ export default function LandingState() {
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black" />
             <span className="font-mono text-[10px] sm:text-xs uppercase font-bold tracking-widest text-black">
-              TDILEARNED ARCHIVE
+              TDILEARNED
             </span>
           </div>
           <div className="font-mono text-[9px] sm:text-[11px] uppercase tracking-wider text-neutral-500">
-            {precomputedHubs.length > 0 ? `${precomputedHubs.length} CURATED TOPICS ONLINE` : 'AGENTIC KNOWLEDGE ENGINE'}
+            {precomputedHubs.length > 0 ? `${precomputedHubs.length} TOPICS READY TO OPEN` : 'TYPE ANY TOPIC TO BEGIN'}
           </div>
         </div>
 
@@ -64,14 +64,14 @@ export default function LandingState() {
             <span className="italic font-normal">learn today?</span>
           </h1>
           <p className="font-body text-sm sm:text-base md:text-lg text-neutral-800 max-w-2xl leading-relaxed">
-            Dynamic agentic research translated into infinite spatial mindmaps. Select a core pillar or start any curiosity inquiry.
+            Type any topic and it gets researched live, then laid out as a mindmap with sources you can keep expanding. Pick a subject below or search for your own.
           </p>
         </div>
 
         {/* Category Fast Launch Grid */}
         <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between border-b border-neutral-300 pb-2 font-mono text-[10px] sm:text-xs uppercase font-bold tracking-widest text-black">
-            <span>Explore by Pillar</span>
+            <span>Browse by category</span>
             <button
               onClick={handleSurpriseMe}
               disabled={loadingCategory !== null || isStartingResearch}
@@ -102,7 +102,7 @@ export default function LandingState() {
                       {cat}
                     </span>
                     <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">
-                      {isLoading ? 'Loading...' : 'Explore →'}
+                      {isLoading ? 'Loading...' : 'Open →'}
                     </span>
                   </div>
                 </button>
@@ -146,10 +146,10 @@ export default function LandingState() {
           <div className="flex items-center justify-between font-mono text-[10px] sm:text-xs uppercase font-bold tracking-widest text-black">
             <div className="flex items-center gap-2">
               <Search className="w-3.5 h-3.5" />
-              <span>Search or Propose Inquiry</span>
+              <span>Search anything</span>
             </div>
             <span className="text-[10px] text-neutral-500 hidden sm:inline">
-              AUTONOMOUS DISCOVERY
+              LIVE RESEARCH
             </span>
           </div>
 
@@ -166,7 +166,7 @@ export default function LandingState() {
               disabled={!customTopic.trim() || isStartingResearch}
               className="px-6 py-3.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase tracking-widest font-bold transition-colors duration-100 disabled:opacity-40 flex items-center justify-center gap-2 shrink-0 min-h-[44px]"
             >
-              <span>{isStartingResearch ? 'Researching...' : 'Explore →'}</span>
+              <span>{isStartingResearch ? 'Researching...' : 'Research →'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

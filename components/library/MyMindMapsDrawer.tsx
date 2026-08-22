@@ -76,10 +76,10 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
             <Bookmark className="w-4 h-4 text-white" />
             <div>
               <h2 className="font-serif text-base font-bold tracking-tight uppercase">
-                Library & Archive
+                Your Library
               </h2>
               <p className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest">
-                Saved Sessions & Explorations
+                Saved mindmaps
               </p>
             </div>
           </div>
@@ -114,7 +114,7 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
             }`}
           >
             <Folder className="w-3.5 h-3.5" />
-            <span>Cloud Archive ({cloudMindmaps.length})</span>
+            <span>Cloud ({cloudMindmaps.length})</span>
           </button>
         </div>
 
@@ -123,14 +123,14 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
           {activeTab === 'recent' && (
             <div className="space-y-3">
               <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 pb-1 border-b border-black">
-                RECENT SESSIONS
+                RECENT
               </div>
 
               {recentSessions.length === 0 ? (
                 <div className="p-8 text-center border-2 border-dashed border-neutral-300 space-y-3">
-                  <p className="font-serif text-sm font-bold text-black">No Recent Explorations</p>
+                  <p className="font-serif text-sm font-bold text-black">Nothing here yet</p>
                   <p className="font-body text-xs text-neutral-500">
-                    Explore any topic from the cover or search bar to automatically build your session archive.
+                    Open any topic and it will show up here so you can come back to it.
                   </p>
                   <button
                     onClick={onBrowseTopics}
@@ -194,18 +194,18 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
           {activeTab === 'cloud' && (
             <div className="space-y-3">
               <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 pb-1 border-b border-black">
-                SAVED CLOUD SESSIONS
+                SAVED TO YOUR ACCOUNT
               </div>
 
               {loading ? (
                 <div className="p-8 text-center font-mono text-xs uppercase text-neutral-500">
-                  FETCHING ARCHIVES...
+                  LOADING...
                 </div>
               ) : cloudMindmaps.length === 0 ? (
                 <div className="p-8 text-center border-2 border-dashed border-neutral-300 space-y-3">
-                  <p className="font-serif text-sm font-bold text-black">No Cloud Mindmaps Saved</p>
+                  <p className="font-serif text-sm font-bold text-black">Nothing saved yet</p>
                   <p className="font-body text-xs text-neutral-500">
-                    Sign in and click &quot;Save to Cloud&quot; from the masthead menu to archive your canvas.
+                    Sign in and use &quot;Save to Cloud&quot; from the masthead menu to keep a copy of your canvas online.
                   </p>
                   <button
                     onClick={onBrowseTopics}
@@ -271,7 +271,7 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
             }}
             className="text-neutral-600 hover:text-black uppercase font-bold tracking-wider underline underline-offset-2"
           >
-            ← New Blank Exploration
+            ← New blank canvas
           </button>
           <button
             onClick={onClose}
