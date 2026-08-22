@@ -50,3 +50,8 @@ AGENTS.md
 HANDOFF.md
 learnings.md
 LEARNINGS.md
+
+# Planning / design docs (keep on disk, never commit)
+DESIGN.md
+MOBILE-REWORK-PLAN.md
+docs/designs/
