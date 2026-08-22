@@ -17,6 +17,7 @@ export function SharePromptModal() {
   const generateShareLink = useMindMapStore(s => s.generateShareLink);
   const currentTopic = useMindMapStore(s => s.currentTopic);
   const nodeCount = useMindMapStore(s => s.nodes.length);
+  const isFreshMap = useMindMapStore(s => s.isFreshMap);
 
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -110,6 +111,12 @@ export function SharePromptModal() {
         <h2 className="font-serif text-xl font-bold tracking-tight text-black leading-snug">
           Someone out there wants to see this.
         </h2>
+
+        {isFreshMap && (
+          <div className="font-mono text-[10px] uppercase font-bold tracking-widest bg-neutral-100 border-2 border-black px-3 py-1.5 inline-block">
+            Fresh map — first person to map this here
+          </div>
+        )}
 
         {loading && (
           <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-neutral-600">

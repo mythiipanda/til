@@ -74,6 +74,9 @@ interface MindMapState {
   sharePromptOpen: boolean;
   setSharePromptOpen: (open: boolean) => void;
 
+  /** True when this map's root topic has never been mapped here before. */
+  isFreshMap: boolean;
+
   // Persistence & Sharing
   activeMindMapId: string | null;
   shareSlug: string | null;
@@ -297,6 +300,8 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 
   sharePromptOpen: false,
   setSharePromptOpen: (open: boolean) => set({ sharePromptOpen: open }),
+
+  isFreshMap: false,
 
   activeMindMapId: null,
   shareSlug: null,
@@ -1332,6 +1337,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     const rootNode = nodes.find(n => !n.parentId);
     const category = (rootNode?.data?.category as string) || 'General';
 
+    // "Fresh map" eligibility: nobody has mapped this root topic here before.
+    // Checks the hub catalog, the curated seed list, and all public mindmaps.
+    let freshMap = false;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const payload = {
@@ -1375,12 +1384,32 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         console.warn('Share persist failed; refusing to hand out a dead link');
         return null;
       }
+
+      try {
+        const normalized = currentTopic.trim().toLowerCase();
+        const knownTopics = new Set<string>(
+          [
+            ...get().precomputedHubs.map(h => h.topic),
+            ...FALLBACK_HUB_TOPICS.map(t => t.topic),
+          ].map(t => t.trim().toLowerCase())
+        );
+        const { count } = await supabase
+          .from('mindmaps')
+          .select('id', { count: 'exact', head: true })
+          .eq('root_topic', currentTopic);
+        freshMap = !knownTopics.has(normalized) && (count ?? 0) === 0;
+      } catch (e) {
+        console.warn('Fresh-map check skipped:', e);
+      }
+      if (freshMap) {
+        trackLaunchEvent('fresh_map', { topic: currentTopic });
+      }
     } catch (e) {
       console.warn('Supabase share update failed:', e);
       return null;
     }
 
-    set({ shareSlug: slug });
+    set({ shareSlug: slug, isFreshMap: freshMap });
     persistActiveSession(get());
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://tdilearned.com';
     return `${origin}/m/${slug}?ref=share`;
