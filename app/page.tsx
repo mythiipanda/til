@@ -46,18 +46,10 @@ export default function Home() {
   const [customInput, setCustomInput] = useState('');
   const startResearch = useMindMapStore(s => s.startResearch);
 
-  useEffect(() => {
-    const bootstrap = async () => {
-      await fetchPrecomputedHubs();
-      const restored = restoreSessionFromLocalStorage();
-      // Zero-input start: a first-time visitor gets handed a random researched
-      // topic instead of an empty screen. Returning visitors keep their map.
-      if (!restored && useMindMapStore.getState().nodes.length === 0) {
-        await loadRandomHubByCategory(CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]);
-      }
-    };
-    void bootstrap();
-  }, [fetchPrecomputedHubs, restoreSessionFromLocalStorage, loadRandomHubByCategory]);
+  useEffect(() => { 
+    fetchPrecomputedHubs();
+    restoreSessionFromLocalStorage();
+  }, [fetchPrecomputedHubs, restoreSessionFromLocalStorage]);
 
   // Browser back/forward: restore the hub for whichever topic URL we land on.
   useEffect(() => {
