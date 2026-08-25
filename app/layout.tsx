@@ -25,7 +25,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'TDILEARNED — Today I Learned',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://til-seven.vercel.app'),
+   title: 'TDILEARNED — Today I Learned',
   description: 'Type any topic and get a visual mindmap: sourced stories, key facts, and follow-up threads. Live web research on anything you want to learn.',
   keywords: ['Today I Learned', 'TDILEARNED', 'Learning', 'Knowledge', 'Science', 'History', 'Curiosity'],
 };
