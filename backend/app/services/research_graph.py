@@ -877,7 +877,10 @@ async def spatial_enricher_node(state: ResearchGraphState, config: RunnableConfi
             )
             child_nodes.append(c_node)
             await sink.emit("node_stream", c_node.model_dump())
-            await asyncio.sleep(0.05)
+            # Pace the canvas: emit children ~350ms apart so nodes appear one
+            # by one instead of the whole graph popping in a single frame
+            # (Cerebras finishes synthesis far faster than a viewer can read).
+            await asyncio.sleep(0.35)
 
     return {
         "root_node": root_node.model_dump(),
