@@ -42,20 +42,10 @@ async def test_is_supabase_configured_true():
 
 
 async def test_fetch_hubs_success(monkeypatch):
-    rows = [
-        {"id": "1", "topic": "Antikythera", "category": "History", "summary": "s", "image_url": "https://img"},
-    ]
+    rows = [{"id": "1", "topic": "Antikythera", "category": "History", "summary": "s"}]
     patch_shared_client(monkeypatch, supabase, _handler(200, rows))
     result = await fetch_hubs_from_supabase(limit=10)
-    assert result == [
-        {
-            "id": "1",
-            "topic": "Antikythera",
-            "category": "History",
-            "summary": "s",
-            "imageUrl": "https://img",
-        }
-    ]
+    assert result == [{"id": "1", "topic": "Antikythera", "category": "History", "summary": "s"}]
 
 
 async def test_fetch_hubs_non_200(monkeypatch):

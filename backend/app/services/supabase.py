@@ -61,7 +61,9 @@ async def fetch_hubs_from_supabase(limit: int = 2000) -> list[dict[str, Any]]:
     if not is_supabase_configured():
         return []
 
-    url = f"{SUPABASE_URL}/rest/v1/precomputed_hubs?select=id,topic,category,summary,image_url&order=created_at.desc&limit={limit}"
+    url = (
+        f"{SUPABASE_URL}/rest/v1/precomputed_hubs?select=id,topic,category,summary&order=created_at.desc&limit={limit}"
+    )
     try:
         client = await get_shared_client()
         resp = await client.get(url, headers=_get_headers(), timeout=15.0)
@@ -73,7 +75,6 @@ async def fetch_hubs_from_supabase(limit: int = 2000) -> list[dict[str, Any]]:
                     "topic": row.get("topic"),
                     "category": row.get("category"),
                     "summary": row.get("summary"),
-                    "imageUrl": row.get("image_url"),
                 }
                 for row in rows
             ]

@@ -53,6 +53,5 @@ export function fallbackTopicsAsSummaries(): Array<PrecomputedHubSummary & { id:
     topic: t.topic,
     category: t.category,
     summary: '',
-    imageUrl: null,
   }));
 }

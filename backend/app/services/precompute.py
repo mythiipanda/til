@@ -223,7 +223,6 @@ async def precompute_bulk(
                 id=hub.id,
                 topic=hub.topic,
                 category=hub.category,
-                imageUrl=hub.root.imageUrl,
                 summary=(hub.root.summary or "")[:160],
             ).model_dump()
         )
@@ -255,7 +254,6 @@ async def precompute_batch(categories: Sequence[str] | None = None) -> list[Prec
                 id=hub.id,
                 topic=hub.topic,
                 category=hub.category,
-                imageUrl=hub.root.imageUrl,
                 summary=(hub.root.summary or "")[:160],
             )
         )

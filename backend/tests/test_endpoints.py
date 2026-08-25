@@ -104,6 +104,7 @@ def test_list_precomputed_supabase(monkeypatch):
         r = c.get("/api/v1/graph/precomputed")
     assert r.status_code == 200
     assert r.json()[0]["id"] == "h1"
+    assert "imageUrl" not in r.json()[0]  # list rows stay lean; full hub payload keeps images
 
 
 def test_list_precomputed_cached_fallback(monkeypatch):
