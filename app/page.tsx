@@ -1,21 +1,38 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { KnowledgeCanvas } from '@/components/canvas/KnowledgeCanvas';
-import { ChatComposer } from '@/components/activity/ChatComposer';
-import { HubBrowser } from '@/components/browse/HubBrowser';
-import { DossierDrawer } from '@/components/dossier/DossierDrawer';
+import dynamic from 'next/dynamic';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { MyMindMapsDrawer } from '@/components/library/MyMindMapsDrawer';
-import { ShareModal } from '@/components/share/ShareModal';
-import { SharePromptModal } from '@/components/share/SharePromptModal';
 import { MobileBottomBar } from '@/components/ui/MobileBottomBar';
+import { ShareModal } from '@/components/share/ShareModal';
 import { ModelSelector } from '@/components/model/ModelSelector';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
 import { Plus, RotateCcw, BookOpen, X, Share2, Bookmark, Keyboard, Command, Search as SearchIcon, MoreVertical } from 'lucide-react';
 import { MobileOverflowMenu } from '@/components/ui/MobileOverflowMenu';
 
+// Code-split heavy / conditional components out of the first-paint bundle.
+const KnowledgeCanvas = dynamic(
+  () => import('@/components/canvas/KnowledgeCanvas').then(m => m.KnowledgeCanvas),
+  { ssr: false }, // React Flow + html-to-image: browser-only
+);
+const ChatComposer = dynamic(
+  () => import('@/components/activity/ChatComposer').then(m => m.ChatComposer),
+  { loading: () => null }, // SSR-able: no window/localStorage at module init
+);
+const HubBrowser = dynamic(
+  () => import('@/components/browse/HubBrowser').then(m => m.HubBrowser),
+  { ssr: false, loading: () => null },
+);
+const DossierDrawer = dynamic(
+  () => import('@/components/dossier/DossierDrawer').then(m => m.DossierDrawer),
+  { ssr: false, loading: () => null }, // pulls MapViewer/AudioTourPlayer (browser APIs)
+);
+const SharePromptModal = dynamic(
+  () => import('@/components/share/SharePromptModal').then(m => m.SharePromptModal),
+  { loading: () => null }, // overlay: renders null until opened
+);
 const FLAGSHIP_CATEGORIES = ['Science', 'History', 'Mathematics', 'Technology', 'Philosophy'] as const;
 
 export default function Home() {
