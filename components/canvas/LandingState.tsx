@@ -41,7 +41,7 @@ export default function LandingState() {
   const remainingCategories = CATEGORIES.filter(c => !FLAGSHIP_CATEGORIES.includes(c as any));
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center z-10 select-none overflow-y-auto p-4 sm:p-6 md:p-12">
+    <div className="absolute inset-0 flex flex-col items-center z-10 select-none overflow-y-auto p-4 sm:p-6 md:p-12">
       <div className="w-full max-w-4xl bg-white border-2 md:border-4 border-black p-6 sm:p-8 md:p-12 space-y-8 sm:space-y-10 shadow-none animate-fade my-auto">
 
         {/* Masthead Rule & Label */}
