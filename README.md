@@ -41,7 +41,7 @@ flowchart LR
         LLM["Dynamic provider routing with fail-over"]
     end
     subgraph Storage["Supabase Postgres"]
-        Hubs["Discovery Hubs (886+)"]
+        Hubs["Discovery Hubs (1,000+)"]
         Data["Mindmaps / Notes / Dossiers"]
         Auth["Passwordless Auth"]
     end
@@ -62,8 +62,10 @@ flowchart LR
 
 - **Research**: a 6-stage map-reduce graph — planner decomposes the inquiry into angles, parallel workers search and verify sources, then a synthesizer writes the monograph dossier with numeric citations `[1]`, `[2]`.
 - **Chat**: grounded ReAct Q&A with live citations, contextual follow-up suggestions, and answers that can be pinned onto the canvas.
-- **Precomputed hubs**: 886+ fully synthesized graphs load in under 200ms with zero inference cost.
+- **Precomputed hubs**: 1,000 fully synthesized graphs load in under 200ms with zero inference cost.
 - **Storage**: two-tier cache (in-memory LRU + disk JSON) in front of Supabase Postgres.
+- **Sharing & exports**: every map gets a public `/m/{slug}` page with its own generated social-share card; stories copy out as clean Markdown and maps render to PNG.
+- **Discovery**: curiosity-ranked random topics, 2,000+ candidate catalog, sitemap.xml listing all public shared maps.
 
 ---
 
