@@ -25,6 +25,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(40);
   const [catalogList, setCatalogList] = useState<DisplayTopic[]>([]);
 
   useEffect(() => {
@@ -53,6 +54,11 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
     loadCatalog();
     return () => { isMounted = false; };
   }, []);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setVisibleCount(40);
+  }, [searchQuery, activeCategory]);
 
   // Merge Supabase hubs + catalog
   const mergedTopics: DisplayTopic[] = [];
@@ -103,7 +109,11 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 bg-white shrink-0" />
           <span className="font-mono text-xs uppercase font-bold tracking-widest">
-            Topics ({filteredTopics.length})
+            Topics ({filteredTopics.length}){filteredTopics.length > visibleCount && (
+              <span className="font-mono text-xs uppercase font-normal opacity-60">
+                (showing {visibleCount})
+              </span>
+            )}
           </span>
         </div>
         <button
@@ -161,10 +171,10 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
       <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
         {filteredTopics.length === 0 ? (
           <div className="text-center py-16 font-mono text-xs text-neutral-500">
-            No topics match search
+            No topics match your filters. Try a different keyword or category.
           </div>
         ) : (
-          filteredTopics.map((item, idx) => (
+          filteredTopics.slice(0, visibleCount).map((item, idx) => (
             <button
               key={`${item.topic}-${idx}`}
               onClick={() => handleSelectTopic(item)}
@@ -181,7 +191,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
                   </span>
                 ) : (
                   <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">
-                    EXPLORE →
+                    OPEN →
                   </span>
                 )}
               </div>
@@ -197,6 +207,16 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
               )}
             </button>
           ))
+        )}
+
+        {filteredTopics.length > visibleCount && (
+          <button
+            onClick={() => setVisibleCount(c => c + 40)}
+            aria-label="Show 40 more topics"
+            className="w-full min-h-[44px] mt-2 py-2.5 bg-white text-black border-2 border-black font-mono text-[10px] uppercase font-bold tracking-widest hover:bg-black hover:text-white transition-colors duration-100"
+          >
+            Show More
+          </button>
         )}
       </div>
 
