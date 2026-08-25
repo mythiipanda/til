@@ -29,7 +29,15 @@ def test_models_endpoint(monkeypatch):
 
         return ModelCatalogResponse(
             default_model="cerebras:gemma-4-31b",
-            models=[ModelOptionSchema(id="cerebras:gemma-4-31b", name="Gemma", provider="cerebras", provider_label="Cerebras", model_id="gemma-4-31b")],
+            models=[
+                ModelOptionSchema(
+                    id="cerebras:gemma-4-31b",
+                    name="Gemma",
+                    provider="cerebras",
+                    provider_label="Cerebras",
+                    model_id="gemma-4-31b",
+                )
+            ],
         )
 
     monkeypatch.setattr("app.api.endpoints.get_available_models_async", fake_models)
@@ -57,7 +65,9 @@ def test_random_topic_endpoint(monkeypatch):
 
 
 def test_catalog_endpoint(monkeypatch):
-    monkeypatch.setattr("app.api.endpoints.get_catalog", lambda: [{"title": "A", "summary": "s", "category": "History"}])
+    monkeypatch.setattr(
+        "app.api.endpoints.get_catalog", lambda: [{"title": "A", "summary": "s", "category": "History"}]
+    )
     monkeypatch.setattr("app.api.endpoints.is_supabase_configured", lambda: False)
     monkeypatch.setattr("app.api.endpoints.fetch_hubs_from_supabase", lambda limit=2000: [])
     with TestClient(app) as c:
@@ -69,7 +79,9 @@ def test_catalog_endpoint(monkeypatch):
 
 
 def test_catalog_endpoint_merges_supabase_hubs(monkeypatch):
-    monkeypatch.setattr("app.api.endpoints.get_catalog", lambda: [{"title": "A", "summary": "s", "category": "History"}])
+    monkeypatch.setattr(
+        "app.api.endpoints.get_catalog", lambda: [{"title": "A", "summary": "s", "category": "History"}]
+    )
 
     async def fake_fetch(limit=2000):
         return [{"id": "h1", "topic": "Hub Topic", "summary": "s", "category": "Science"}]
@@ -111,7 +123,14 @@ def test_list_precomputed_cached_fallback(monkeypatch):
 
 def test_get_precomputed_supabase(monkeypatch):
     async def fake_fetch(hub_id):
-        return {"id": hub_id, "topic": "T", "category": "C", "root": {"id": "r", "title": "R", "summary": "S"}, "children": [], "dossier": {}}
+        return {
+            "id": hub_id,
+            "topic": "T",
+            "category": "C",
+            "root": {"id": "r", "title": "R", "summary": "S"},
+            "children": [],
+            "dossier": {},
+        }
 
     monkeypatch.setattr("app.api.endpoints.is_supabase_configured", lambda: True)
     monkeypatch.setattr("app.api.endpoints.fetch_hub_by_id_from_supabase", fake_fetch)

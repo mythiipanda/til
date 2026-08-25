@@ -94,9 +94,7 @@ async def test_wikipedia_search_success(monkeypatch):
             200,
             {
                 "query": {
-                    "search": [
-                        {"pageid": 1, "title": "Antikythera mechanism", "snippet": "<b>ancient</b> computer"}
-                    ]
+                    "search": [{"pageid": 1, "title": "Antikythera mechanism", "snippet": "<b>ancient</b> computer"}]
                 }
             },
         )
@@ -206,7 +204,11 @@ async def test_wikipedia_page_images_full_flow(monkeypatch):
         if params and params.get("prop") == "images":
             return FakeResponse(
                 200,
-                {"query": {"pages": {"1": {"images": [{"title": "File:Antikythera_front.jpg"}, {"title": "File:doc.pdf"}]}}}},
+                {
+                    "query": {
+                        "pages": {"1": {"images": [{"title": "File:Antikythera_front.jpg"}, {"title": "File:doc.pdf"}]}}
+                    }
+                },
             )
         # 3) imageinfo
         if params and params.get("prop") == "imageinfo":
