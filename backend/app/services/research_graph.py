@@ -276,6 +276,21 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
     if context_str:
         context_str = f"\n\nCONTEXT FROM USER DISCOVERY TRAIL:\n{context_str}\n"
 
+    is_deep_dive = bool(state.get("parent_summary")) or "deep dive" in (state.get("teaser_context") or "").lower()
+    deep_dive_directive = ""
+    if is_deep_dive:
+        deep_dive_directive = (
+            "\nDEEP-DIVE DIRECTIVE: The parent card already gives the reader a surface overview of this exact "
+            "subject. The angles below MUST drive strictly deeper research: concrete mechanisms, numbers, "
+            "dates, names, open problems, and misconceptions. They MUST NOT simply restate the Parent Concept "
+            "Summary in the discovery context or rehash the parent card's wow fact at the same altitude."
+            + (
+                " Honor the specific angle stated in the Inquiry Focus / Hook instead of covering the topic generically."
+                if state.get("teaser_context")
+                else ""
+            )
+        )
+
     llm = _llm(config, temperature=0.4, max_tokens=4000)
     angles: list[ResearchAngle] = []
     if llm:
@@ -292,6 +307,7 @@ async def planner_node(state: ResearchGraphState, config: RunnableConfig) -> dic
                             "3. Vector 3 (Twists & Modern Echoes): Surprising misconceptions, turning points, and lasting real-world significance.\n"
                             "CRITICAL: Explicitly name the subject entity in every question. Avoid vague pronouns or generic definitions. "
                             "Each question must be self-contained and answerable by web search — no yes/no questions."
+                            + deep_dive_directive
                         )
                     ),
                     HumanMessage(
@@ -534,6 +550,26 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
     if context_str:
         context_str = f"\n\nDISCOVERY CONTEXT:\n{context_str}\n"
 
+    is_deep_dive = bool(state.get("parent_summary")) or "deep dive" in (state.get("teaser_context") or "").lower()
+    deep_dive_directive = ""
+    if is_deep_dive:
+        context_str += (
+            "DEEP-DIVE DIRECTIVE: The parent card already gives the reader a surface overview of this exact "
+            "subject. This dossier MUST be strictly deeper than that overview.\n"
+            + (
+                "Honor the specific angle stated in the Inquiry Hook instead of covering the topic generically.\n"
+                if state.get("teaser_context")
+                else ""
+            )
+        )
+        deep_dive_directive = (
+            "\n8. Deep-Dive Exclusivity: The parent card already gave a surface overview of this exact subject. "
+            "This run MUST produce strictly deeper content: concrete mechanisms, numbers, dates, names, open "
+            "problems, and misconceptions. You MUST NOT restate the Parent Concept Summary in the DISCOVERY "
+            "CONTEXT, and you MUST NOT reuse or paraphrase the parent card's wow fact as the new wowFact; the "
+            "abstract, tagline, coreThesis, and wowFact must all reveal information the parent card did not contain."
+        )
+
     llm = _llm(config, temperature=0.7, max_tokens=8000)
     dossier_data: LLMDeepDossierOutput | None = None
     children_data: list[LLMChildBranchDefinition] = []
@@ -555,6 +591,7 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
                             "5. Myth Discipline: Prefer mainstream scientific and historical consensus. If popular misconceptions exist about this subject, do not repeat them as fact — debunk or omit them.\n"
                             "6. Specificity Anchors: Pack the timeline and mechanisms with concrete anchors: exact years, named discoverers, quantities, and physical processes — never vague placeholders like 'scientists discovered' or 'in the early 20th century'.\n"
                             "7. wowFact & suggestedQuestions: wowFact must be one genuinely surprising, verifiable fact — not trivia filler. suggestedQuestions must be 3 follow-ups a curious reader would actually ask next, each answerable from the dossier's evidence."
+                            + deep_dive_directive
                         )
                     ),
                     HumanMessage(
