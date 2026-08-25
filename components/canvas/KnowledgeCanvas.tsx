@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
-import { ReactFlow, ReactFlowProvider, Background, Controls, BackgroundVariant, Node, useReactFlow } from '@xyflow/react';
+import { ReactFlow, ReactFlowProvider, Background, Controls, BackgroundVariant, Node, MiniMap, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import ResearchNode from './ResearchNode';
@@ -20,6 +20,7 @@ export function KnowledgeCanvas() {
 
 function isExportableExportNode(node: HTMLElement): boolean {
   if (!(node instanceof Element)) return false;
+  if (node.classList.contains('react-flow__minimap') || node.closest('.react-flow__minimap') !== null) return false;
   return ['.react-flow__pane', '.react-flow__edges', '.react-flow__nodes']
     .some(sel => node.matches(sel) || node.closest(sel) !== null);
 }
@@ -177,6 +178,22 @@ function CanvasInner() {
           size={1.5}
           gap={32}
           color="#00000020"
+        />
+        <MiniMap
+          className="hidden sm:block"
+          pannable
+          zoomable
+          ariaLabel="Map overview"
+          maskColor="rgba(255,255,255,0.85)"
+          nodeColor={(node: Node) =>
+            node.selected || node.id === nodes[0]?.id ? '#000000' : '#a3a3a3'
+          }
+          style={{
+            border: '2px solid #000000',
+            borderRadius: 0,
+            background: '#ffffff',
+            boxShadow: 'none',
+          }}
         />
       </ReactFlow>
 
