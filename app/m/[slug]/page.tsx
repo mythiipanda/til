@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { getSharedMindMap } from './data';
 import SharedMindMapClient from './SharedMindMapClient';
 
@@ -39,6 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function SharedMindMapPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const mindmap = await getSharedMindMap(slug);
+  if (!mindmap) notFound();
 
   const jsonLd = mindmap
     ? {
