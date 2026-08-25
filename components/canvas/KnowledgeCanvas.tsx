@@ -39,7 +39,7 @@ function CanvasInner() {
   // children stay in view without manual panning. Suppressed while the user
   // is dragging to avoid fighting their pointer.
   useEffect(() => {
-    if (nodes.length > prevNodeCount.current && isResearching && !isDragging.current) {
+    if (nodes.length > prevNodeCount.current && !isDragging.current && (isResearching || prevNodeCount.current === 0)) {
       fitView({ padding: 0.12, maxZoom: 1.05, duration: 400 });
     }
     prevNodeCount.current = nodes.length;
