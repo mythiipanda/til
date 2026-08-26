@@ -11,6 +11,9 @@ import {
 } from '@xyflow/react';
 import { api, ChatHistoryMessage } from '@/lib/api';
 import { supabase } from '@/lib/supabase/client';
+import { rankTopicMatches } from '@/lib/utils/hub-match';
+import { FALLBACK_HUB_TOPICS } from '@/lib/data/fallback-hubs';
+import { trackLaunchEvent } from '@/lib/metrics/launch-events';
 import type {
   ThoughtStep,
   ToolCallEvent,
@@ -67,6 +70,13 @@ interface MindMapState {
   // Sidebar / browse
   precomputedHubs: PrecomputedHubSummary[];
 
+  // Post-generation share prompt (shown at most once per tab session)
+  sharePromptOpen: boolean;
+  setSharePromptOpen: (open: boolean) => void;
+
+  /** True when this map's root topic has never been mapped here before. */
+  isFreshMap: boolean;
+
   // Persistence & Sharing
   activeMindMapId: string | null;
   shareSlug: string | null;
@@ -97,6 +107,12 @@ interface MindMapState {
     teaserContext?: string
   ) => void;
   loadPrecomputedHub: (hubId: string) => Promise<void>;
+  /**
+   * Saturation catch: called whenever a research stream fails to start or dies.
+   * Opens a finished precomputed map when it is safe (fresh visitor, empty
+   * canvas), otherwise shows honest error copy. Never destroys canvas work.
+   */
+  handleResearchFailure: (topic: string, isChildExpansion: boolean, saturated: boolean, stalled: boolean) => Promise<void>;
   selectNode: (nodeId: string | null) => void;
   openDossier: (nodeId: string) => Promise<void>;
   closeDossier: () => void;
@@ -116,7 +132,7 @@ interface MindMapState {
   flushCanvasAutosave: () => void;
 }
 
-let researchES: EventSource | null = null;
+let researchAbort: AbortController | null = null;
 let chatES: EventSource | null = null;
 
 // Watchdog: if a stream goes silent for this long, the connection is stale —
@@ -282,6 +298,11 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   
   precomputedHubs: [],
 
+  sharePromptOpen: false,
+  setSharePromptOpen: (open: boolean) => set({ sharePromptOpen: open }),
+
+  isFreshMap: false,
+
   activeMindMapId: null,
   shareSlug: null,
   savedMindMaps: [],
@@ -326,8 +347,9 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     parentSummary?: string,
     teaserContext?: string
   ) => {
-    if (researchES) {
-      researchES.close();
+    if (researchAbort) {
+      researchAbort.abort();
+      researchAbort = null;
     }
 
     // Build unbroken context trail
@@ -361,8 +383,12 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       planSteps: [],
     });
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof window.history !== 'undefined') {
       window.history.pushState({}, '', `/?topic=${encodeURIComponent(topic)}`);
+    }
+
+    if (!parentId) {
+      trackLaunchEvent('topic_search', { topic });
     }
 
     const url = api.researchStreamUrl(
@@ -374,25 +400,46 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
       teaserContext,
       get().selectedModelId
     );
-    const es = new EventSource(url);
-    researchES = es;
+
+    const controller = new AbortController();
+    researchAbort = controller;
+    const isCurrent = () => researchAbort === controller;
 
     const timerRef = { current: researchIdleTimer };
-    const staleHandler = () => {
-      if (researchES === es) researchES = null;
-      if (researchIdleTimer) researchIdleTimer = null;
-      set({ isResearching: false, researchError: 'The research stream stalled. Your connection may have dropped; please try again.' });
+    const clearStallTimer = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+        researchIdleTimer = null;
+      }
     };
-    armIdleTimer(es, timerRef, staleHandler);
+    // Watchdog for the fetch-based stream: any traffic (including heartbeats)
+    // proves the backend is alive; silence past the timeout triggers fallback.
+    const armStallTimer = () => {
+      clearStallTimer();
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        researchIdleTimer = null;
+        const wasCurrent = isCurrent();
+        if (wasCurrent) researchAbort = null;
+        controller.abort();
+        void get().handleResearchFailure(topic, !!parentId, false, true);
+      }, SSE_IDLE_TIMEOUT_MS);
+    };
+
+    let settled = false;
+    const settleDone = () => {
+      if (settled) return;
+      settled = true;
+      clearStallTimer();
+      if (isCurrent()) researchAbort = null;
+    };
 
     let childIndex = 0;
 
-    es.onmessage = (e) => {
-      kickIdleTimer(es, timerRef, staleHandler);
-      try {
-        const parsed = JSON.parse(e.data);
-        const event = parsed.event;
-        const data = parsed.data;
+    const handleEvent = (parsed: any) => {
+      const event = parsed.event;
+      const data = parsed.data;
 
         if (event === 'plan') {
           if (data && data.steps) {
@@ -513,7 +560,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             }
           }));
         } else if (event === 'done') {
-          if (timerRef.current) clearTimeout(timerRef.current);
+          settleDone();
           set((state) => ({
             isResearching: false,
             hasNewDossier: true,
@@ -521,22 +568,142 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
             planSteps: state.planSteps.map((s) => ({ ...s, status: 'done' as const })),
           }));
           persistActiveSession(get());
-          es.close();
+          // Share moment: root maps only, at most once per tab session.
+          if (!parentId && typeof window !== 'undefined') {
+            try {
+              const key = 'tdilearned-share-prompt-shown';
+              if (!window.sessionStorage.getItem(key)) {
+                window.sessionStorage.setItem(key, '1');
+                set({ sharePromptOpen: true });
+              }
+            } catch {
+              set({ sharePromptOpen: true });
+            }
+          }
         } else if (event === 'error') {
-          if (timerRef.current) clearTimeout(timerRef.current);
-          set({ isResearching: false, researchError: data?.message || 'The research run failed. Please try again.' });
-          es.close();
+          settleDone();
+          void get().handleResearchFailure(topic, !!parentId, false, false);
         }
-      } catch (err) {
-        console.error('Error parsing SSE event', err);
-      }
     };
 
-    es.onerror = () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      set({ isResearching: false, researchError: 'Lost connection to the research stream. Please try again.' });
-      es.close();
-    };
+    (async () => {
+      try {
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: { Accept: 'text/event-stream' },
+        });
+
+        // Stream-start failure: gateway and FastAPI 429s arrive as JSON or
+        // HTML bodies, never as an event stream. Content-type decides —
+        // error bodies are never parsed.
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || !contentType.includes('text/event-stream')) {
+          void get().handleResearchFailure(topic, !!parentId, res.status === 429, false);
+          return;
+        }
+        if (!res.body) {
+          void get().handleResearchFailure(topic, !!parentId, false, false);
+          return;
+        }
+
+        armStallTimer();
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        const processFrame = (frame: string) => {
+          for (const line of frame.split('\n')) {
+            if (!line.startsWith('data:')) continue;
+            const payload = line.slice(5).trim();
+            if (!payload || payload === '[DONE]') continue;
+            try {
+              handleEvent(JSON.parse(payload));
+            } catch {
+              // Malformed frame: skip it, keep the stream alive.
+            }
+          }
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          if (!settled) armStallTimer();
+          let sep: number;
+          while ((sep = buffer.indexOf('\n\n')) !== -1) {
+            processFrame(buffer.slice(0, sep));
+            buffer = buffer.slice(sep + 2);
+            if (settled) return;
+          }
+        }
+
+        // Server closed the stream without a done/error event.
+        settleDone();
+        set((state) => (state.isResearching ? { isResearching: false } : {}));
+      } catch (err) {
+        if (controller.signal.aborted && !isCurrent()) {
+          // Superseded by a newer research run — nothing to clean up here.
+          return;
+        }
+        settleDone();
+        void get().handleResearchFailure(topic, !!parentId, false, false);
+      }
+    })();
+  },
+
+  handleResearchFailure: async (topic, isChildExpansion, saturated, stalled) => {
+    // Never destroy existing canvas work. Auto-opening a finished map is only
+    // safe for a root exploration on an empty canvas — the cold-visitor funnel.
+    const canAutoOpen = !isChildExpansion && get().nodes.length === 0;
+
+    trackLaunchEvent('research_fallback', {
+      topic,
+      metadata: { saturated, stalled, auto_opened: canAutoOpen },
+    });
+
+    const honestCopy = saturated
+      ? 'Too many people digging right now. Try again in a minute.'
+      : 'The research run failed. Please try again.';
+
+    if (!canAutoOpen) {
+      set({ isResearching: false, researchError: honestCopy });
+      return;
+    }
+
+    let hubs = get().precomputedHubs;
+    if (!hubs || hubs.length === 0) {
+      hubs = await get().fetchPrecomputedHubs();
+    }
+
+    if (hubs && hubs.length > 0) {
+      const matches = rankTopicMatches(topic, hubs, 3);
+      if (matches.length > 0) {
+        const chosen = matches[Math.floor(Math.random() * matches.length)];
+        await get().loadPrecomputedHub(chosen.id);
+        set({
+          isResearching: false,
+          researchError: saturated
+            ? `Too many people digging right now. Opened a finished map about "${chosen.topic}" while you wait.`
+            : `That live run failed. Opened a finished map about "${chosen.topic}" instead.`,
+        });
+        return;
+      }
+
+      // No topical match in the catalog: route once by curated category.
+      const seedMatch = rankTopicMatches(topic, FALLBACK_HUB_TOPICS, 1)[0];
+      if (seedMatch) {
+        await get().loadRandomHubByCategory(seedMatch.category);
+        set({
+          isResearching: false,
+          researchError: saturated
+            ? 'Too many people digging right now. Opened a finished map while you wait.'
+            : 'That live run failed. Opened a finished map instead.',
+        });
+        return;
+      }
+    }
+
+    set({ isResearching: false, researchError: honestCopy });
   },
   
   loadPrecomputedHub: async (hubId: string) => {
@@ -1170,6 +1337,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     const rootNode = nodes.find(n => !n.parentId);
     const category = (rootNode?.data?.category as string) || 'General';
 
+    // "Fresh map" eligibility: nobody has mapped this root topic here before.
+    // Checks the hub catalog, the curated seed list, and all public mindmaps.
+    let freshMap = false;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const payload = {
@@ -1183,8 +1354,13 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
         updated_at: new Date().toISOString(),
       };
 
+      // Track whether the row actually persisted. A share URL must never be
+      // handed out for a map the database refused — it would 404 for everyone.
+      let persisted = true;
+
       if (user && activeMindMapId) {
-        await supabase.from('mindmaps').update(payload).eq('id', activeMindMapId);
+        const { error } = await supabase.from('mindmaps').update(payload).eq('id', activeMindMapId);
+        if (error) persisted = false;
       } else if (user) {
         const { data, error } = await supabase
           .from('mindmaps')
@@ -1192,6 +1368,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           .select()
           .single();
         if (!error && data) set({ activeMindMapId: data.id });
+        if (error) persisted = false;
       } else {
         // Guests: upsert a public row keyed by share_slug so shared links resolve for everyone
         const { data, error } = await supabase
@@ -1200,15 +1377,42 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
           .select()
           .single();
         if (!error && data) set({ activeMindMapId: data.id });
+        if (error) persisted = false;
+      }
+
+      if (!persisted) {
+        console.warn('Share persist failed; refusing to hand out a dead link');
+        return null;
+      }
+
+      try {
+        const normalized = currentTopic.trim().toLowerCase();
+        const knownTopics = new Set<string>(
+          [
+            ...get().precomputedHubs.map(h => h.topic),
+            ...FALLBACK_HUB_TOPICS.map(t => t.topic),
+          ].map(t => t.trim().toLowerCase())
+        );
+        const { count } = await supabase
+          .from('mindmaps')
+          .select('id', { count: 'exact', head: true })
+          .eq('root_topic', currentTopic);
+        freshMap = !knownTopics.has(normalized) && (count ?? 0) === 0;
+      } catch (e) {
+        console.warn('Fresh-map check skipped:', e);
+      }
+      if (freshMap) {
+        trackLaunchEvent('fresh_map', { topic: currentTopic });
       }
     } catch (e) {
-      console.warn('Supabase share update skipped (guest mode)');
+      console.warn('Supabase share update failed:', e);
+      return null;
     }
 
-    set({ shareSlug: slug });
+    set({ shareSlug: slug, isFreshMap: freshMap });
     persistActiveSession(get());
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://tdilearned.com';
-    return `${origin}/m/${slug}`;
+    return `${origin}/m/${slug}?ref=share`;
   },
 
   restoreSessionFromLocalStorage: () => {
@@ -1274,7 +1478,10 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   },
 
   resetCanvas: () => {
-    if (researchES) researchES.close();
+    if (researchAbort) {
+      researchAbort.abort();
+      researchAbort = null;
+    }
     if (chatES) chatES.close();
     
     if (typeof window !== 'undefined') {

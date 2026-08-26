@@ -1,34 +1,9 @@
 import type { Metadata } from 'next';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { notFound } from 'next/navigation';
+import { getSharedMindMap } from './data';
 import SharedMindMapClient from './SharedMindMapClient';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://til-seven.vercel.app';
-
-async function getSharedMindMap(slug: string) {
-  const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from('mindmaps')
-    .select('id, title, share_slug, nodes, updated_at')
-    .eq('share_slug', slug)
-    .single();
-
-  if (error || !data) return null;
-
-  const rootNode = Array.isArray(data.nodes) ? (data.nodes as any[]).find((n) => !n?.parentId) : null;
-  const summary =
-    (rootNode?.data?.summary as string) ||
-    (rootNode?.data?.label as string) ||
-    `${data.title} — an interactive spatial knowledge map`;
-
-  return {
-    id: data.id,
-    title: data.title,
-    slug: data.share_slug,
-    summary,
-    nodeCount: Array.isArray(data.nodes) ? data.nodes.length : 0,
-    category: (rootNode?.data?.category as string) || 'General',
-  };
-}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -55,7 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       type: 'website',
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: `${mindmap.title} — TDILEARNED`,
       description,
     },
@@ -65,6 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function SharedMindMapPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const mindmap = await getSharedMindMap(slug);
+  if (!mindmap) notFound();
 
   const jsonLd = mindmap
     ? {

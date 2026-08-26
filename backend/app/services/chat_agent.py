@@ -18,6 +18,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from app.schemas.graph import SourceCitationSchema
 from app.services.cache import cache_service
 from app.services.llm import get_llm_with_fallback
 from app.services.tools import fetch_page_content, search_web_ladder
@@ -25,7 +26,43 @@ from app.services.tools import fetch_page_content, search_web_ladder
 logger = logging.getLogger(__name__)
 
 MAX_ROUNDS = 2
+MAX_EVIDENCE_SOURCES = 4
 MAX_SOURCES_PER_ROUND = 5
+MAX_QUERY_CHARS = 120
+
+# Common English filler removed from the tail of a search question; the first
+# token of the cleaned phrase is always kept so noun phrases stay searchable.
+_SEARCH_STOP_WORDS = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "of",
+        "and",
+        "or",
+        "to",
+        "is",
+        "are",
+        "was",
+        "were",
+        "do",
+        "does",
+        "did",
+        "what",
+        "how",
+        "why",
+        "where",
+        "might",
+        "stand",
+        "it",
+        "its",
+        "on",
+        "in",
+        "for",
+        "with",
+    }
+)
+
 MAX_CONTENT_CHARS = 3500
 
 # Live chat fail-over: if the primary Cerebras call exhausts its retries, fall
@@ -75,6 +112,16 @@ def _clean_search_query(node_title: str, user_question: str) -> str:
 
     clean_q = q.strip("?.,! ")
 
+    # Drop common English stop words from the question tail while keeping the
+    # leading token anchored: "the Romans invade Gaul" stays an intact
+    # searchable phrase, while "...and where might humanity stand on it"
+    # loses its interrogative filler.
+    tokens = clean_q.split()
+    kept = tokens[:1] + [tok for tok in tokens[1:] if tok.strip(".,!?;:'\"()").lower() not in _SEARCH_STOP_WORDS]
+    clean_q = " ".join(tok for tok in kept if tok)
+    if len(clean_q) > MAX_QUERY_CHARS:
+        clean_q = clean_q[:MAX_QUERY_CHARS].rsplit(" ", 1)[0]
+
     # Check if the user question already mentions key tokens from the entity title
     title_tokens = {t.lower() for t in re.findall(r"\w{3,}", node_title) if t.lower() not in {"the", "and", "for"}}
     q_tokens = {t.lower() for t in re.findall(r"\w{3,}", clean_q)}
@@ -85,9 +132,7 @@ def _clean_search_query(node_title: str, user_question: str) -> str:
     return clean_q or node_title
 
 
-def build_evidence_blocks(
-    sources: list[Any], fetched_by_url: dict[str, str], max_evidence: int = 4
-) -> list[str]:
+def build_evidence_blocks(sources: list[Any], fetched_by_url: dict[str, str], max_evidence: int = 4) -> list[str]:
     """Numbered `[1]..[N]` evidence blocks whose index matches the source order.
 
     The citation contract is count-align: block `[N]` always corresponds to
@@ -190,7 +235,8 @@ async def stream_chat(
         },
     )
 
-    # Unify web search sources and background dossier sources into an ordered, deduplicated citation list
+    # Deduplicate live search hits in result-strength order; they own the
+    # citable evidence window.
     sources: list[Any] = []
     seen_urls = set()
     for s in raw_sources:
@@ -198,13 +244,18 @@ async def stream_chat(
             seen_urls.add(s.url)
             sources.append(s)
 
+    # Cached dossier sources only backfill unused evidence slots; they never
+    # displace live search hits and never enter the stream without a path to
+    # being cited.
+    evidence_sources = list(sources[:MAX_EVIDENCE_SOURCES])
+
     for ds in dossier_sources:
+        if len(evidence_sources) >= MAX_EVIDENCE_SOURCES:
+            break
         u = ds.get("url")
         t = ds.get("title") or "Archival Encyclopedia"
         if u and u not in seen_urls:
             seen_urls.add(u)
-            from app.schemas.graph import SourceCitationSchema
-
             sources.append(
                 SourceCitationSchema(
                     id=str(uuid.uuid4())[:8],
@@ -215,8 +266,11 @@ async def stream_chat(
                     reliabilityScore=0.95,
                 )
             )
+            evidence_sources.append(sources[-1])
 
-    for src in sources:
+    # Stream only sources that can be cited: the evidence window plus the next
+    # strongest live hits, capped so the frontend list stays honest.
+    for src in sources[:6]:
         yield _emit_sse(
             "source",
             {
@@ -229,7 +283,6 @@ async def stream_chat(
             },
         )
 
-    evidence_sources = sources[:4]
     fetched_by_url = {}
     for src in evidence_sources:
         content = await fetch_page_content(src.url, max_chars=MAX_CONTENT_CHARS)
@@ -273,7 +326,7 @@ async def stream_chat(
         "2. Do not use robotic meta-commentary like 'Based on the provided text' or 'According to the sources'. Write the explanation directly.\n"
         "3. Use clean Markdown (bullet points, bold highlights, concise paragraphs) for legibility.\n"
         "4. MANDATORY NUMERIC CITATIONS: You MUST cite your statements directly using the numbered bracket tags matching the evidence sources, e.g. [1], [2], [3]. Place [N] immediately after facts, figures, dates, or mechanisms derived from that source (for example: 'Discovered in 1901 [1], the artifact utilized a 30-gear train mechanism [2]').\n"
-        "5. STRICT CITATION FORMAT: NEVER write words inside citation brackets (such as [Canon], [Source], [Ref], or (Canon)). Use ONLY numeric integer brackets like [1], [2].\n"
+        "5. STRICT CITATION FORMAT: The ONLY things you may cite are the numbered VERIFIED EVIDENCE SOURCES above. NEVER write words inside citation brackets (such as [Canon], [Source], [Ref], [Background Summary], or (Canon)) — bracket tags must be bare integers like [1], [2]. Context sections such as 'Active Card Overview' or 'CONVERSATION HISTORY' are NOT sources; state that context plainly with no bracket tag.\n"
         "6. GROUNDING HONESTY: If the evidence doesn't contain the answer, say what IS known and acknowledge the gap — never fill silence with speculation.\n"
         "7. MISATTRIBUTION GUARD: Do not attribute facts, inventions, or events to the wrong person, place, or era even if the question presupposes them — correct the premise instead."
     )

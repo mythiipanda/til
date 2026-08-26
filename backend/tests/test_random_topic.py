@@ -143,7 +143,9 @@ async def test_fetch_category_members_paginates(monkeypatch):
 
 
 async def test_llm_pick_success(monkeypatch):
-    pick = _TopicPick(title="Antikythera mechanism", summary="Ancient computer", reason="Explore", image_search_query="A")
+    pick = _TopicPick(
+        title="Antikythera mechanism", summary="Ancient computer", reason="Explore", image_search_query="A"
+    )
     monkeypatch.setattr(random_topic, "get_llm_with_fallback", lambda *a, **k: FakeLLM(structured_result=pick))
     result = await _llm_pick("History", [{"title": "Antikythera mechanism", "summary": "s", "pageviews": 1}])
     assert result.title == "Antikythera mechanism"
@@ -168,11 +170,16 @@ async def test_llm_pick_none_on_error(monkeypatch):
 
 async def test_pick_uses_llm_result(monkeypatch):
     cache = install_sync_cache(monkeypatch, random_topic)
-    cache.set("topics:crawl:history", [{"title": "Antikythera mechanism", "summary": "s", "image_search_query": "A", "pageviews": 5}])
+    cache.set(
+        "topics:crawl:history",
+        [{"title": "Antikythera mechanism", "summary": "s", "image_search_query": "A", "pageviews": 5}],
+    )
     cache.set("topics:seed:history", [])
 
     async def _pick_llm(*a, **k):
-        return _TopicPick(title="Antikythera mechanism", summary="s", reason="r", image_search_query="A", curiosity_score=9)
+        return _TopicPick(
+            title="Antikythera mechanism", summary="s", reason="r", image_search_query="A", curiosity_score=9
+        )
 
     monkeypatch.setattr(random_topic, "_llm_pick", _pick_llm)
 
@@ -204,6 +211,7 @@ async def test_pick_catalog_source(monkeypatch):
         raise AssertionError("seed should not run when catalog has candidates")
 
     monkeypatch.setattr(random_topic, "_seed_query_pool", fake_seed)
+
     async def _pick_none(*a, **k):
         return None
 
@@ -228,6 +236,7 @@ async def test_pick_seed_query_source(monkeypatch):
         return [{"title": "Seed topic", "summary": "s", "image_search_query": "A", "pageviews": 0}]
 
     monkeypatch.setattr(random_topic, "_seed_query_pool", fake_seed)
+
     async def _pick_none(*a, **k):
         return None
 
@@ -248,6 +257,7 @@ async def test_pick_fallback_any_page(monkeypatch):
 
     monkeypatch.setattr(random_topic, "_seed_query_pool", fake_seed)
     monkeypatch.setattr(random_topic, "_fallback_any_page", fake_any)
+
     async def _pick_none(*a, **k):
         return None
 
@@ -268,6 +278,7 @@ async def test_pick_last_resort_antikythera(monkeypatch):
 
     monkeypatch.setattr(random_topic, "_seed_query_pool", fake_seed)
     monkeypatch.setattr(random_topic, "_fallback_any_page", fake_any)
+
     async def _pick_none(*a, **k):
         return None
 

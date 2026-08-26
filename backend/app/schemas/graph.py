@@ -123,7 +123,6 @@ class PrecomputedHubSummarySchema(BaseModel):
     id: str
     topic: str
     category: str
-    imageUrl: str | None = None
     summary: str = ""
 
 

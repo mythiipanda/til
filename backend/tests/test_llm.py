@@ -104,9 +104,7 @@ async def test_fetch_cerebras_no_key_returns_fallback():
 
 async def test_fetch_cerebras_parses(monkeypatch):
     monkeypatch.setenv("CEREBRAS_API_KEY", "k")
-    handler = lambda *a, **k: FakeResponse(
-        200, {"data": [{"id": "gpt-oss-120b"}, {"id": "gemma-4-31b-it"}]}
-    )
+    handler = lambda *a, **k: FakeResponse(200, {"data": [{"id": "gpt-oss-120b"}, {"id": "gemma-4-31b-it"}]})
     patch_httpx_async_client(monkeypatch, llm, handler)
     models = await fetch_cerebras_models()
     names = {m["model_id"] for m in models}

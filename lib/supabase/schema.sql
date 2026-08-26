@@ -128,3 +128,22 @@ create policy "Users can manage own notes" on public.saved_notes
 -- Dossier Cache: Read for everyone, insert/update for service role
 create policy "Dossier cache is publicly readable" on public.dossier_cache
   for select using (true);
+
+-- 5. Launch Metrics Events (anonymous, INSERT-only)
+-- No SELECT policy: visitors can write events but never read them back.
+-- Analytics reads go through the service role (server-side only).
+create table if not exists public.launch_events (
+  id uuid default gen_random_uuid() primary key,
+  event text not null,
+  topic text,
+  ref text,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create index if not exists idx_launch_events_event on public.launch_events (event, created_at);
+
+alter table public.launch_events enable row level security;
+
+create policy "Anyone can record launch events" on public.launch_events
+  for insert with check (true);

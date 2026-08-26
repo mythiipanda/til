@@ -215,7 +215,7 @@ async def fetch_mistral_models() -> list[dict[str, Any]]:
                                 "id": f"mistral:{m_id}",
                                 "name": clean_name,
                                 "provider": "mistral",
-"provider_label": "Mistral AI",
+                                "provider_label": "Mistral AI",
                                 "model_id": m_id,
                                 "is_free": True,
                             }

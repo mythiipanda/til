@@ -186,9 +186,7 @@ async def test_planner_node_no_llm(monkeypatch):
 
 
 def test_fan_out_sends_per_angle():
-    sends = fan_out_researchers(
-        {"topic": "T", "category": "C", "angles": [_angle_dict("a1"), _angle_dict("a2")]}
-    )
+    sends = fan_out_researchers({"topic": "T", "category": "C", "angles": [_angle_dict("a1"), _angle_dict("a2")]})
     assert len(sends) == 2
     assert all(s.node == "researcher" for s in sends)
 
@@ -211,7 +209,9 @@ async def test_researcher_node_extracts_findings(monkeypatch):
 
 
 async def test_researcher_node_snippet_fallback(monkeypatch):
-    monkeypatch.setattr(research_graph, "get_llm_with_fallback", lambda *a, **k: FakeLLM(structured_raises=RuntimeError()))
+    monkeypatch.setattr(
+        research_graph, "get_llm_with_fallback", lambda *a, **k: FakeLLM(structured_raises=RuntimeError())
+    )
     monkeypatch.setattr(research_graph, "search_web_ladder", _search_sources)
     monkeypatch.setattr(research_graph, "fetch_page_content", _no_content)
 
@@ -292,7 +292,9 @@ def _seed_tree():
 
 
 async def test_synthesizer_node_success(monkeypatch):
-    monkeypatch.setattr(research_graph, "get_llm_with_fallback", lambda *a, **k: FakeLLM(structured_result=_seed_tree()))
+    monkeypatch.setattr(
+        research_graph, "get_llm_with_fallback", lambda *a, **k: FakeLLM(structured_result=_seed_tree())
+    )
     config, _, _ = _config()
     state = {"topic": "Antikythera", "category": "History", "findings": [], "sources": [], "context_chain": []}
     result = await synthesizer_node(state, config)
@@ -393,7 +395,9 @@ async def test_run_research_graph_full_flow(monkeypatch):
         {
             ResearchPlan: ResearchPlan(angles=[ResearchAngle(id="a1", question="Q?", rationale="R")]),
             LLMResearcherExtraction: LLMResearcherExtraction(
-                findings=[ResearchFinding(angle_id="a1", claim="c", quote="q", source_url="https://e/1", source_title="S")]
+                findings=[
+                    ResearchFinding(angle_id="a1", claim="c", quote="q", source_url="https://e/1", source_title="S")
+                ]
             ),
             LLMSeedTreeWithBranches: _seed_tree(),
         }

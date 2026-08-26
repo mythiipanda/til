@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 import { AudioTourPlayer } from './AudioTourPlayer';
@@ -9,6 +9,7 @@ import { ThinkingReasoning } from '@/components/agent/ThinkingReasoning';
 import { WebSearch } from '@/components/agent/WebSearch';
 import { TodoList } from '@/components/agent/TodoList';
 import { InlineCitations } from '@/components/agent/InlineCitations';
+import { exportDossierMarkdown, copyTextToClipboard } from '@/lib/utils/export';
 import { 
   X, 
   ExternalLink, 
@@ -48,6 +49,22 @@ export function DossierDrawer() {
   const [isMagazineMode, setIsMagazineMode] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Copy-as-Markdown button state. 'copied' flashes for 1.5s; 'manual'
+  // means the clipboard API failed and the user should copy by hand.
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'manual'>('idle');
+  const copyTimerRef = useRef<number | undefined>(undefined);
+  const handleCopyStory = useCallback(async () => {
+    if (!activeDossier) return;
+    clearTimeout(copyTimerRef.current);
+    const ok = await copyTextToClipboard(exportDossierMarkdown(activeDossier));
+    if (ok) {
+      setCopyState('copied');
+      copyTimerRef.current = window.setTimeout(() => setCopyState('idle'), 1500);
+    } else {
+      setCopyState('manual');
+    }
+  }, [activeDossier]);
 
   const completedStepsCount = planSteps.filter(s => s.status === 'done').length;
 
@@ -143,6 +160,15 @@ export function DossierDrawer() {
           </div>
 
           <div className="flex items-center gap-1.5 font-mono text-xs">
+            {activeDossier && (
+              <button
+                onClick={handleCopyStory}
+                className="hidden sm:inline-flex items-center px-2 py-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors font-mono text-[10px] uppercase tracking-wider font-bold whitespace-nowrap"
+                title="Copy story as Markdown"
+              >
+                {copyState === 'copied' ? 'Copied' : copyState === 'manual' ? 'Press Ctrl+C to copy' : 'Copy Story'}
+              </button>
+            )}
             <button
               onClick={() => setIsMagazineMode(!isMagazineMode)}
               className="p-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors hidden sm:inline-flex"

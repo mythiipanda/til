@@ -32,7 +32,10 @@ def _root():
 def _events():
     return [
         {"event": "plan", "data": {"steps": []}},
-        {"event": "node_stream", "data": {"node": {"id": "r1", "title": "Antikythera", "summary": "S"}, "is_root": True}},
+        {
+            "event": "node_stream",
+            "data": {"node": {"id": "r1", "title": "Antikythera", "summary": "S"}, "is_root": True},
+        },
         {"event": "node_stream", "data": {"node": {"id": "c1", "title": "Child", "summary": "Cs"}, "is_root": False}},
         {"event": "dossier", "data": {"node_id": "r1", "dossier": {"title": "D", "nodeId": "r1"}}},
         {"event": "done", "data": {}},

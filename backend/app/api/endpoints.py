@@ -4,6 +4,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
 
+from app.api.middleware.load_guards import chat_load_guard, research_load_guard
 from app.api.middleware.rate_limit import (
     chat_rate_limiter,
     general_rate_limiter,
@@ -80,9 +81,7 @@ async def list_catalog(limit: int = Query(2000, ge=1, le=3000)):
 
     # Fold the catalog in, dropping any topic already covered by a hub (hubs win).
     hub_titles = {h["title"].lower().strip() for h in hub_entries}
-    merged = hub_entries + [
-        t for t in (catalog or []) if t.get("title", "").lower().strip() not in hub_titles
-    ]
+    merged = hub_entries + [t for t in (catalog or []) if t.get("title", "").lower().strip() not in hub_titles]
     return {"total": len(merged), "topics": merged[:limit]}
 
 
@@ -133,9 +132,14 @@ async def research_stream_endpoint(
     discovered sources, incremental React Flow nodes, and full interactive dossiers.
     """
     context_list = [c.strip() for c in context_chain.split(",") if c.strip()]
-    return StreamingResponse(
-        with_heartbeat(
-            stream_deep_research(
+
+    # Cost + load walls: per-day budget, then global concurrency. Exceeding
+    # either returns 429, which the frontend answers with a finished map.
+    await research_load_guard.enter()
+
+    async def guarded_stream():
+        try:
+            async for chunk in stream_deep_research(
                 topic=topic,
                 category=category,
                 parent_id=parent_id,
@@ -143,8 +147,13 @@ async def research_stream_endpoint(
                 parent_summary=parent_summary,
                 teaser_context=teaser_context,
                 model=model,
-            )
-        ),
+            ):
+                yield chunk
+        finally:
+            research_load_guard.exit()
+
+    return StreamingResponse(
+        with_heartbeat(guarded_stream()),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
@@ -184,9 +193,11 @@ async def chat_stream_endpoint(
         except Exception:
             pass
 
-    return StreamingResponse(
-        with_heartbeat(
-            stream_chat(
+    await chat_load_guard.enter()
+
+    async def guarded_chat_stream():
+        try:
+            async for chunk in stream_chat(
                 node_title=node_title,
                 user_question=question,
                 node_id=node_id,
@@ -194,8 +205,13 @@ async def chat_stream_endpoint(
                 history=history_list,
                 active_summary=active_summary,
                 model=model,
-            )
-        ),
+            ):
+                yield chunk
+        finally:
+            chat_load_guard.exit()
+
+    return StreamingResponse(
+        with_heartbeat(guarded_chat_stream()),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
