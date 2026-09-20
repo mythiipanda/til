@@ -127,11 +127,11 @@ class PrecomputedHubSummarySchema(BaseModel):
 
 
 class ModelOptionSchema(BaseModel):
-    id: str  # e.g. "cerebras:gemma-4-31b" or "openrouter:meta-llama/llama-3.3-70b-instruct:free"
-    name: str  # e.g. "Gemma 4 31B"
+    id: str  # e.g. "cerebras:qwen-3.8-27b" or "openrouter:meta-llama/llama-3.3-70b-instruct:free"
+    name: str  # e.g. "Qwen 3.8 27B"
     provider: str  # "cerebras" | "mistral" | "openrouter"
     provider_label: str  # "Cerebras", "Mistral AI", "OpenRouter"
-    model_id: str  # "gemma-4-31b"
+    model_id: str  # "qwen-3.8-27b"
     is_free: bool = True
     is_available: bool = True
 

@@ -95,11 +95,11 @@ async def fetch_cerebras_models() -> list[dict[str, Any]]:
     if not key:
         return [
             {
-                "id": "cerebras:gemma-4-31b",
-                "name": "Gemma 4 31B",
+                "id": "cerebras:qwen-3.8-27b",
+                "name": "Qwen 3.8 27B",
                 "provider": "cerebras",
                 "provider_label": "Cerebras",
-                "model_id": "gemma-4-31b",
+                "model_id": "qwen-3.8-27b",
                 "is_free": True,
             },
             {
@@ -146,11 +146,11 @@ async def fetch_cerebras_models() -> list[dict[str, Any]]:
 
     return _cerebras_cache or [
         {
-            "id": "cerebras:gemma-4-31b",
-            "name": "Gemma 4 31B",
+            "id": "cerebras:qwen-3.8-27b",
+            "name": "Qwen 3.8 27B",
             "provider": "cerebras",
             "provider_label": "Cerebras",
-            "model_id": "gemma-4-31b",
+            "model_id": "qwen-3.8-27b",
             "is_free": True,
         }
     ]
@@ -331,7 +331,7 @@ def _resolve(engine: str, model: str | None = None) -> ProviderConfig:
         return ProviderConfig(
             engine="cerebras",
             api_key=os.getenv("CEREBRAS_API_KEY"),
-            model=resolved_model or os.getenv("CEREBRAS_MODEL", "gemma-4-31b"),
+            model=resolved_model or os.getenv("CEREBRAS_MODEL", "qwen-3.8-27b"),
             base_url=_CEREBRAS_BASE_URL,
             default_headers={_THIRD_PARTY_HEADER: _THIRD_PARTY_VALUE},
         )
@@ -389,7 +389,7 @@ async def get_available_models_async() -> ModelCatalogResponse:
         )
 
     default_model = (
-        "cerebras:gemma-4-31b"
+        "cerebras:qwen-3.8-27b"
         if cerebras_key
         else (
             "mistral:ministral-8b-2512"
@@ -413,11 +413,11 @@ def get_available_models() -> ModelCatalogResponse:
             _cerebras_cache
             or [
                 {
-                    "id": "cerebras:gemma-4-31b",
-                    "name": "Gemma 4 31B",
+                    "id": "cerebras:qwen-3.8-27b",
+                    "name": "Qwen 3.8 27B",
                     "provider": "cerebras",
                     "provider_label": "Cerebras",
-                    "model_id": "gemma-4-31b",
+                    "model_id": "qwen-3.8-27b",
                     "is_free": True,
                 }
             ]
@@ -471,7 +471,7 @@ def get_available_models() -> ModelCatalogResponse:
         )
 
     default_model = (
-        "cerebras:gemma-4-31b"
+        "cerebras:qwen-3.8-27b"
         if cerebras_key
         else ("mistral:ministral-8b-2512" if mistral_key else "openrouter:nvidia/nemotron-3-ultra-550b-a55b:free")
     )

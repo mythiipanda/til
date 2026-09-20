@@ -146,8 +146,8 @@ export interface ChatMessage {
 }
 
 export interface ModelOption {
-  id: string; // e.g. "cerebras:gemma-4-31b" or "openrouter:meta-llama/llama-3.3-70b-instruct:free"
-  name: string; // "Gemma 4 31B"
+  id: string; // e.g. "cerebras:qwen-3.8-27b" or "openrouter:meta-llama/llama-3.3-70b-instruct:free"
+  name: string; // "Qwen 3.8 27B"
   provider: 'cerebras' | 'mistral' | 'openrouter' | string;
   provider_label: string; // "Cerebras", "Mistral AI", "OpenRouter"
   model_id: string;

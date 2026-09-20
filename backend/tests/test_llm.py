@@ -59,7 +59,7 @@ def test_resolve_cerebras(monkeypatch):
     monkeypatch.setenv("CEREBRAS_API_KEY", "k")
     cfg = _resolve("cerebras")
     assert cfg.engine == "cerebras"
-    assert cfg.model == "gemma-4-31b"
+    assert cfg.model == "qwen-3.8-27b"
     assert cfg.base_url == "https://api.cerebras.ai/v1"
     assert "X-Cerebras-3rd-Party-Integration" in cfg.default_headers
 
@@ -99,7 +99,7 @@ def test_get_llm_with_key_returns_guarded(monkeypatch):
 
 async def test_fetch_cerebras_no_key_returns_fallback():
     models = await fetch_cerebras_models()
-    assert any("gemma-4-31b" in m["id"] for m in models)
+    assert any("qwen-3.8-27b" in m["id"] for m in models)
 
 
 async def test_fetch_cerebras_parses(monkeypatch):
@@ -228,7 +228,7 @@ async def test_get_available_models_async_default_pick(monkeypatch):
     handler = lambda *a, **k: FakeResponse(200, {"data": []})
     patch_httpx_async_client(monkeypatch, llm, handler)
     catalog = await get_available_models_async()
-    assert catalog.default_model == "cerebras:gemma-4-31b"
+    assert catalog.default_model == "cerebras:qwen-3.8-27b"
     assert len(catalog.models) > 0
     assert all(m.is_available for m in catalog.models)
 

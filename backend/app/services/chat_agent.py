@@ -330,7 +330,7 @@ async def stream_chat(
         "6. GROUNDING HONESTY: If the evidence doesn't contain the answer, say what IS known and acknowledge the gap — never fill silence with speculation.\n"
         "7. MISATTRIBUTION GUARD: Do not attribute facts, inventions, or events to the wrong person, place, or era even if the question presupposes them — correct the premise instead."
     )
-    active_model_id = model or "cerebras:gemma-4-31b"
+    active_model_id = model or "cerebras:qwen-3.8-27b"
     # Format clean proof label
     if ":" in active_model_id:
         p_name, m_name = active_model_id.split(":", 1)

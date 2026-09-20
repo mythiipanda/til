@@ -28,14 +28,14 @@ def test_models_endpoint(monkeypatch):
         from app.schemas.graph import ModelCatalogResponse, ModelOptionSchema
 
         return ModelCatalogResponse(
-            default_model="cerebras:gemma-4-31b",
+            default_model="cerebras:qwen-3.8-27b",
             models=[
                 ModelOptionSchema(
-                    id="cerebras:gemma-4-31b",
-                    name="Gemma",
+                    id="cerebras:qwen-3.8-27b",
+                    name="Qwen",
                     provider="cerebras",
                     provider_label="Cerebras",
-                    model_id="gemma-4-31b",
+                    model_id="qwen-3.8-27b",
                 )
             ],
         )
@@ -44,7 +44,7 @@ def test_models_endpoint(monkeypatch):
     with TestClient(app) as c:
         r = c.get("/api/v1/models")
     assert r.status_code == 200
-    assert r.json()["default_model"] == "cerebras:gemma-4-31b"
+    assert r.json()["default_model"] == "cerebras:qwen-3.8-27b"
 
 
 def test_random_topic_endpoint(monkeypatch):
