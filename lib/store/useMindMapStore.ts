@@ -246,7 +246,7 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     scheduleAutosave();
   },
   
-  selectedModelId: 'cerebras:gemma-4-31b',
+  selectedModelId: 'cerebras:qwen-3.8-27b',
   availableModels: [],
 
   setSelectedModelId: (modelId: string) => {

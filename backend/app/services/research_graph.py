@@ -664,7 +664,7 @@ async def synthesizer_node(state: ResearchGraphState, config: RunnableConfig) ->
         sink, 4, state["topic"], count_findings=len(findings), count_sources=len(state.get("sources", []))
     )
 
-    active_model = config.get("configurable", {}).get("model") or "cerebras:gemma-4-31b"
+    active_model = config.get("configurable", {}).get("model") or "cerebras:qwen-3.8-27b"
     await sink.emit(
         "thought",
         {

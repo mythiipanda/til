@@ -82,7 +82,7 @@ async def test_stream_chat_full_flow(monkeypatch):
 
     complete = next(e for e in events if e["event"] == "answer_complete")
     assert "How did Antikythera first emerge?" in complete["data"]["suggested_follow_ups"]
-    assert complete["data"]["model"] == "cerebras:gemma-4-31b"
+    assert complete["data"]["model"] == "cerebras:qwen-3.8-27b"
 
 
 async def test_stream_chat_no_sources_fallback_answer(monkeypatch):
