@@ -87,7 +87,7 @@ export default function SharedMindMapClient() {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-white select-none">
       {/* Top Banner Header */}
-      <header className="fixed top-4 left-4 right-4 z-30 flex items-center justify-between bg-white border-2 border-black p-2 md:px-4 shadow-none">
+      <header className="fixed top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-30 flex items-center justify-between bg-white border-2 border-black p-2 md:px-4 shadow-none">
         <div className="flex items-center gap-3">
           <Link
             href="/"

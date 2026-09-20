@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { Search, Share2, RotateCcw, Keyboard, X, Plus } from 'lucide-react';
+import { Search, Share2, RotateCcw, Keyboard, X, Bookmark } from 'lucide-react';
 import { UserMenu } from '@/components/auth/UserMenu';
 
 interface MobileOverflowMenuProps {
@@ -34,8 +34,8 @@ export function MobileOverflowMenu({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
-      <div className="fixed right-2 top-2 bottom-16 z-50 md:hidden w-[260px] bg-white border-2 border-black flex flex-col shadow-none animate-fade">
+      <div className="fixed inset-0 z-overlay bg-black/40 backdrop-enter" onClick={onClose} />
+      <div className="fixed right-2 top-2 bottom-16 z-50 md:hidden w-[260px] bg-white border-2 border-black flex flex-col shadow-none drawer-enter">
         <div className="flex items-center justify-between px-4 h-12 border-b-2 border-black bg-black text-white shrink-0">
           <span className="font-mono text-[10px] uppercase tracking-widest font-bold">
             MENU
@@ -75,7 +75,7 @@ export function MobileOverflowMenu({
           </button>
 
           <button onClick={onOpenLibrary} className={row}>
-            <Plus className="w-4 h-4 shrink-0 rotate-45" />
+            <Bookmark className="w-4 h-4 shrink-0" />
             <span>Library</span>
           </button>
         </div>

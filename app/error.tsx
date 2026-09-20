@@ -25,14 +25,14 @@ export default function Error({
               TDILEARNED
             </span>
           </div>
-          <div className="font-mono text-[9px] sm:text-[11px] uppercase tracking-wider text-neutral-500">
+          <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-wider text-neutral-600">
             SOMETHING BROKE
           </div>
         </div>
 
         {/* Headline */}
         <div className="space-y-3 sm:space-y-4">
-          <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-normal tracking-tight text-black leading-[0.98]">
+          <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-normal tracking-tight text-black leading-[0.98]">
             The map hit <br className="hidden sm:inline" />
             <span className="italic font-normal">a snag.</span>
           </h1>

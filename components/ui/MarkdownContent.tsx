@@ -39,7 +39,7 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
               target="_blank"
               rel="noopener noreferrer"
               title={source.title || 'Source'}
-              className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 text-neutral-800 transition-colors align-super no-underline select-none cursor-pointer"
+              className="inline-flex items-center justify-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 min-h-[32px] min-w-[32px] text-neutral-800 transition-colors align-super no-underline select-none cursor-pointer"
             >
               [1]
             </a>
@@ -69,7 +69,7 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
                       target="_blank"
                       rel="noopener noreferrer"
                       title={source.title || source.url}
-                      className="inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 text-neutral-800 transition-colors no-underline select-none cursor-pointer"
+                      className="inline-flex items-center justify-center text-[10px] font-mono font-bold bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black px-1.5 py-0.5 mx-0.5 min-h-[32px] min-w-[32px] text-neutral-800 transition-colors no-underline select-none cursor-pointer"
                     >
                       [{num}]
                     </a>
@@ -78,7 +78,7 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
                 return (
                   <span
                     key={nIdx}
-                    className="inline-flex items-center text-[10px] font-mono text-neutral-500 px-1"
+                    className="inline-flex items-center text-[10px] font-mono text-neutral-600 px-1"
                   >
                     [{num}]
                   </span>
@@ -123,7 +123,7 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
               </p>
             ),
             strong: ({ children }) => (
-              <strong className="font-bold text-inherit underline decoration-1 underline-offset-2">
+              <strong className="font-bold text-inherit">
                 {children}
               </strong>
             ),
@@ -138,7 +138,7 @@ function MarkdownContentImpl({ content, sources = [], className = '' }: Markdown
               </ul>
             ),
             ol: ({ children }) => (
-              <ol className="list-decimal list-inside my-2 space-y-1 text-inherit pl-1 font-mono text-[11px]">
+              <ol className="list-decimal list-inside my-2 space-y-1 text-inherit pl-1">
                 {children}
               </ol>
             ),

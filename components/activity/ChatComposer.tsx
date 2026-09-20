@@ -50,7 +50,9 @@ export function ChatComposer() {
       const el = chatScrollContainerRef.current;
       const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
       if (isNearBottom || isChatStreaming) {
-        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        const prefersReduced = typeof window !== 'undefined'
+          && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollTo({ top: el.scrollHeight, behavior: prefersReduced ? 'auto' : 'smooth' });
       }
     }
   }, [chatMessages, isChatStreaming]);
@@ -150,7 +152,7 @@ export function ChatComposer() {
         <div className="flex items-center gap-1.5 border-l border-neutral-700 pl-2">
           <button
             onClick={() => setIsMinimized(false)}
-            className="p-1 hover:bg-white hover:text-black transition-colors"
+            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center hover:bg-white hover:text-black transition-colors"
             title="Restore Q&A"
             aria-label="Restore Q&A"
           >
@@ -162,14 +164,14 @@ export function ChatComposer() {
   }
 
   return (
-    <div className="fixed bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 w-[720px] max-w-[calc(100vw-24px)] z-20 flex flex-col gap-2 select-none animate-fade">
+    <div className="fixed bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 w-[720px] max-w-[calc(100vw-24px)] z-20 flex flex-col gap-2 animate-fade">
 
       {/* Conversation Thread Window */}
       {chatMessages.length > 0 && isExpanded && (
         <div className="bg-white border-2 border-black shadow-none max-h-[min(55vh,440px)] flex flex-col overflow-hidden animate-drop">
 
           {/* Thread Titlebar */}
-          <div className="px-3 py-2 bg-black text-white flex items-center justify-between shrink-0">
+          <div className="px-3 py-2 bg-black text-white flex items-center justify-between shrink-0 select-none">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 bg-white shrink-0" />
 <span className="font-mono text-[11px] font-bold tracking-wider truncate max-w-[400px]">
@@ -179,7 +181,7 @@ export function ChatComposer() {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsMinimized(true)}
-                className="p-1 text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
                 title="Minimize Q&A"
                 aria-label="Minimize Q&A"
               >
@@ -187,7 +189,7 @@ export function ChatComposer() {
               </button>
               <button
                 onClick={() => setIsExpanded(false)}
-                className="p-1 text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
                 title="Close Q&A"
                 aria-label="Close Q&A"
               >
@@ -197,7 +199,7 @@ export function ChatComposer() {
           </div>
 
           {/* Messages Scroll Area */}
-          <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
+          <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar select-text">
             {chatMessages.map((msg, idx) => {
               const prevUserMsg = idx > 0 && chatMessages[idx - 1]?.role === 'user' ? chatMessages[idx - 1].content : currentTopic;
               const isPinned = pinnedMsgIndices.includes(idx);
@@ -209,7 +211,7 @@ export function ChatComposer() {
                 <div key={idx} className="space-y-2.5">
                   {msg.role === 'user' ? (
                     <div className="flex gap-2.5">
-                      <span className="font-mono text-[9px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 pt-1 w-8">
+                      <span className="font-mono text-[10px] font-bold text-neutral-600 uppercase tracking-wider shrink-0 pt-1 w-8">
                         You
                       </span>
                       <p className="font-serif font-semibold text-[15px] text-black leading-snug pt-0.5">
@@ -219,7 +221,7 @@ export function ChatComposer() {
                   ) : (
                     <div className="space-y-2">
                       <div className="flex gap-2.5">
-                        <span className="font-mono text-[9px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 pt-1 w-8">
+                        <span className="font-mono text-[10px] font-bold text-neutral-600 uppercase tracking-wider shrink-0 pt-1 w-8">
                           Agent
                         </span>
                         <div className="space-y-2 flex-1 min-w-0">
@@ -249,7 +251,7 @@ export function ChatComposer() {
                               </StreamingText>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 font-mono text-xs text-neutral-500 py-1">
+                            <div className="flex items-center gap-2 font-mono text-xs text-neutral-600 py-1">
                               <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
                               <span className="font-bold tracking-wider animate-pulse text-black">Thinking…</span>
                             </div>
@@ -263,7 +265,7 @@ export function ChatComposer() {
                           {/* Stream error + chat-only retry */}
                           {msg.streamError && !isStreamingThis && (
                             <div className="flex items-center gap-2 pt-1.5">
-                              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-red-600">
+                              <span className="font-mono text-[10px] font-bold uppercase tracking-wider bg-black text-white px-2 py-1 leading-snug">
                                 {msg.streamError}
                               </span>
                               <button
@@ -282,7 +284,7 @@ export function ChatComposer() {
                               <div className="flex items-center gap-1.5">
                                 <button
                                   onClick={() => handleCopy(idx, msg.content)}
-                                  className="p-1.5 text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
+                                  className="p-1.5 text-neutral-600 hover:text-black hover:bg-neutral-100 transition-colors"
                                   title="Copy answer"
                                   aria-label={isCopied ? 'Answer copied' : 'Copy answer'}
                                 >
@@ -297,8 +299,8 @@ export function ChatComposer() {
                                   disabled={isPinned}
                                   className={`p-1.5 transition-colors flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
                                     isPinned
-                                      ? 'text-neutral-400 cursor-default'
-                                      : 'text-neutral-500 hover:text-black hover:bg-neutral-100'
+                                      ? 'text-neutral-600 cursor-default'
+                                      : 'text-neutral-600 hover:text-black hover:bg-neutral-100'
                                   }`}
                                   title="Pin this answer as a card on the mindmap canvas"
                                 >
@@ -308,8 +310,8 @@ export function ChatComposer() {
                               </div>
 
                               {(msg.modelLabel || msg.model) && (
-                                <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-400 select-none pr-1">
-                                  <span className="text-neutral-300">VIA</span>
+                                <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-neutral-600 select-none pr-1">
+                                  <span className="text-neutral-600">VIA</span>
                                   <span className="font-semibold text-neutral-600">{msg.modelLabel || msg.model}</span>
                                 </div>
                               )}
@@ -319,7 +321,7 @@ export function ChatComposer() {
                           {/* Follow-up chips */}
                           {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && !isStreamingThis && (
                             <div className="pt-1.5 space-y-1.5">
-                              <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400 font-bold">
+                              <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 font-bold">
                                 RELATED QUESTIONS
                               </span>
                               <div className="flex flex-wrap gap-1.5">
@@ -350,7 +352,7 @@ export function ChatComposer() {
       {/* Suggested Inquiries Row */}
       {chatMessages.length === 0 && suggestedQuestions.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 shrink-0">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 shrink-0">
             Ask:
           </span>
           {suggestedQuestions.map((q, i) => (
@@ -369,20 +371,21 @@ export function ChatComposer() {
       {/* Input Bar */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white border-2 border-black flex items-center"
+        className="bg-white border-2 border-black flex items-center select-none"
       >
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder={`Ask anything about "${currentTopic}"…`}
+          aria-label="Ask a follow-up question"
           className="flex-1 bg-transparent outline-none font-body text-sm text-black placeholder:text-neutral-400 px-4 py-3"
         />
 
         <button
           type="submit"
           disabled={!input.trim() || isChatStreaming}
-          className="m-1.5 w-9 h-9 flex items-center justify-center bg-black hover:bg-white text-white hover:text-black border border-black disabled:opacity-30 disabled:hover:bg-black disabled:hover:text-white transition-colors duration-100 shrink-0"
+          className="m-1.5 w-11 h-11 flex items-center justify-center bg-black hover:bg-white text-white hover:text-black border border-black disabled:opacity-30 disabled:hover:bg-black disabled:hover:text-white transition-colors duration-100 shrink-0"
           aria-label="Ask"
         >
           {isChatStreaming ? (

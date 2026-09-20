@@ -24,11 +24,16 @@ export function ModelSelector({ className = '' }: { className?: string }) {
         setIsOpen(false);
       }
     }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsOpen(false);
+    }
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen]);
 
@@ -57,10 +62,12 @@ export function ModelSelector({ className = '' }: { className?: string }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1 font-mono text-[10px] uppercase font-bold tracking-wider border-2 border-black hover:bg-black hover:text-white bg-white text-black transition-colors duration-100 select-none"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        className="flex items-center gap-2 px-3 min-h-[44px] font-mono text-[10px] uppercase font-bold tracking-wider border-2 border-black hover:bg-black hover:text-white bg-white text-black transition-colors duration-100 select-none"
         title="Select AI model"
       >
-        <span className="text-neutral-500 font-normal">MODEL:</span>
+        <span className="text-neutral-600 font-normal">MODEL:</span>
         <span className="truncate max-w-[130px] md:max-w-[160px]">
           {activeModel.name}
         </span>
@@ -71,13 +78,13 @@ export function ModelSelector({ className = '' }: { className?: string }) {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-72 md:w-80 bg-white border-2 border-black shadow-none z-50 divide-y-2 divide-black animate-in fade-in-0 duration-100 select-none">
+        <div role="listbox" className="absolute right-0 mt-1.5 w-72 md:w-80 bg-white border-2 border-black shadow-none z-50 divide-y-2 divide-black animate-drop select-none">
           {/* Header */}
           <div className="p-2.5 bg-black text-white flex items-center justify-between">
-            <span className="font-mono text-[9px] uppercase tracking-widest font-bold">
+            <span className="font-mono text-[10px] uppercase tracking-widest font-bold">
               AI MODEL
             </span>
-            <span className="font-mono text-[9px] text-neutral-400">
+            <span className="font-mono text-[10px] text-neutral-400">
               {filteredModels.length} AVAILABLE
             </span>
           </div>
@@ -94,7 +101,7 @@ export function ModelSelector({ className = '' }: { className?: string }) {
                 key={tab.id}
                 type="button"
                 onClick={() => setFilterProvider(tab.id)}
-                className={`flex-1 py-1 font-mono text-[9px] uppercase font-bold tracking-wider transition-colors border ${
+                className={`flex-1 min-h-[44px] font-mono text-[10px] uppercase font-bold tracking-wider transition-colors border ${
                   filterProvider === tab.id
                     ? 'bg-black text-white border-black'
                     : 'bg-white text-neutral-600 border-neutral-300 hover:border-black'
@@ -108,7 +115,7 @@ export function ModelSelector({ className = '' }: { className?: string }) {
           {/* Model Options List */}
           <div className="max-h-64 overflow-y-auto divide-y divide-neutral-200 custom-scrollbar">
             {filteredModels.length === 0 ? (
-              <div className="p-4 text-center font-mono text-[10px] text-neutral-400 uppercase tracking-wider">
+              <div className="p-4 text-center font-mono text-[10px] text-neutral-600 uppercase tracking-wider">
                 No models available
               </div>
             ) : (
@@ -118,11 +125,13 @@ export function ModelSelector({ className = '' }: { className?: string }) {
                   <button
                     key={m.id}
                     type="button"
+                    role="option"
+                    aria-selected={isSelected}
                     onClick={() => {
                       setSelectedModelId(m.id);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between gap-2.5 transition-colors ${
+                    className={`w-full min-h-[44px] text-left px-3.5 py-2.5 flex items-center justify-between gap-2.5 transition-colors ${
                       isSelected
                         ? 'bg-neutral-100 border-l-4 border-l-black font-bold'
                         : 'hover:bg-neutral-50 border-l-4 border-l-transparent'
@@ -132,7 +141,7 @@ export function ModelSelector({ className = '' }: { className?: string }) {
                       <div className="font-mono text-xs text-neutral-950 font-medium truncate">
                         {m.name}
                       </div>
-                      <div className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 mt-0.5">
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-600 mt-0.5">
                         {m.provider_label}
                       </div>
                     </div>

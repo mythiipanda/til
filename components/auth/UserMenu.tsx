@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { AuthModal } from './AuthModal';
-import { User, LogOut, Bookmark, Cloud, ChevronDown } from 'lucide-react';
+import { User, LogOut, Bookmark, Cloud, ChevronDown, Check } from 'lucide-react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 
 interface UserMenuProps {
@@ -17,6 +17,16 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   const { saveMindMap, currentTopic, nodes } = useMindMapStore();
+
+  // Escape closes the dropdown.
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsDropdownOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isDropdownOpen]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -53,7 +63,7 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
     if (res.error) {
       setSaveStatus('ERROR');
     } else {
-      setSaveStatus('SAVED ✔');
+      setSaveStatus('SAVED');
     }
 
     setTimeout(() => setSaveStatus(null), 2500);
@@ -67,9 +77,11 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
           <div className="relative">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-black text-black hover:text-white border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
+              aria-expanded={isDropdownOpen}
+              aria-haspopup="menu"
+              className="flex items-center gap-2 px-3 min-h-[44px] bg-white hover:bg-black text-black hover:text-white border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100"
             >
-              <span className="w-4 h-4 bg-black text-white flex items-center justify-center text-[9px] font-bold">
+              <span className="w-4 h-4 bg-black text-white flex items-center justify-center text-[10px] font-bold">
                 {user.email?.[0]?.toUpperCase() || 'U'}
               </span>
               <span className="max-w-[120px] truncate hidden sm:inline">
@@ -81,12 +93,12 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
             {isDropdownOpen && (
               <>
                 <div
-                  className="fixed inset-0 z-40"
+                  className="fixed inset-0 z-overlay"
                   onClick={() => setIsDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-64 bg-white border-2 border-black z-50 animate-fade">
+                <div role="menu" className="absolute right-0 mt-2 w-64 bg-white border-2 border-black z-50 animate-drop">
                   <div className="p-3 border-b-2 border-black bg-neutral-50">
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-600">
                       CURRENT SESSION
                     </p>
                     <p className="font-mono text-xs font-bold text-black truncate pt-0.5">
@@ -100,7 +112,7 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
                         setIsDropdownOpen(false);
                         if (onOpenLibrary) onOpenLibrary();
                       }}
-                      className="w-full flex items-center justify-between p-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left"
+                      className="w-full min-h-[44px] flex items-center justify-between px-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left"
                     >
                       <span className="flex items-center gap-2">
                         <Bookmark className="w-3.5 h-3.5" />
@@ -112,14 +124,23 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
                     {nodes.length > 0 && currentTopic && (
                       <button
                         onClick={handleQuickSave}
-                        className="w-full flex items-center justify-between p-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left"
+                        className="w-full min-h-[44px] flex items-center justify-between px-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left"
                       >
                         <span className="flex items-center gap-2">
                           <Cloud className="w-3.5 h-3.5" />
                           <span>Save to Cloud</span>
                         </span>
                         {saveStatus && (
-                          <span className="font-bold text-[10px]">{saveStatus}</span>
+                          <span className="font-bold text-[10px] flex items-center gap-1">
+                            {saveStatus === 'SAVED' ? (
+                              <>
+                                <span>SAVED</span>
+                                <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                              </>
+                            ) : (
+                              <span>{saveStatus}</span>
+                            )}
+                          </span>
                         )}
                       </button>
                     )}
@@ -128,7 +149,7 @@ export function UserMenu({ onOpenLibrary }: UserMenuProps) {
                   <div className="border-t-2 border-black p-1">
                     <button
                       onClick={handleSignOut}
-                      className="w-full flex items-center gap-2 p-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left font-bold"
+                      className="w-full min-h-[44px] flex items-center gap-2 px-2.5 font-mono text-xs uppercase tracking-wider text-black hover:bg-black hover:text-white transition-colors duration-100 text-left font-bold"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Sign Out</span>

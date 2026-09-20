@@ -17,6 +17,35 @@ const M = {
 };
 
 function Globe() {
+  // SMIL <animate> isn't covered by the CSS prefers-reduced-motion reset,
+  // so reduced-motion users get a static globe with no globe-spin either.
+  const reducedMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (reducedMotion) {
+    return (
+      <svg
+        viewBox="0 0 12 12"
+        width="13"
+        height="13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="0.9"
+        strokeLinecap="round"
+        style={{ overflow: 'visible' }}
+        className="shrink-0"
+        aria-hidden
+      >
+        <circle cx="6" cy="6" r="5.7" opacity="0.9" />
+        <line x1="0.3" y1="6" x2="11.7" y2="6" opacity="0.9" />
+        <path d={M.L} opacity="0.9" />
+        <path d={M.R} opacity="0.9" />
+      </svg>
+    );
+  }
+
   const values = [M.L, M.ML, M.MR, M.R, M.L].join(';');
   return (
     <svg
@@ -29,6 +58,7 @@ function Globe() {
       strokeLinecap="round"
       style={{ overflow: 'visible' }}
       className="globe-spin shrink-0"
+      aria-hidden
     >
       <circle cx="6" cy="6" r="5.7" opacity="0.9" />
       <line x1="0.3" y1="6" x2="11.7" y2="6" opacity="0.9" />
@@ -97,7 +127,7 @@ export function WebSearch({ query, sources, active }: WebSearchProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="border-2 border-black bg-white select-none transition-all">
+    <div className="border-2 border-black bg-white select-none transition-colors">
       <button
         type="button"
         onClick={() => !active && setCollapsed(c => !c)}
@@ -114,7 +144,7 @@ export function WebSearch({ query, sources, active }: WebSearchProps) {
 
         <div className="flex items-center gap-2 shrink-0">
           {sources.length > 0 && !active && (
-            <span className="font-mono text-[9px] text-neutral-500 font-semibold uppercase tracking-wider">
+            <span className="font-mono text-[10px] text-neutral-600 font-semibold uppercase tracking-wider">
               {sources.length} {sources.length === 1 ? 'source' : 'sources'}
             </span>
           )}
@@ -149,7 +179,7 @@ export function WebSearch({ query, sources, active }: WebSearchProps) {
                 <span className="truncate">{src.title || src.url}</span>
                 <ExternalLink className="w-3 h-3 text-neutral-400 group-hover:text-black opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
               </a>
-              <span className="font-mono text-[9px] text-neutral-400 group-hover:text-neutral-600 shrink-0 truncate max-w-[130px] border border-neutral-200 px-1.5 py-0.5">
+              <span className="font-mono text-[10px] text-neutral-600 group-hover:text-neutral-700 shrink-0 truncate max-w-[130px] border border-neutral-200 px-1.5 py-0.5">
                 {getDomain(src.url)}
               </span>
             </li>

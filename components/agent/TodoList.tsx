@@ -36,7 +36,7 @@ export function TodoList({ steps }: TodoListProps) {
   const allDone = steps.length > 0 && doneCount === steps.length;
 
   return (
-    <div className="border-2 border-black bg-white select-none transition-all">
+    <div className="border-2 border-black bg-white select-none transition-colors">
       <button
         type="button"
         className="w-full flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-neutral-100 transition-colors"
@@ -48,7 +48,7 @@ export function TodoList({ steps }: TodoListProps) {
           <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-black">
             {allDone ? 'Steps Complete' : 'Research Steps'}
           </span>
-          <span className="font-mono text-[9px] text-neutral-500 font-semibold">
+          <span className="font-mono text-[10px] text-neutral-600 font-semibold">
             {doneCount}/{steps.length}
           </span>
         </div>
@@ -70,7 +70,7 @@ export function TodoList({ steps }: TodoListProps) {
               <li
                 key={step.id || i}
                 className={`line-reveal flex items-center gap-2.5 py-1 ${
-                  isActive ? 'text-black font-semibold' : isDone ? 'text-neutral-700' : 'text-neutral-400'
+                  isActive ? 'text-black font-semibold' : isDone ? 'text-neutral-700' : 'text-neutral-600'
                 }`}
                 style={{ animationDelay: `${i * 30}ms` }}
               >
@@ -87,7 +87,7 @@ export function TodoList({ steps }: TodoListProps) {
                   {step.title}
                 </span>
                 {isActive && step.agent && (
-                  <span className="font-mono text-[9px] text-neutral-500 uppercase tracking-wider ml-auto shrink-0 animate-pulse border border-neutral-200 px-1.5 py-0.5">
+                  <span className="font-mono text-[10px] text-neutral-600 uppercase tracking-wider ml-auto shrink-0 animate-pulse border border-neutral-200 px-1.5 py-0.5">
                     {step.agent}
                   </span>
                 )}

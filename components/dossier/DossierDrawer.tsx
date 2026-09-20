@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, type ReactNode } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 import { AudioTourPlayer } from './AudioTourPlayer';
@@ -24,6 +24,19 @@ import {
   Clock,
   BookOpen
 } from 'lucide-react';
+
+/**
+ * Repeated editorial section header: mono 10px uppercase label with a black
+ * rule underneath, optional icon pinned right.
+ */
+function SectionHeader({ title, icon }: { title: string; icon?: ReactNode }) {
+  return (
+    <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
+      <span>{title}</span>
+      {icon}
+    </div>
+  );
+}
 
 export function DossierDrawer() {
   const isDossierOpen = useMindMapStore(s => s.isDossierOpen);
@@ -111,7 +124,7 @@ export function DossierDrawer() {
         <div className="flex items-center gap-1.5 border-l border-neutral-700 pl-2">
           <button
             onClick={() => setIsMinimized(false)}
-            className="p-1 hover:bg-white hover:text-black transition-colors"
+            className="p-1.5 max-sm:min-h-[44px] max-sm:min-w-[44px] inline-flex items-center justify-center hover:bg-white hover:text-black transition-colors"
             title="Expand Workstation"
             aria-label="Expand workstation"
           >
@@ -119,7 +132,7 @@ export function DossierDrawer() {
           </button>
           <button
             onClick={closeDossier}
-            className="p-1 hover:bg-white hover:text-black transition-colors"
+            className="p-1.5 max-sm:min-h-[44px] max-sm:min-w-[44px] inline-flex items-center justify-center hover:bg-white hover:text-black transition-colors"
             title="Close Workstation"
             aria-label="Close workstation"
           >
@@ -130,21 +143,24 @@ export function DossierDrawer() {
     );
   }
 
+  // NOTE: HubBrowser also uses z-overlay (40) on mobile, but the two drawers
+  // never co-open — page.tsx toggles (browse/library/share/shortcuts/overflow)
+  // are mutually exclusive — so no z reshuffle is needed.
   const containerClasses = isMagazineMode
-    ? 'fixed inset-0 z-50 bg-white flex flex-col shadow-none select-none animate-fade overflow-hidden'
-    : 'fixed inset-x-0 bottom-0 top-12 md:top-0 md:inset-y-0 md:left-auto md:right-0 w-full md:w-[620px] md:max-w-[96vw] bg-white border-t-4 md:border-t-0 md:border-l-4 border-black z-40 md:z-30 flex flex-col shadow-none select-none animate-fade overflow-hidden';
+    ? 'fixed inset-0 z-50 bg-white flex flex-col shadow-none drawer-enter overflow-hidden'
+    : 'fixed inset-x-0 bottom-0 top-12 md:top-0 md:inset-y-0 md:left-auto md:right-0 w-full md:w-[620px] md:max-w-[96vw] bg-white border-t-4 md:border-t-0 md:border-l-4 border-black z-overlay md:z-30 flex flex-col shadow-none drawer-enter overflow-hidden';
 
   return (
-    <div className={containerClasses}>
+    <div className={containerClasses} role="dialog" aria-modal="true" aria-label="Story workstation">
       
       {/* Top Scroll Progress Bar */}
       <div 
-        className="h-[3px] bg-black transition-all duration-75 shrink-0" 
+        className="h-[3px] bg-black transition-[width] duration-75 shrink-0" 
         style={{ width: `${scrollProgress}%` }} 
       />
 
       {/* Unified Window Titlebar & Tab Bar */}
-      <div className="border-b-2 border-black bg-black text-white shrink-0">
+      <div className="border-b-2 border-black bg-black text-white shrink-0 select-none">
         
         {/* Top Action & Window Controls */}
         <div className="px-4 py-2.5 flex items-center justify-between border-b border-neutral-800">
@@ -153,7 +169,7 @@ export function DossierDrawer() {
               {activeDossier?.title || currentTopic || 'Story'}
             </span>
             {wordCount > 0 && (
-              <span className="hidden sm:inline-flex font-mono text-[9px] text-neutral-400 bg-neutral-900 border border-neutral-700 px-1.5 py-0.5">
+              <span className="hidden sm:inline-flex font-mono text-[10px] text-neutral-400 bg-neutral-900 border border-neutral-700 px-1.5 py-0.5">
                 {readingTimeMinutes} MIN READ
               </span>
             )}
@@ -171,7 +187,7 @@ export function DossierDrawer() {
             )}
             <button
               onClick={() => setIsMagazineMode(!isMagazineMode)}
-              className="p-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors hidden sm:inline-flex"
+              className="p-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors hidden sm:inline-flex items-center justify-center"
               title={isMagazineMode ? "Side Drawer View" : "Fullscreen Magazine View"}
               aria-label="Toggle reader mode"
             >
@@ -179,7 +195,7 @@ export function DossierDrawer() {
             </button>
             <button
               onClick={() => setIsMinimized(true)}
-              className="p-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
+              className="p-1.5 max-sm:min-h-[44px] max-sm:min-w-[44px] inline-flex items-center justify-center border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
               title="Minimize"
               aria-label="Minimize dossier window"
             >
@@ -187,7 +203,7 @@ export function DossierDrawer() {
             </button>
             <button
               onClick={closeDossier}
-              className="p-1.5 border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
+              className="p-1.5 max-sm:min-h-[44px] max-sm:min-w-[44px] inline-flex items-center justify-center border border-neutral-700 hover:border-white hover:bg-white hover:text-black transition-colors"
               title="Close"
               aria-label="Close dossier window"
             >
@@ -197,7 +213,7 @@ export function DossierDrawer() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center px-4 pt-1 bg-neutral-950">
+        <div className="flex items-center px-4 pt-1 bg-black">
           <button
             onClick={() => setWorkstationTab('monograph')}
             className={`px-4 min-h-[44px] font-mono text-[11px] uppercase tracking-wider font-bold transition-colors border-t-2 border-r-2 ${
@@ -231,7 +247,7 @@ export function DossierDrawer() {
               )}
               <span>Sources &amp; Steps</span>
               {sources.length > 0 && (
-                <span className="font-mono text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5">
+                <span className="font-mono text-[10px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5">
                   {sources.length}
                 </span>
               )}
@@ -261,14 +277,14 @@ export function DossierDrawer() {
         <div 
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-5 sm:p-6 md:p-8 space-y-7 custom-scrollbar"
+          className="flex-1 overflow-y-auto p-5 sm:p-6 md:p-8 space-y-7 custom-scrollbar select-text"
         >
           <div className={isMagazineMode ? "max-w-3xl mx-auto space-y-8 py-4 md:py-8" : "space-y-7"}>
           {activeDossier ? (
             <>
               {/* Title Block */}
               <div className="space-y-2">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-600">
                   <span>{activeDossier.category || 'Topic'}</span>
                 </div>
                 <h2 className="font-serif text-3xl md:text-4xl font-bold tracking-tight text-black leading-tight">
@@ -301,9 +317,7 @@ export function DossierDrawer() {
               {/* Core Thesis / Overview */}
               {activeDossier.coreThesis && (
                 <div className="space-y-2">
-                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-                    Overview
-                  </div>
+                  <SectionHeader title="Overview" />
                   <div className="font-body text-sm md:text-base text-neutral-800 leading-relaxed space-y-2">
                     <MarkdownContent content={activeDossier.coreThesis} sources={activeDossier.sources} />
                   </div>
@@ -313,9 +327,7 @@ export function DossierDrawer() {
               {/* Summary & Context */}
               {activeDossier.abstract && (
                 <div className="space-y-2">
-                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1">
-                    Context
-                  </div>
+                  <SectionHeader title="Context" />
                   <div className="font-body text-sm text-neutral-700 leading-relaxed">
                     <MarkdownContent content={activeDossier.abstract} sources={activeDossier.sources} />
                   </div>
@@ -325,10 +337,7 @@ export function DossierDrawer() {
               {/* Key Concepts */}
               {activeDossier.mechanisms && activeDossier.mechanisms.length > 0 && (
                 <div className="space-y-3">
-                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
-                    <span>Key Concepts</span>
-                    <Layers className="w-3.5 h-3.5" />
-                  </div>
+                  <SectionHeader title="Key Concepts" icon={<Layers className="w-3.5 h-3.5" />} />
                   <div className="space-y-3">
                     {activeDossier.mechanisms.map((mech, idx) => (
                       <div key={idx} className="p-4 border border-black space-y-2 bg-white">
@@ -354,10 +363,7 @@ export function DossierDrawer() {
               {/* Chronological Timeline */}
               {activeDossier.timeline && activeDossier.timeline.length > 0 && (
                 <div className="space-y-3">
-                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
-                    <span>Timeline</span>
-                    <Clock className="w-3.5 h-3.5" />
-                  </div>
+                  <SectionHeader title="Timeline" icon={<Clock className="w-3.5 h-3.5" />} />
                   <div className="border-l-2 border-black pl-4 ml-1 space-y-3">
                     {activeDossier.timeline.map((evt, idx) => (
                       <div key={idx} className="relative space-y-1">
@@ -381,10 +387,7 @@ export function DossierDrawer() {
               {/* Related Topics */}
               {activeDossier.rabbitHoles && activeDossier.rabbitHoles.length > 0 && (
                 <div className="space-y-3 pt-1">
-                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 flex items-center justify-between">
-                    <span>Related Topics</span>
-                    <Compass className="w-3.5 h-3.5" />
-                  </div>
+                  <SectionHeader title="Related Topics" icon={<Compass className="w-3.5 h-3.5" />} />
                   <div className="grid grid-cols-1 gap-2">
                     {activeDossier.rabbitHoles.map((rh, idx) => (
                       <button
@@ -400,7 +403,7 @@ export function DossierDrawer() {
                         }}
                         className="p-3 border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors duration-100 text-left group flex flex-col justify-between"
                       >
-                        <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 group-hover:text-neutral-300">
+                        <div className="flex items-center justify-between font-mono text-[10px] text-neutral-600 group-hover:text-neutral-300">
                           <span className="uppercase">{rh.affinityCategory || 'Topic'}</span>
                           <span>Open →</span>
                         </div>
@@ -419,9 +422,7 @@ export function DossierDrawer() {
               {/* Source Citations */}
               {activeDossier.sources && activeDossier.sources.length > 0 && (
                 <div className="space-y-2.5 pt-4 border-t-2 border-black">
-                  <div className="font-mono text-[10px] uppercase tracking-widest font-bold">
-                    Sources ({activeDossier.sources.length})
-                  </div>
+                  <SectionHeader title={`Sources (${activeDossier.sources.length})`} />
                   <div className="space-y-1 font-mono text-[10px]">
                     {activeDossier.sources.map((src, idx) => (
                       <a
@@ -474,7 +475,7 @@ export function DossierDrawer() {
                 <div className="w-2/3 h-2.5 bg-neutral-200 border border-black" />
               </div>
             ) : (
-              <div className="text-center py-20 font-mono text-xs text-neutral-500 space-y-3">
+              <div className="text-center py-20 font-mono text-xs text-neutral-600 space-y-3">
                 <p>[ SELECT A NODE ON THE CANVAS TO READ ITS STORY ]</p>
                 {isResearching && (
                   <button
@@ -493,7 +494,7 @@ export function DossierDrawer() {
 
       {/* Tab 2: Agent Activity Stream View */}
       {workstationTab === 'agent' && (
-        <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-4 custom-scrollbar select-text">
 
           {/* Active Dispatch Header */}
           <div className="flex items-center justify-between">
@@ -504,13 +505,13 @@ export function DossierDrawer() {
                 <CheckCircle2 className="w-3.5 h-3.5 text-black shrink-0" />
               )}
               <div className="min-w-0">
-                <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-500 font-bold">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 font-bold">
                   {isResearching ? 'Researching' : 'Research complete'}
                 </div>
                 <div className="font-serif text-sm font-bold text-black truncate flex items-center gap-2">
                   <span>{currentTopic || 'Research Topic'}</span>
                   {activeModelLabel && (
-                    <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-neutral-600 border border-neutral-300 px-1.5 py-0.5 bg-neutral-100">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-neutral-600 border border-neutral-300 px-1.5 py-0.5 bg-neutral-100">
                       {activeModelLabel}
                     </span>
                   )}
@@ -571,9 +572,9 @@ export function DossierDrawer() {
 
           {/* Model Attribution Footer */}
           {activeModelLabel && (
-            <div className="pt-2.5 border-t-2 border-black flex items-center justify-between font-mono text-[9px] uppercase tracking-wider text-neutral-600 select-none">
+            <div className="pt-2.5 border-t-2 border-black flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-neutral-600 select-none">
               <span className="font-bold text-black">RESEARCH AGENT</span>
-              <span className="font-medium text-neutral-500">{activeModelLabel}</span>
+              <span className="font-medium text-neutral-600">{activeModelLabel}</span>
             </div>
           )}
 

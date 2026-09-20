@@ -67,11 +67,18 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex justify-end bg-black/60 backdrop-blur-none animate-fade">
-      <div className="relative w-full max-w-[480px] h-full bg-white border-t-4 md:border-t-0 md:border-l-4 border-black flex flex-col shadow-none overflow-hidden">
+    <div
+      className="fixed inset-0 z-drawer flex justify-end bg-black/60 backdrop-blur-none backdrop-enter"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Your library"
+        className="relative w-full max-w-[480px] h-full bg-white border-t-4 md:border-t-0 md:border-l-4 border-black flex flex-col shadow-none overflow-hidden drawer-enter"
+      >
         
         {/* Masthead Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-5 border-b-2 border-black bg-black text-white shrink-0">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-5 border-b-2 border-black bg-black text-white shrink-0 select-none">
           <div className="flex items-center gap-3">
             <Bookmark className="w-4 h-4 text-white" />
             <div>
@@ -85,20 +92,20 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
           </div>
           <button
             onClick={onClose}
-            className="p-1 border border-white hover:bg-white hover:text-black transition-colors duration-100"
-            aria-label="Close drawer"
+            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center border border-white hover:bg-white hover:text-black transition-colors duration-100"
+            aria-label="Close library drawer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="grid grid-cols-2 border-b-2 border-black bg-neutral-100 font-mono text-xs font-bold uppercase tracking-wider shrink-0">
+        <div className="grid grid-cols-2 border-b-2 border-black bg-neutral-100 font-mono text-xs font-bold uppercase tracking-wider shrink-0 select-none">
           <button
             onClick={() => setActiveTab('recent')}
-            className={`py-3 px-4 flex items-center justify-center gap-2 border-r-2 border-black transition-colors duration-100 ${
+            className={`py-3 px-4 min-h-[44px] flex items-center justify-center gap-2 border-r-2 border-black transition-colors duration-100 ${
               activeTab === 'recent'
-                ? 'bg-white text-black font-extrabold'
+                ? 'bg-white text-black'
                 : 'bg-neutral-100 text-neutral-600 hover:text-black'
             }`}
           >
@@ -107,9 +114,9 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
           </button>
           <button
             onClick={() => setActiveTab('cloud')}
-            className={`py-3 px-4 flex items-center justify-center gap-2 transition-colors duration-100 ${
+            className={`py-3 px-4 min-h-[44px] flex items-center justify-center gap-2 transition-colors duration-100 ${
               activeTab === 'cloud'
-                ? 'bg-white text-black font-extrabold'
+                ? 'bg-white text-black'
                 : 'bg-neutral-100 text-neutral-600 hover:text-black'
             }`}
           >
@@ -122,14 +129,14 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {activeTab === 'recent' && (
             <div className="space-y-3">
-              <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 pb-1 border-b border-black">
+              <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 pb-1 border-b border-black">
                 RECENT
               </div>
 
               {recentSessions.length === 0 ? (
                 <div className="p-8 text-center border-2 border-dashed border-neutral-300 space-y-3">
                   <p className="font-serif text-sm font-bold text-black">Nothing here yet</p>
-                  <p className="font-body text-xs text-neutral-500">
+                  <p className="font-body text-xs text-neutral-600">
                     Open any topic and it will show up here so you can come back to it.
                   </p>
                   <button
@@ -143,10 +150,11 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
               ) : (
                 <div className="space-y-2.5">
                   {recentSessions.map((session) => (
-                    <div
+                    <button
                       key={session.id}
+                      type="button"
                       onClick={() => handleLoad(session.id)}
-                      className={`group p-4 border-2 border-black cursor-pointer transition-colors duration-100 ${
+                      className={`group w-full text-left p-4 border-2 border-black transition-colors duration-100 ${
                         currentTopic === session.topic
                           ? 'bg-black text-white'
                           : 'bg-white text-black hover:bg-black hover:text-white'
@@ -155,7 +163,7 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className={`font-mono text-[9px] uppercase px-1.5 py-0.5 font-bold ${
+                            <span className={`font-mono text-[10px] uppercase px-1.5 py-0.5 font-bold ${
                               currentTopic === session.topic
                                 ? 'bg-white text-black'
                                 : 'bg-neutral-100 group-hover:bg-white text-black'
@@ -163,7 +171,7 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
                               {session.category || 'GENERAL'}
                             </span>
                             <span className={`font-mono text-[10px] ${
-                              currentTopic === session.topic ? 'text-neutral-300' : 'text-neutral-500 group-hover:text-neutral-300'
+                              currentTopic === session.topic ? 'text-neutral-300' : 'text-neutral-600 group-hover:text-neutral-300'
                             }`}>
                               {session.nodeCount} nodes
                             </span>
@@ -179,12 +187,12 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
                       </div>
 
                       <div className={`mt-3 pt-2 border-t font-mono text-[10px] flex items-center justify-between ${
-                        currentTopic === session.topic ? 'border-neutral-800 text-neutral-400' : 'border-neutral-200 group-hover:border-neutral-800 text-neutral-500 group-hover:text-neutral-400'
+                        currentTopic === session.topic ? 'border-neutral-800 text-neutral-400' : 'border-neutral-200 group-hover:border-neutral-800 text-neutral-600 group-hover:text-neutral-400'
                       }`}>
                         <span>{new Date(session.timestamp).toLocaleDateString()}</span>
                         <span>{currentTopic === session.topic ? 'ACTIVE NOW' : 'CLICK TO RESTORE'}</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -193,18 +201,18 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
 
           {activeTab === 'cloud' && (
             <div className="space-y-3">
-              <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 pb-1 border-b border-black">
+              <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 pb-1 border-b border-black">
                 SAVED TO YOUR ACCOUNT
               </div>
 
               {loading ? (
-                <div className="p-8 text-center font-mono text-xs uppercase text-neutral-500">
+                <div className="p-8 text-center font-mono text-xs uppercase text-neutral-600">
                   LOADING...
                 </div>
               ) : cloudMindmaps.length === 0 ? (
                 <div className="p-8 text-center border-2 border-dashed border-neutral-300 space-y-3">
                   <p className="font-serif text-sm font-bold text-black">Nothing saved yet</p>
-                  <p className="font-body text-xs text-neutral-500">
+                  <p className="font-body text-xs text-neutral-600">
                     Sign in and use &quot;Save to Cloud&quot; from the masthead menu to keep a copy of your canvas online.
                   </p>
                   <button
@@ -220,16 +228,24 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
                   {cloudMindmaps.map((map) => (
                     <div
                       key={map.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleLoad(map.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleLoad(map.id);
+                        }
+                      }}
                       className="group p-4 bg-white hover:bg-black text-black hover:text-white border-2 border-black cursor-pointer transition-colors duration-100"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 font-bold bg-neutral-100 group-hover:bg-white text-black">
+                            <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 font-bold bg-neutral-100 group-hover:bg-white text-black">
                               {map.category || 'GENERAL'}
                             </span>
-                            <span className="font-mono text-[10px] text-neutral-500 group-hover:text-neutral-300">
+                            <span className="font-mono text-[10px] text-neutral-600 group-hover:text-neutral-300">
                               {map.nodes?.length || 0} nodes
                             </span>
                           </div>
@@ -240,7 +256,7 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
 
                         <button
                           onClick={(e) => handleDeleteCloud(map.id, e)}
-                          className="p-1 text-neutral-400 hover:text-white transition-colors"
+                          className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-neutral-600 hover:text-white transition-colors"
                           title="Delete from cloud"
                           aria-label="Delete mindmap from cloud"
                         >
@@ -248,7 +264,7 @@ export function MyMindMapsDrawer({ isOpen, onClose, onBrowseTopics }: MyMindMaps
                         </button>
                       </div>
 
-                      <div className="mt-3 pt-2 border-t border-neutral-200 group-hover:border-neutral-800 font-mono text-[10px] text-neutral-500 group-hover:text-neutral-400 flex items-center justify-between">
+                      <div className="mt-3 pt-2 border-t border-neutral-200 group-hover:border-neutral-800 font-mono text-[10px] text-neutral-600 group-hover:text-neutral-400 flex items-center justify-between">
                         <span>Updated {new Date(map.updated_at).toLocaleDateString()}</span>
                         <span className="font-bold flex items-center gap-1">
                           RESTORE <ArrowRight className="w-3 h-3" />

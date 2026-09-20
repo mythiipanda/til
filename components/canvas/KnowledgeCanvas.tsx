@@ -139,7 +139,7 @@ function CanvasInner() {
   const showResearchSkeleton = nodes.length === 0 && isResearching;
 
   return (
-    <div ref={canvasShellRef} className="absolute inset-0 bg-white select-none texture-grid">
+    <div ref={canvasShellRef} className="absolute inset-0 bg-white select-none">
       {showLanding && <LandingState />}
 
       {showResearchSkeleton && (
@@ -202,7 +202,7 @@ function CanvasInner() {
         <div className="fixed bottom-6 left-6 z-20 hidden md:flex items-center gap-1.5 bg-white border-2 border-black p-1.5 shadow-none nodrag">
           <button
             onClick={() => zoomIn({ duration: 250 })}
-            className="w-7 h-7 flex items-center justify-center font-mono text-sm font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
+            className="w-7 h-7 flex items-center justify-center font-mono text-sm font-bold border border-black hover:bg-black hover:text-white transition-colors"
             title="Zoom In (+)"
             aria-label="Zoom in"
           >
@@ -210,7 +210,7 @@ function CanvasInner() {
           </button>
           <button
             onClick={() => zoomOut({ duration: 250 })}
-            className="w-7 h-7 flex items-center justify-center font-mono text-sm font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
+            className="w-7 h-7 flex items-center justify-center font-mono text-sm font-bold border border-black hover:bg-black hover:text-white transition-colors"
             title="Zoom Out (-)"
             aria-label="Zoom out"
           >
@@ -218,7 +218,7 @@ function CanvasInner() {
           </button>
           <button
             onClick={() => fitView({ padding: 0.15, duration: 400 })}
-            className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
+            className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-black hover:bg-black hover:text-white transition-colors"
             title="Fit Map to Screen"
             aria-label="Fit map"
           >
@@ -226,7 +226,7 @@ function CanvasInner() {
           </button>
           <button
             onClick={handleRecenterRoot}
-            className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors"
+            className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-black hover:bg-black hover:text-white transition-colors"
             title="Center Origin"
             aria-label="Center origin"
           >
@@ -235,7 +235,7 @@ function CanvasInner() {
           <button
             onClick={handleDownloadPng}
             disabled={pngState === 'generating'}
-            className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors disabled:opacity-50"
+            className="px-2 h-7 flex items-center justify-center font-mono text-[10px] uppercase font-bold border border-black hover:bg-black hover:text-white transition-colors disabled:opacity-50"
             title={pngFailed ? 'Could not render map image' : 'Download map as PNG'}
             aria-label="Download map as PNG"
           >

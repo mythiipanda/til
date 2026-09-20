@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
-import { X, Copy, Check, Share2, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Copy, Check, Share2, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { Modal } from '@/components/ui/Modal';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -122,40 +123,23 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-none p-4 animate-fade">
-      <div className="relative w-full max-w-lg bg-white border-2 border-black p-6 md:p-8 space-y-6 shadow-none">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b-2 border-black">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs uppercase font-bold bg-black text-white px-2 py-0.5">
-              EXPORT
-            </span>
-            <div>
-              <h2 className="font-serif text-lg font-bold tracking-tight text-black">
-                Share &amp; Export
-              </h2>
-              <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest truncate max-w-[280px]">
-                {currentTopic || 'Untitled map'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 border border-black hover:bg-black hover:text-white transition-colors duration-100"
-            aria-label="Close modal"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      label="Share and export mindmap"
+      badge="EXPORT"
+      title="Share & Export"
+      subtitle={currentTopic || 'Untitled map'}
+      closeLabel="Close share dialog"
+    >
+      <div className="pt-6 space-y-6">
         {/* Share Link Generation */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="font-mono text-[11px] uppercase font-bold tracking-wider text-black">
               1. Public Interactive Link
             </label>
-            <span className="font-mono text-[10px] text-neutral-500 uppercase">Public URL</span>
+            <span className="font-mono text-[10px] text-neutral-600 uppercase">Public URL</span>
           </div>
 
           {shareUrl ? (
@@ -165,11 +149,12 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
                   type="text"
                   readOnly
                   value={shareUrl}
+                  aria-label="Your public mindmap link"
                   className="w-full px-3 py-2.5 bg-neutral-50 border-2 border-black font-mono text-xs text-black outline-none"
                 />
                 <button
                   onClick={handleCopyLink}
-                  className="px-4 py-2.5 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100 flex items-center gap-1.5 shrink-0"
+                  className="px-4 py-2.5 min-h-[44px] bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase font-bold tracking-wider transition-colors duration-100 flex items-center gap-1.5 shrink-0"
                 >
                   {copied ? (
                     <>
@@ -184,7 +169,7 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
                   )}
                 </button>
               </div>
-              <p className="font-mono text-[10px] text-neutral-500">
+              <p className="font-mono text-[10px] text-neutral-600">
                 Anyone with this link can open this mindmap and its stories.
               </p>
             </div>
@@ -258,12 +243,12 @@ export function ShareModal({ isOpen, onClose }: ShareModalProps) {
         <div className="border-t border-neutral-200 pt-3 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 border-2 border-black font-mono text-xs uppercase font-bold tracking-wider hover:bg-black hover:text-white transition-colors duration-100"
+            className="px-5 py-2 min-h-[44px] border-2 border-black font-mono text-xs uppercase font-bold tracking-wider hover:bg-black hover:text-white transition-colors duration-100"
           >
             Close
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

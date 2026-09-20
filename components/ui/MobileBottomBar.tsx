@@ -42,7 +42,7 @@ export function MobileBottomBar({
   if (nodes.length === 0) return null;
 
   return (
-    <nav aria-label="Primary" className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-black h-14 pb-[env(safe-area-inset-bottom)] flex items-center justify-around select-none">
+    <nav aria-label="Primary" className="md:hidden fixed bottom-0 left-0 right-0 z-toast bg-white border-t-2 border-black h-14 pb-[env(safe-area-inset-bottom)] flex items-center justify-around select-none">
       {/* Canvas / Center */}
       <button
         onClick={onCenterCanvas}
@@ -50,7 +50,7 @@ export function MobileBottomBar({
         title="Center Map"
       >
         <Network className="w-4 h-4" />
-        <span className="font-mono text-[9px] uppercase font-bold tracking-wider pt-0.5">
+        <span className="font-mono text-[10px] uppercase font-bold tracking-wider pt-0.5">
           Map
         </span>
       </button>
@@ -65,7 +65,7 @@ export function MobileBottomBar({
         title="Browse Topics"
       >
         <Compass className="w-4 h-4" />
-        <span className="font-mono text-[9px] uppercase font-bold tracking-wider pt-0.5">
+        <span className="font-mono text-[10px] uppercase font-bold tracking-wider pt-0.5">
           Topics
         </span>
       </button>
@@ -80,11 +80,11 @@ export function MobileBottomBar({
         title="Read Story"
       >
         <BookOpen className="w-4 h-4" />
-        <span className="font-mono text-[9px] uppercase font-bold tracking-wider pt-0.5">
+        <span className="font-mono text-[10px] uppercase font-bold tracking-wider pt-0.5">
           Story
         </span>
         {isResearching && (
-          <span className="absolute top-2 right-1/4 w-2 h-2 rounded-full bg-black animate-ping" />
+          <span className="absolute top-2 right-1/4 w-2 h-2 bg-current animate-pulse" />
         )}
       </button>
 
@@ -98,7 +98,7 @@ export function MobileBottomBar({
         title="Saved Mindmaps"
       >
         <Bookmark className="w-4 h-4" />
-        <span className="font-mono text-[9px] uppercase font-bold tracking-wider pt-0.5">
+        <span className="font-mono text-[10px] uppercase font-bold tracking-wider pt-0.5">
           Library
         </span>
       </button>

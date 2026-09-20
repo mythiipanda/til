@@ -170,9 +170,9 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
   const activeSentenceText = sentencesRef.current[currentIdx] || '';
 
   return (
-    <div className="border-2 border-black bg-neutral-900 text-white p-4 space-y-3 select-none animate-drop">
+    <div className="border-2 border-black bg-neutral-900 text-white p-4 space-y-3 animate-drop">
       {/* Player Header */}
-      <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-2">
+      <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-neutral-400 border-b border-neutral-800 pb-2 select-none">
         <div className="flex items-center gap-1.5 font-bold text-white">
           <Volume2 className="w-3.5 h-3.5" />
           <span>AUDIO OVERVIEW</span>
@@ -191,9 +191,9 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
       </div>
 
       {/* Karaoke Active Sentence Box */}
-      <div className="bg-black/50 p-3 border border-neutral-800 rounded-none space-y-2">
+      <div className="bg-black/50 p-3 border border-neutral-800 space-y-2">
         {activeSentenceText ? (
-          <div className="font-serif italic text-sm text-neutral-100 leading-relaxed border-l-2 border-white pl-2.5 transition-all">
+          <div className="font-serif italic text-sm text-neutral-100 leading-relaxed border-l-2 border-white pl-2.5 transition-colors">
             "{activeSentenceText}"
           </div>
         ) : (
@@ -206,11 +206,11 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
         <div className="flex items-center justify-between pt-1 border-t border-neutral-800/80">
           <button
             onClick={() => setShowFullTranscript(!showFullTranscript)}
-            className="font-mono text-[9px] text-neutral-400 hover:text-white uppercase tracking-wider transition-colors"
+            className="font-mono text-[10px] text-neutral-400 hover:text-white uppercase tracking-wider transition-colors"
           >
             {showFullTranscript ? 'Hide Interactive Script [-]' : 'View Interactive Script [+]'}
           </button>
-          <span className="font-mono text-[9px] text-neutral-500">
+          <span className="font-mono text-[10px] text-neutral-500">
             Sentence {Math.min(currentIdx + 1, sentencesRef.current.length)} of {sentencesRef.current.length}
           </span>
         </div>
@@ -219,16 +219,18 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
         {showFullTranscript && (
           <div
             ref={transcriptContainerRef}
-            className="max-h-44 overflow-y-auto space-y-1.5 pt-2 pr-1 border-t border-neutral-800 scrollbar-thin scrollbar-thumb-neutral-700"
+            className="max-h-44 overflow-y-auto space-y-1.5 pt-2 pr-1 border-t border-neutral-800"
           >
             {sentencesRef.current.map((sentence, idx) => {
               const isActive = idx === currentIdx && (isPlaying || isPaused);
               const isPast = idx < currentIdx;
               return (
-                <p
+                <button
                   key={idx}
+                  type="button"
                   onClick={() => handleJumpToSentence(idx)}
-                  className={`font-serif text-xs leading-relaxed cursor-pointer p-1.5 transition-colors ${
+                  aria-label={`Play sentence ${idx + 1}`}
+                  className={`w-full text-left font-serif text-xs leading-relaxed cursor-pointer p-1.5 transition-colors ${
                     isActive
                       ? 'bg-white/10 text-white font-semibold border-l-2 border-white pl-2'
                       : isPast
@@ -237,7 +239,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
                   }`}
                 >
                   {sentence}
-                </p>
+                </button>
               );
             })}
           </div>
@@ -253,7 +255,7 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
       </div>
 
       {/* Controls & Timing */}
-      <div className="flex items-center justify-between pt-1">
+      <div className="flex items-center pt-1 select-none">
         <div className="flex items-center gap-2">
           {!isPlaying ? (
             <button
@@ -293,10 +295,6 @@ export function AudioTourPlayer({ script, topicTitle }: AudioTourPlayerProps) {
             <FastForward className="w-3 h-3" />
             <span>{playbackRate}x</span>
           </button>
-        </div>
-
-        <div className="font-mono text-[9px] uppercase tracking-wider text-neutral-400">
-          <span>AUDIO OVERVIEW</span>
         </div>
       </div>
     </div>

@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { trackLaunchEvent } from '@/lib/metrics/launch-events';
-import { X, Copy, Check, Share2, Loader2 } from 'lucide-react';
+import { Copy, Check, Share2, Loader2 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 
 /**
  * Post-generation share moment. Auto-opens after a root research run
@@ -44,15 +45,6 @@ export function SharePromptModal() {
     };
   }, [isOpen, generateShareLink]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSharePromptOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen, setSharePromptOpen]);
-
   if (!isOpen) return null;
 
   const handleCopy = () => {
@@ -85,29 +77,15 @@ export function SharePromptModal() {
     : '#';
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 animate-fade"
-      onClick={() => setSharePromptOpen(false)}
+    <Modal
+      open={isOpen}
+      onClose={() => setSharePromptOpen(false)}
+      label="Share your mindmap"
+      badge="YOUR MAP IS LIVE"
+      closeLabel="Close share dialog"
+      maxWidth="max-w-md"
     >
-      <div
-        className="relative w-full max-w-md bg-white border-2 border-black p-6 md:p-8 space-y-5 shadow-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between pb-4 border-b-2 border-black">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs uppercase font-bold bg-black text-white px-2 py-0.5">
-              YOUR MAP IS LIVE
-            </span>
-          </div>
-          <button
-            onClick={() => setSharePromptOpen(false)}
-            className="p-1 border border-black hover:bg-black hover:text-white transition-colors duration-100"
-            aria-label="Close share dialog"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+      <div className="pt-6 space-y-5">
         <h2 className="font-serif text-xl font-bold tracking-tight text-black leading-snug">
           Someone out there wants to see this.
         </h2>
@@ -189,24 +167,24 @@ export function SharePromptModal() {
               </a>
             </div>
 
-            <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-wider">
+            <p className="font-mono text-[10px] text-neutral-600 uppercase tracking-wider">
               Anyone with this link can open your map and its sources.
             </p>
           </div>
         )}
 
         <div className="border-t border-neutral-200 pt-3 flex justify-between items-center">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-600">
             {nodeCount} NODES RESEARCHED
           </span>
           <button
             onClick={() => setSharePromptOpen(false)}
-            className="px-5 py-2 border-2 border-black font-mono text-xs uppercase font-bold tracking-wider hover:bg-black hover:text-white transition-colors duration-100"
+            className="px-5 py-2 min-h-[44px] border-2 border-black font-mono text-xs uppercase font-bold tracking-wider hover:bg-black hover:text-white transition-colors duration-100"
           >
             Keep Exploring
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

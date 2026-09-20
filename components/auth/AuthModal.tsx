@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { X, Mail, Check, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
+import { AlertCircle, Loader2, ArrowRight } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -63,33 +64,17 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const emailProviderUrl = getEmailProviderLink();
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-none p-4 animate-fade">
-      <div className="relative w-full max-w-md bg-white border-2 border-black p-6 md:p-8 space-y-6 shadow-none">
-        
-        {/* Header Bar */}
-        <div className="flex items-center justify-between pb-4 border-b-2 border-black">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs uppercase font-bold bg-black text-white px-2 py-0.5">
-              TDI
-            </span>
-            <div>
-              <h2 className="font-serif text-lg font-bold tracking-tight text-black">
-                {sentMagicLink ? 'Check Your Inbox' : 'Sign in'}
-              </h2>
-              <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest">
-                {sentMagicLink ? 'Link Sent' : 'No Password Needed'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 border border-black hover:bg-black hover:text-white transition-colors duration-100"
-            aria-label="Close modal"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      label="Sign in to TDILEARNED"
+      badge="TDI"
+      title={sentMagicLink ? 'Check Your Inbox' : 'Sign in'}
+      subtitle={sentMagicLink ? 'Link Sent' : 'No Password Needed'}
+      maxWidth="max-w-md"
+      closeLabel="Close sign in dialog"
+    >
+      <div className="pt-6 space-y-5">
         {/* Error Notification */}
         {errorMsg && (
           <div className="p-3 bg-white border-2 border-black flex items-start gap-2.5 font-mono text-xs text-black">
@@ -101,7 +86,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {sentMagicLink ? (
           <div className="py-4 space-y-6 animate-fade">
             <div className="space-y-2">
-              <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
+              <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-600">
                 EMAIL SENT
               </div>
               <h3 className="font-serif text-2xl font-bold text-black leading-tight">
@@ -183,7 +168,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@domain.com"
-                  className="w-full px-4 py-3 bg-white border-2 border-black font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50 transition-none"
+                  className="w-full px-4 py-3 bg-white border-2 border-black font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50 transition-shadow"
                 />
               </div>
             </div>
@@ -211,6 +196,6 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </form>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }

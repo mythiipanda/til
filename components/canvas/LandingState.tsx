@@ -42,17 +42,17 @@ export default function LandingState() {
 
   return (
     <div className="absolute inset-0 flex flex-col items-center z-10 select-none overflow-y-auto p-4 sm:p-6 md:p-12">
-      <div className="w-full max-w-4xl bg-white border-2 md:border-4 border-black p-6 sm:p-8 md:p-12 space-y-8 sm:space-y-10 shadow-none animate-fade my-auto">
+      <div className="w-full max-w-4xl bg-white border-2 border-black p-6 sm:p-8 md:p-12 space-y-8 sm:space-y-10 shadow-none animate-fade my-auto">
 
         {/* Masthead Rule & Label */}
-        <div className="flex items-center justify-between border-b-2 md:border-b-4 border-black pb-3">
+        <div className="flex items-center justify-between border-b-2 border-black pb-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-black" />
             <span className="font-mono text-[10px] sm:text-xs uppercase font-bold tracking-widest text-black">
               TDILEARNED
             </span>
           </div>
-          <div className="font-mono text-[9px] sm:text-[11px] uppercase tracking-wider text-neutral-500">
+          <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-wider text-neutral-500">
             {precomputedHubs.length > 0 ? `${precomputedHubs.length} TOPICS READY TO OPEN` : 'TYPE ANY TOPIC TO BEGIN'}
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function LandingState() {
                     <span className="font-serif text-base sm:text-lg font-bold tracking-tight block">
                       {cat}
                     </span>
-                    <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">
                       {isLoading ? 'Loading...' : 'Open →'}
                     </span>
                   </div>
@@ -159,7 +159,7 @@ export default function LandingState() {
               value={customTopic}
               onChange={e => setCustomTopic(e.target.value)}
               placeholder="e.g. Voynich Manuscript, Antikythera Mechanism, Fermi Paradox..."
-              className="flex-1 border-2 border-black p-3.5 font-body text-sm sm:text-base text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50"
+              className="flex-1 border-2 border-black p-3.5 font-body text-sm sm:text-base text-black placeholder:text-neutral-600 placeholder:italic outline-none focus:bg-neutral-50"
             />
             <button
               type="submit"
