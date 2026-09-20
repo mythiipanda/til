@@ -62,7 +62,7 @@ export function ActivityPanel() {
   // Minimized floating dock state
   if (isMinimized) {
     return (
-      <div className="fixed right-6 bottom-6 z-20 bg-black text-white border-2 border-black p-2.5 font-mono text-xs uppercase font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade">
+      <div className="fixed right-6 bottom-6 z-20 bg-black text-white border-2 border-black p-2.5 font-mono text-xs uppercase font-bold tracking-wider flex items-center gap-3 shadow-none animate-fade select-none">
         <div className="flex items-center gap-2">
           {isResearching ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -78,7 +78,7 @@ export function ActivityPanel() {
         <div className="flex items-center gap-1 border-l border-neutral-700 pl-2">
           <button
             onClick={() => setIsMinimized(false)}
-            className="p-1 hover:bg-white hover:text-black transition-colors"
+            className="p-1.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center hover:bg-white hover:text-black transition-colors"
             title="Expand Activity Log"
             aria-label="Expand activity log"
           >
@@ -86,7 +86,7 @@ export function ActivityPanel() {
           </button>
           <button
             onClick={() => setIsDismissed(true)}
-            className="p-1 hover:bg-white hover:text-black transition-colors"
+            className="p-1.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center hover:bg-white hover:text-black transition-colors"
             title="Dismiss Activity Panel"
             aria-label="Dismiss activity panel"
           >
@@ -98,10 +98,10 @@ export function ActivityPanel() {
   }
 
   return (
-    <div className="fixed right-6 top-20 bottom-6 w-[400px] max-w-[92vw] bg-white text-black border-2 border-black z-20 flex flex-col shadow-none select-none animate-fade">
+    <div className="fixed right-6 top-20 bottom-6 w-[400px] max-w-[92vw] bg-white text-black border-2 border-black z-20 flex flex-col shadow-none animate-fade">
 
       {/* Window Titlebar */}
-      <div className="p-3.5 border-b-2 border-black flex items-center justify-between bg-black text-white shrink-0">
+      <div className="p-3.5 border-b-2 border-black flex items-center justify-between bg-black text-white shrink-0 select-none">
         <div className="flex items-center gap-2.5">
           {isResearching ? (
             <Loader2 className="w-4 h-4 text-white animate-spin shrink-0" />
@@ -112,12 +112,12 @@ export function ActivityPanel() {
             <div className="font-mono text-xs uppercase tracking-widest font-bold flex items-center gap-2">
               <span>AGENT LOG</span>
               {activeModelLabel && (
-                <span className="text-[9px] font-medium text-neutral-300 border border-neutral-700 px-1.5 py-0.5 bg-neutral-900 tracking-wider">
+                <span className="text-[10px] font-medium text-neutral-300 border border-neutral-700 px-1.5 py-0.5 bg-neutral-900 tracking-wider">
                   {activeModelLabel}
                 </span>
               )}
             </div>
-            <div className="font-mono text-[9px] text-neutral-400">
+            <div className="font-mono text-[10px] text-neutral-400">
               {isResearching 
                 ? (planSteps.length > 0 ? `PHASE ${currentStepNumber} OF ${planSteps.length}` : 'STARTING RESEARCH...')
                 : 'RESEARCH COMPLETE'}
@@ -129,7 +129,7 @@ export function ActivityPanel() {
         <div className="flex items-center gap-1.5 font-mono text-xs">
           <button
             onClick={() => setIsMinimized(true)}
-            className="p-1 border border-white hover:bg-white hover:text-black transition-colors"
+            className="p-1.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center border border-white hover:bg-white hover:text-black transition-colors"
             title="Minimize Window"
             aria-label="Minimize activity panel"
           >
@@ -137,7 +137,7 @@ export function ActivityPanel() {
           </button>
           <button
             onClick={() => setIsDismissed(true)}
-            className="p-1 border border-white hover:bg-white hover:text-black transition-colors"
+            className="p-1.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center border border-white hover:bg-white hover:text-black transition-colors"
             title="Close Window"
             aria-label="Close activity panel"
           >
@@ -148,8 +148,8 @@ export function ActivityPanel() {
 
       {/* Research stream error */}
       {researchError && (
-        <div className="p-3 bg-red-50 border-b-2 border-red-700 flex items-start gap-2 shrink-0">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-red-700 leading-snug">
+        <div className="p-3 bg-black border-b-2 border-black flex items-start gap-2 shrink-0">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-white leading-snug">
             {researchError}
           </span>
         </div>
@@ -174,7 +174,7 @@ export function ActivityPanel() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar select-text">
 
         {/* Plan Steps */}
         {planSteps.length > 0 && (
@@ -196,7 +196,7 @@ export function ActivityPanel() {
                         ? 'border-black bg-black text-white font-bold' 
                         : isDone 
                         ? 'border-neutral-300 bg-neutral-50 text-neutral-800' 
-                        : 'border-neutral-200 text-neutral-400'
+                        : 'border-neutral-200 text-neutral-600'
                     }`}
                   >
                     <div className="shrink-0 mt-0.5">
@@ -205,13 +205,13 @@ export function ActivityPanel() {
                       ) : isRunning ? (
                         <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
                       ) : (
-                        <CircleDashed className="w-3.5 h-3.5 text-neutral-400" />
+                        <CircleDashed className="w-3.5 h-3.5 text-neutral-600" />
                       )}
                     </div>
                     <div className="flex-1 leading-snug">
                       <div>{step.title}</div>
                       {isRunning && (
-                        <div className="font-mono text-[9px] text-neutral-300 mt-1 uppercase">
+                        <div className="font-mono text-[10px] text-neutral-300 mt-1 uppercase">
                           Active: {step.agent || 'Deep Retrieval Agent'}
                         </div>
                       )}
@@ -228,12 +228,12 @@ export function ActivityPanel() {
           <div className="border-2 border-black bg-white">
             <button
               onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
-              className="w-full flex items-center justify-between p-3 bg-neutral-100 border-b-2 border-black font-mono text-[10px] uppercase font-bold tracking-wider text-black hover:bg-neutral-200"
+              className="w-full flex items-center justify-between p-3 bg-neutral-100 border-b-2 border-black font-mono text-[10px] uppercase font-bold tracking-wider text-black hover:bg-neutral-100"
             >
               <div className="flex items-center gap-2">
                 <Compass className="w-3.5 h-3.5 text-black" />
                 <span>[ AGENT REASONING &amp; FIELD NOTES ]</span>
-                <span className="text-neutral-500">({thoughts.length})</span>
+                <span className="text-neutral-600">({thoughts.length})</span>
               </div>
               {isThinkingExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
@@ -242,7 +242,7 @@ export function ActivityPanel() {
               <div className="p-4 space-y-3 max-h-[220px] overflow-y-auto font-body text-xs text-neutral-800 leading-relaxed custom-scrollbar">
                 {thoughts.map((t, idx) => (
                   <div key={idx} className="border-l-2 border-black pl-3 space-y-0.5">
-                    <span className="font-mono text-[9px] text-neutral-500 block uppercase font-bold">
+                    <span className="font-mono text-[10px] text-neutral-600 block uppercase font-bold">
                       {t.agent || `STEP ${idx + 1}`}
                     </span>
                     <MarkdownContent content={t.text} className="text-xs text-black" />
@@ -264,7 +264,7 @@ export function ActivityPanel() {
               {toolCalls.map((tc, idx) => (
                 <div
                   key={tc.id || idx}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] uppercase font-bold border-2 ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] uppercase font-bold border ${
                     tc.status === 'running' 
                       ? 'border-black bg-black text-white' 
                       : 'border-neutral-300 bg-white text-black'
@@ -295,7 +295,7 @@ export function ActivityPanel() {
                   rel="noopener noreferrer"
                   className="block p-3 bg-white hover:bg-black text-black hover:text-white border-2 border-black transition-colors duration-100 group"
                 >
-                  <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 group-hover:text-neutral-400 uppercase mb-1">
+                  <div className="flex items-center justify-between font-mono text-[10px] text-neutral-600 group-hover:text-neutral-300 uppercase mb-1">
                     <span className="flex items-center gap-1">
                       <Globe className="w-3 h-3" />
                       {getDomain(src.url)}

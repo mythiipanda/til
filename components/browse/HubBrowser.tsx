@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { Search, X } from 'lucide-react';
 import { CATEGORIES } from '@/types';
@@ -102,10 +102,17 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-12 md:top-20 md:bottom-6 md:left-6 w-full md:w-[420px] md:max-w-[92vw] bg-white border-t-4 md:border-2 border-black z-40 md:z-30 flex flex-col shadow-none select-none animate-fade">
+    // NOTE: DossierDrawer also uses z-overlay (40) on mobile, but the two
+    // drawers never co-open — page.tsx toggles are mutually exclusive.
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Topics browser"
+      className="fixed inset-x-0 bottom-0 top-12 md:top-20 md:bottom-6 md:left-6 w-full md:w-[420px] md:max-w-[92vw] bg-white border-t-4 md:border-2 border-black z-overlay md:z-30 flex flex-col shadow-none drawer-enter-left"
+    >
       
       {/* Titlebar */}
-      <div className="p-3 bg-black text-white flex items-center justify-between shrink-0">
+      <div className="p-3 bg-black text-white flex items-center justify-between shrink-0 select-none">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 bg-white shrink-0" />
           <span className="font-mono text-xs uppercase font-bold tracking-widest">
@@ -118,7 +125,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
         </div>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-neutral-800 transition-colors"
+          className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center hover:bg-neutral-800 transition-colors"
           title="Close Catalog"
           aria-label="Close catalog"
         >
@@ -127,14 +134,15 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="p-3 border-b-2 border-black bg-neutral-50 space-y-2 shrink-0">
+      <div className="p-3 border-b-2 border-black bg-neutral-50 space-y-2 shrink-0 select-none">
         <div className="relative">
-          <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-neutral-600 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Filter by keyword or summary..."
+            aria-label="Filter topics"
             className="w-full pl-9 pr-3 py-2 border-2 border-black text-xs font-mono bg-white outline-none focus:bg-white placeholder:text-neutral-400"
           />
         </div>
@@ -143,7 +151,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
         <div className="flex gap-1.5 overflow-x-auto py-1 custom-scrollbar shrink-0">
           <button
             onClick={() => setActiveCategory(null)}
-            className={`px-2.5 py-1 font-mono text-[10px] uppercase font-bold whitespace-nowrap border transition-colors shrink-0 ${
+            className={`px-2.5 min-h-[44px] inline-flex items-center font-mono text-[10px] uppercase font-bold whitespace-nowrap border transition-colors shrink-0 ${
               activeCategory === null
                 ? 'bg-black text-white border-black'
                 : 'bg-white text-black border-neutral-300 hover:border-black'
@@ -155,7 +163,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
             <button
               key={cat}
               onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
-              className={`px-2.5 py-1 font-mono text-[10px] uppercase font-bold whitespace-nowrap border transition-colors shrink-0 ${
+              className={`px-2.5 min-h-[44px] inline-flex items-center font-mono text-[10px] uppercase font-bold whitespace-nowrap border transition-colors shrink-0 ${
                 activeCategory === cat
                   ? 'bg-black text-white border-black'
                   : 'bg-white text-black border-neutral-300 hover:border-black'
@@ -170,7 +178,7 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
       {/* Topics Scroll Listing */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
         {filteredTopics.length === 0 ? (
-          <div className="text-center py-16 font-mono text-xs text-neutral-500">
+          <div className="text-center py-16 font-mono text-xs text-neutral-600">
             No topics match your filters. Try a different keyword or category.
           </div>
         ) : (
@@ -178,19 +186,20 @@ export function HubBrowser({ onClose }: HubBrowserProps) {
             <button
               key={`${item.topic}-${idx}`}
               onClick={() => handleSelectTopic(item)}
-              className="w-full text-left p-3 border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors duration-100 group flex flex-col gap-1.5"
+              style={{ '--i': Math.min(idx, 14) } as CSSProperties}
+              className="stagger-item w-full text-left p-3 border border-neutral-300 hover:border-black hover:bg-black hover:text-white transition-colors duration-100 group flex flex-col gap-1.5"
             >
-              <div className="flex items-center justify-between w-full font-mono text-[9px]">
-                <span className="uppercase font-bold text-neutral-500 group-hover:text-neutral-300">
+              <div className="flex items-center justify-between w-full font-mono text-[10px]">
+                <span className="uppercase font-bold text-neutral-600 group-hover:text-neutral-300">
                   {item.category}
                 </span>
 
                 {item.precomputed ? (
-                  <span className="border border-current px-1.5 py-0.5 font-bold uppercase tracking-wider text-[9px]">
+                  <span className="border border-current px-1.5 py-0.5 font-bold uppercase tracking-wider text-[10px]">
                     INDEXED
                   </span>
                 ) : (
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 group-hover:text-neutral-300">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-600 group-hover:text-neutral-300">
                     OPEN →
                   </span>
                 )}

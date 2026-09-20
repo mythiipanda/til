@@ -38,6 +38,16 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
     }
   };
 
+  // Keyboard parity for the card container: only fire when the card itself is
+  // focused — inner buttons handle their own keys (their target differs).
+  const handleCardKeyDown = (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick();
+    }
+  };
+
   const handleExpandRabbitHole = (rh: string) => {
     trackLaunchEvent('expand_click', { topic: rh, metadata: { from: data.title } });
     startResearch(
@@ -61,13 +71,17 @@ function ResearchNodeComponent({ data }: { data: ResearchNodeData }) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Open story: ${data.title}`}
       onClick={handleCardClick}
-      className={`group bg-white text-black transition-none select-none shadow-none cursor-pointer ${
+      onKeyDown={handleCardKeyDown}
+      className={`group bg-white text-black transition-colors duration-100 select-none shadow-none cursor-pointer ${
         data.isRoot
           ? 'w-[min(62vw,420px)] border-4 border-black'
           : isSelected
           ? 'w-[min(60vw,380px)] border-4 border-black'
-          : 'w-[min(60vw,380px)] border-2 border-black hover:border-4'
+          : 'w-[min(60vw,380px)] border-2 border-black hover:shadow-[inset_0_0_0_2px_#000]'
       } sm:w-[min(86vw,380px)]`}
     >
       <Handle type="target" position={Position.Top} className="!opacity-0 !w-1 !h-1" />

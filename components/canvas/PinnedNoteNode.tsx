@@ -31,7 +31,7 @@ function PinnedNoteNodeComponent({ data }: { data: PinnedNoteData }) {
         </div>
         <button
           onClick={handleDelete}
-          className="nodrag nopan p-0.5 border border-white hover:bg-white hover:text-black transition-colors duration-100"
+          className="nodrag nopan relative p-0.5 border border-white hover:bg-white hover:text-black transition-colors duration-100 before:absolute before:-inset-3 before:content-['']"
           title="Remove Note"
           aria-label="Remove pinned note"
         >

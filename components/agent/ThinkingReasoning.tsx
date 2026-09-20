@@ -30,7 +30,7 @@ export function ThinkingReasoning({ lines, active, doneLabel }: ThinkingReasonin
   }, [active]);
 
   return (
-    <div className="border-2 border-black bg-white select-none transition-all">
+    <div className="border-2 border-black bg-white select-none transition-colors">
       <button
         type="button"
         className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
@@ -73,7 +73,7 @@ export function ThinkingReasoning({ lines, active, doneLabel }: ThinkingReasonin
             className="max-h-[220px] overflow-y-auto px-3.5 py-2.5 space-y-2 custom-scrollbar"
           >
             {lines.length === 0 ? (
-              <p className="font-mono text-[10px] text-neutral-500 italic">
+              <p className="font-mono text-[10px] text-neutral-600 italic">
                 Reasoning trace in progress…
               </p>
             ) : (
@@ -83,7 +83,7 @@ export function ThinkingReasoning({ lines, active, doneLabel }: ThinkingReasonin
                   className="line-reveal font-body text-xs text-neutral-800 leading-relaxed flex items-start gap-2"
                   style={{ animationDelay: `${i * 25}ms` }}
                 >
-                  <span className="text-neutral-400 shrink-0 font-mono text-[11px] select-none pt-0.5">
+                  <span className="text-neutral-600 shrink-0 font-mono text-[11px] select-none pt-0.5">
                     ↳
                   </span>
                   <span className="flex-1 break-words">{line}</span>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Globe, ExternalLink, Touchpad } from 'lucide-react';
+import { MapPin, Globe, ExternalLink } from 'lucide-react';
 import type { Geography } from '@/types';
 
 interface MapViewerProps {
@@ -24,12 +24,12 @@ export function MapViewer({ geography }: MapViewerProps) {
   return (
     <div className="border-2 border-black bg-white space-y-2.5 p-4 animate-drop">
       {/* Header */}
-      <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-neutral-500 border-b border-neutral-200 pb-2">
+      <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-neutral-600 border-b border-neutral-200 pb-2">
         <div className="flex items-center gap-1.5 font-bold text-black">
           <MapPin className="w-3.5 h-3.5 text-black" />
           <span>GEOGRAPHIC & HISTORICAL EPICENTER</span>
         </div>
-        <span className="text-neutral-400">
+        <span className="text-neutral-600">
           {latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E
         </span>
       </div>
@@ -60,6 +60,7 @@ export function MapViewer({ geography }: MapViewerProps) {
         {!isInteractive && (
           <button
             onClick={() => setIsInteractive(true)}
+            aria-label="Enable interactive map"
             className="absolute inset-0 bg-black/5 hover:bg-black/10 flex items-center justify-center font-mono text-[10px] uppercase font-bold tracking-wider text-black transition-colors"
           >
             <span className="bg-white border border-black px-2.5 py-1 shadow-sm">
@@ -70,7 +71,7 @@ export function MapViewer({ geography }: MapViewerProps) {
       </div>
 
       {/* Footer attribution & link */}
-      <div className="flex items-center justify-between font-mono text-[9px] text-neutral-500 pt-1">
+      <div className="flex items-center justify-between font-mono text-[10px] text-neutral-600 pt-1">
         <span>© OpenStreetMap contributors</span>
         <a
           href={osmDirectUrl}

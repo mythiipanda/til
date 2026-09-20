@@ -11,6 +11,7 @@ import { useMindMapStore } from '@/lib/store/useMindMapStore';
 import { CATEGORIES } from '@/types';
 import { Plus, RotateCcw, BookOpen, X, Share2, Bookmark, Keyboard, Command, Search as SearchIcon, MoreVertical } from 'lucide-react';
 import { MobileOverflowMenu } from '@/components/ui/MobileOverflowMenu';
+import { Modal } from '@/components/ui/Modal';
 
 // Code-split heavy / conditional components out of the first-paint bundle.
 const KnowledgeCanvas = dynamic(
@@ -280,7 +281,7 @@ export default function Home() {
             className={`px-3 py-1 font-mono text-[10px] uppercase tracking-wider font-bold transition-colors duration-100 border border-black ${
               isBrowseOpen
                 ? 'bg-black text-white'
-                : 'bg-black text-white hover:bg-white hover:text-black'
+                : 'bg-white text-black hover:bg-black hover:text-white'
             }`}
           >
             {isBrowseOpen ? 'Close' : 'Topics'}
@@ -343,10 +344,10 @@ export default function Home() {
 
       {/* Monograph Ready Notification Toast */}
       {hasNewDossier && !isDossierOpen && targetNodeId && (
-        <div className="fixed top-18 right-6 z-30 bg-black text-white border-2 border-black p-3.5 shadow-none flex items-center gap-3 animate-drop">
+        <div className="fixed top-20 right-6 z-toast bg-black text-white border-2 border-black p-3.5 shadow-none flex items-center gap-3 toast-enter">
           <BookOpen className="w-4 h-4 shrink-0 text-white" />
           <div>
-            <div className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-400">
               Story Ready
             </div>
             <div className="font-serif text-sm font-bold truncate max-w-xs">
@@ -365,7 +366,7 @@ export default function Home() {
           </button>
           <button
             onClick={dismissNewDossierAlert}
-            className="p-1 text-neutral-400 hover:text-white"
+            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-neutral-400 hover:text-white"
             title="Dismiss"
             aria-label="Dismiss new story alert"
           >
@@ -375,119 +376,103 @@ export default function Home() {
       )}
       
       {/* Custom Topic Search Modal */}
-      {isCustomModalOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white border-2 border-black p-6 md:p-8 space-y-4 shadow-none animate-fade">
-            <div className="flex items-center justify-between border-b-2 border-black pb-3">
-              <h3 className="font-serif text-lg font-bold tracking-tight text-black">
-                Search any topic
-              </h3>
+      <Modal
+        open={isCustomModalOpen}
+        onClose={() => setIsCustomModalOpen(false)}
+        label="Search any topic"
+        badge="SEARCH"
+        title="Search any topic"
+        maxWidth="max-w-lg"
+        closeLabel="Close search"
+      >
+        <div className="pt-4 space-y-4">
+          <p className="font-body text-xs text-neutral-600 leading-relaxed">
+            Type any topic. You get a researched mindmap with sources and threads to follow.
+          </p>
+
+          <form onSubmit={handleCustomSubmit} className="space-y-4 pt-1">
+            <input
+              type="text"
+              autoFocus
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              placeholder="e.g. Voynich Manuscript, Fermi Paradox, Bronze Age Collapse..."
+              aria-label="Search topic"
+              className="w-full border-2 border-black p-3.5 font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50"
+            />
+
+            <div className="flex items-center justify-between pt-2">
               <button
+                type="button"
                 onClick={() => setIsCustomModalOpen(false)}
-                className="p-1 border border-black hover:bg-black hover:text-white transition-colors duration-100"
-                aria-label="Close modal"
+                className="font-mono text-xs uppercase font-bold text-neutral-600 hover:text-black tracking-wider"
               >
-                <X className="w-4 h-4" />
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!customInput.trim()}
+                className="px-6 py-3 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase tracking-widest font-bold transition-colors duration-100 disabled:opacity-40"
+              >
+                Research →
               </button>
             </div>
-
-            <p className="font-body text-xs text-neutral-600 leading-relaxed">
-              Type any topic. You get a researched mindmap with sources and threads to follow.
-            </p>
-
-            <form onSubmit={handleCustomSubmit} className="space-y-4 pt-1">
-              <input
-                type="text"
-                autoFocus
-                value={customInput}
-                onChange={e => setCustomInput(e.target.value)}
-                placeholder="e.g. Voynich Manuscript, Fermi Paradox, Bronze Age Collapse..."
-                className="w-full border-2 border-black p-3.5 font-body text-sm text-black placeholder:text-neutral-400 placeholder:italic outline-none focus:bg-neutral-50"
-              />
-
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCustomModalOpen(false)}
-                  className="font-mono text-xs uppercase font-bold text-neutral-600 hover:text-black tracking-wider"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!customInput.trim()}
-                  className="px-6 py-3 bg-black hover:bg-white text-white hover:text-black border-2 border-black font-mono text-xs uppercase tracking-widest font-bold transition-colors duration-100 disabled:opacity-40"
-                >
-                  Research →
-                </button>
-              </div>
-            </form>
-          </div>
+          </form>
         </div>
-      )}
+      </Modal>
 
       {/* Keyboard Shortcuts Cheat Sheet Modal */}
-      {isShortcutsOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border-2 border-black p-6 md:p-7 space-y-4 shadow-none animate-fade select-none">
-            <div className="flex items-center justify-between border-b-2 border-black pb-3">
-              <div className="flex items-center gap-2">
-                <Keyboard className="w-4 h-4 text-black" />
-                <h3 className="font-serif text-base font-bold tracking-tight text-black">
-                  Keyboard Shortcuts
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsShortcutsOpen(false)}
-                className="p-1 border border-black hover:bg-black hover:text-white transition-colors"
-                aria-label="Close shortcuts modal"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+      <Modal
+        open={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+        label="Keyboard shortcuts"
+        badge="KEYS"
+        title="Keyboard Shortcuts"
+        maxWidth="max-w-md"
+        closeLabel="Close shortcuts"
+      >
+        <div className="pt-4 space-y-4 select-none">
+          <div className="space-y-2.5 font-mono text-xs text-neutral-800">
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+              <span className="font-serif text-neutral-700">Search Any Topic</span>
+              <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">⌘ / Ctrl + K</span>
             </div>
-
-            <div className="space-y-2.5 font-mono text-xs text-neutral-800">
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Search Any Topic</span>
-                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">⌘ / Ctrl + K</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Quick Search</span>
-                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">/</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Random Topic</span>
-                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">S</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Browse 2000+ Topics</span>
-                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">B</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">My Saved Mindmaps</span>
-                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">L</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
-                <span className="font-serif text-neutral-700">Category Shortcuts</span>
-                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">1 - 5</span>
-              </div>
-              <div className="flex items-center justify-between pt-1">
-                <span className="font-serif text-neutral-700">Close Active View / Modal</span>
-                <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">ESC</span>
-              </div>
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+              <span className="font-serif text-neutral-700">Quick Search</span>
+              <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">/</span>
             </div>
-
-            <div className="pt-2 text-center border-t border-neutral-200">
-              <button
-                onClick={() => setIsShortcutsOpen(false)}
-                className="w-full py-2 bg-black text-white hover:bg-neutral-800 font-mono text-xs uppercase font-bold tracking-wider transition-colors"
-              >
-                Got It
-              </button>
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+              <span className="font-serif text-neutral-700">Random Topic</span>
+              <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">S</span>
+            </div>
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+              <span className="font-serif text-neutral-700">Browse 2000+ Topics</span>
+              <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">B</span>
+            </div>
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+              <span className="font-serif text-neutral-700">My Saved Mindmaps</span>
+              <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">L</span>
+            </div>
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-2">
+              <span className="font-serif text-neutral-700">Category Shortcuts</span>
+              <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">1 - 5</span>
+            </div>
+            <div className="flex items-center justify-between pt-1">
+              <span className="font-serif text-neutral-700">Close Active View / Modal</span>
+              <span className="bg-neutral-100 border border-neutral-400 px-1.5 py-0.5 font-bold">ESC</span>
             </div>
           </div>
+
+          <div className="pt-2 text-center border-t border-neutral-200">
+            <button
+              onClick={() => setIsShortcutsOpen(false)}
+              className="w-full py-2 bg-black text-white hover:bg-neutral-800 font-mono text-xs uppercase font-bold tracking-wider transition-colors min-h-[44px]"
+            >
+              Got It
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
 
       {/* Floating Panels & Overlays */}
       {isBrowseOpen && <HubBrowser onClose={() => setIsBrowseOpen(false)} />}
